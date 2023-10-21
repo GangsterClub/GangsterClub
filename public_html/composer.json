@@ -1,0 +1,25 @@
+{
+    "name": "gangsterclub/gc-online",
+    "type": "project",
+    "description": "GangsterClub is a free text based online role playing game. Can you manage becoming the best gangster?",
+    "keywords": [
+        "php", "mysql", "twig"
+    ],
+    "homepage": "https://gcov1.gangsterclub.nl",
+    "license": "proprietary",
+    "authors": [
+        {"name": "Michael Carrein", "email": "michael.carrein@hotmail.com"}
+    ],
+    "require": {
+        "twig/twig": "^3.7.1",
+        "voku/anti-xss": "^4.1.42",
+        "phpmailer/phpmailer": "^6.8.1"
+    },
+    "autoload": {
+        "psr-0": {
+            "app\\Container\\": "",
+            "app\\Http\\": "",
+            "src\\Controller\\": ""
+        }
+    }
+}

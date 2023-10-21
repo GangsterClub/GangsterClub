@@ -1,0 +1,29 @@
+# config/settings.yaml
+# TBD
+domainBase: &DOMAIN_BASE gangsterclub.nl
+ssl: true
+# developerIps can access game when appOffline below is true.
+developerIps:
+    - 127.0.0.1
+    - fe80::
+
+# TBD
+appName: GangsterClub Online
+appDomain: gcov1.*DOMAIN.BASE
+appDevelopment: true
+appOffline: false
+
+# TBD
+databaseConnection: &DB_CONN mysql
+databaseHost: &DB_HOST localhost
+databaseName: &DB_NAME gco
+dbConnString: *DB_CONN:host=*DB_HOST;dbname=*DB_NAME
+databaseUser: root
+databasePass:
+
+# TBD
+mailHost: mail.gangsterclub.nl
+mailAddr: no-reply@gangsterclub.nl
+mailPass: n0r3p1yp4S5w0rd
+# mailPort defaults to 587 when set to false.
+mailPort: false
