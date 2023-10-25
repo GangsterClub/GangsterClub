@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace src\Controller;
 
-class Index extends \app\Container\Controller
+class Index extends Controller
 {
     public function sayHello(\app\Http\Request $request) : string
     {
@@ -12,6 +12,6 @@ class Index extends \app\Container\Controller
         if($name !== null)
             $name = urldecode($name);
 
-        return $this->get('twig')->render('index.twig', ['name' => $name]);
+        return $this->twig->render('index.twig', ['name' => $name]);
     }
 }

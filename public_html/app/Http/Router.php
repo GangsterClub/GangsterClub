@@ -6,7 +6,7 @@ namespace app\Http;
 
 class Router
 {
-    private array $routes;
+    private array $routes = [];
 
     public function __construct()
     {
@@ -14,46 +14,41 @@ class Router
         $this->routes = yaml_parse_file($yamlFilePath) ?? [];
     }
 
-    public function getRoutePattern($url, $method) : ?string
-    {
-        foreach ($this->routes as $route => $routeData)
-        {
-            $pattern = $this->replaceRoutePattern($route);
-            $allowedMethods = $routeData['methods'] ?? ['GET'];
-
-            if (preg_match($pattern, $url, $matches) && in_array($method, $allowedMethods))
-                return $pattern;
-        }
-        return null; // Return null if no match is found.
-    }
-
-    public function match($url, $method) : ?Route
+    public function getPattern($url, $method): ?string
     {
         $routeData = $this->matchRoute($url, $method);
-        $allowedMethods = $routeData['methods'] ?? ['GET'];
-        if ($routeData && in_array($method, $allowedMethods))
-            return new Route(array_search($routeData, $this->routes), $routeData['controller'], $allowedMethods);
+        if ($routeData)
+            return $this->replacePattern($routeData['path']);
 
         return null; // Return null if no match is found.
     }
 
-    private function matchRoute($url, $method) : ?array
+    public function match($url, $method): ?Route
     {
-        foreach ($this->routes as $route => $routeData)
-        {
-            $pattern = $this->replaceRoutePattern($route);
+        $routeData = $this->matchRoute($url, $method);
+        if ($routeData) {
             $allowedMethods = $routeData['methods'] ?? ['GET'];
-
-            if (preg_match($pattern, $url, $matches) && in_array($method, $allowedMethods))
-                return $routeData;
+            return new Route($url, $routeData['controller'], $allowedMethods);
         }
-        return null;
+        return null; // Return null if no match is found.
     }
 
-    private function replaceRoutePattern($route) : string
+    private function matchRoute($url, $method): ?array
+    {
+        $filteredRoutes = array_filter($this->routes, function ($routeData) use ($url, $method) {
+            $pattern = $this->replacePattern($routeData['path']);
+            return preg_match($pattern, $url) && in_array($method, $routeData['methods'] ?? ['GET']);
+        });
+        if (!empty($filteredRoutes))
+            return reset($filteredRoutes);
+
+        return null; // Return null if no match is found.
+    }
+
+    private function replacePattern($route): string
     {
         $pattern = preg_replace('/\{([^}]+)\}/', '(?P<$1>[^/]+)', $route);
         $pattern = '~^' . $pattern . '$~i';
-        return (string)$pattern;
+        return (string) $pattern;
     }
 }

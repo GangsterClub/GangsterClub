@@ -21,28 +21,22 @@ class Kernel
         $allowedMethods = $request->getParameter('methods') ?? ['GET'];
         $router = $this->application->get('router');
         $route = $router->match($_SERVER['REQUEST_URI'], $method);
-        
+
         if ($route && !in_array($method, $allowedMethods))
             return $this->handleMethodNotAllowed();
 
         if ($route) {
-            $action = "__invoke";
+            $action = $act = "__invoke";
             $controller = $controllerAction = $route->getController();
             if (strpos($controllerAction, '::') !== false)
                 list($controller, $action) = explode('::', $controllerAction);
-            
-            $controllerObj = new $controller();
-            $docRoot = $_SERVER['DOCUMENT_ROOT'];
-            $loader = new \Twig\Loader\FilesystemLoader($docRoot . '/src/Views/');
-            $twig = new \Twig\Environment($loader, [
-                'cache' => FALSE,//$docRoot . '/app/cache/TwigCompilation',
-            ]);
-            $controllerObj->addService('twig', $twig);
 
+            $exists = class_exists($controller);
+            $action = $exists && method_exists($controller, $action) ? $action : $act;
+            $controllerObj = $exists ? new $controller() : new \src\Controller\Controller();
             $responseContent = ($controllerObj)->$action($request);
             return new Response($responseContent);
         }
-
         return $this->handleNotFound();
     }
 
@@ -62,7 +56,7 @@ class Kernel
     {
         return new Response('Not Found', 404);
     }
-    
+
     private function handleMethodNotFound() : Response
     {
         return new Response('Method Not Allowed', 405);

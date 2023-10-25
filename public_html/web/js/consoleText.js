@@ -1,3 +1,5 @@
+// All credits and rights to Tobias.
+// https://codepen.io/Tbgse/pen/dYaJyJ
 function consoleText(words, id, colors) {
   if (colors === undefined) colors = ['#fff'];
   var visible = true;

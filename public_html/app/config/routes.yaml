@@ -1,13 +1,15 @@
 # app/config/routes.yaml
-/:
-    controller: src\Controller\Index
+home:
+    path: /
+    controller: src\Controller\Home
     methods: ['GET', 'HEAD']
 
-/hello/:
+hello:
+    path: /hello/
     controller: src\Controller\Index::sayHello
     methods: ['GET', 'HEAD']
 
-/hello/{name}:
+hello-name:
+    path: /hello/{name}
     controller: src\Controller\Index::sayHello
     methods: ['GET', 'HEAD']
-    parameters: name

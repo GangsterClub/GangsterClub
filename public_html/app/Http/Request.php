@@ -21,7 +21,7 @@ class Request
     {
         $headers = getallheaders();
         $method = $_SERVER['REQUEST_METHOD'];
-        $routePattern = $router->getRoutePattern($_SERVER['REQUEST_URI'], $method);
+        $routePattern = $router->getPattern($_SERVER['REQUEST_URI'], $method);
         $parameters = [];
 
         if ($routePattern)
