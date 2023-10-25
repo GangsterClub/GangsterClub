@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        {% set hello = "Hello,  you didn't provide a name." %}
+        {% if name %}
+            {% set hello = "Hello, " ~ name ~ "." %}
+        {% endif %}
+        <title>{{ hello }}</title>
+        <link rel="stylesheet" href="/css/test.css" />
+    </head>
+    <body>
+        <div class='console-container'><span id='text'></span><div class='console-underscore' id='console'>&#95;</div></div>
+    </body>
+    <script type="text/javascript" src="/js/consoleText.js"></script>
+    <script type="text/javascript">
+        // function([string1, string2],target id,[color1,color2])
+        consoleText(["{{ hello }}", 'Console Text', 'Made with Love.'], 'text',['tomato','rebeccapurple','lightblue']);
+    </script>
+</html>
