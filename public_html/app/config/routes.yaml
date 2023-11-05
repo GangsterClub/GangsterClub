@@ -1,7 +1,7 @@
 # app/config/routes.yaml
 home:
     path: /
-    controller: src\Controller\Hello
+    controller: src\Controller\Home
     methods: ['GET', 'HEAD']
 
 hello:
