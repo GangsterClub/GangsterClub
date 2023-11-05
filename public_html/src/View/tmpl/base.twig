@@ -1,0 +1,21 @@
+{% apply spaceless %}
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <base href="{{ docRoot }}" />
+        {% block md %}
+            <title>Hello World!</title>
+            <meta name="description" content="Hello World!" />
+            <meta name="keywords" content="Hello, World" />
+            <meta name="author" content="John Doe" />
+        {% endblock %}
+        {% block css %}{% endblock %}
+    </head>
+    <body>
+        {% block content %}Hello World!{% endblock %}
+        {% block js %}{% endblock %}
+    </body>
+</html>
+{% endapply %}

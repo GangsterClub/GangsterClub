@@ -12,6 +12,13 @@ class Index extends Controller
         if($name !== null)
             $name = urldecode($name);
 
-        return $this->twig->render('index.twig', ['name' => $name]);
+        $hello = "Hello, you didn't provide a name.";
+        if($name)
+            $hello = "Hello, " . $name;
+
+        return $this->twig->render('index.twig', [
+            'name' => $name,
+            'hello' => $hello
+        ]);
     }
 }

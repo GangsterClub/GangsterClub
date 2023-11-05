@@ -42,8 +42,9 @@ class Kernel
 
     public function send() : void
     {
-        if ($this->response)
-            $this->response->send();
+        $res = $this->response;
+        if (isset($res) && is_a($res, 'Response'))
+            $res->send();
     }
 
     public function terminate(Request $request, Response $response) : void

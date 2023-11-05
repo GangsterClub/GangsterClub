@@ -9,12 +9,14 @@ class Controller
     protected $twig;
 
     public function __construct()
-    {
-        $docRoot = $_SERVER['DOCUMENT_ROOT'];
-        $loader = new \Twig\Loader\FilesystemLoader($docRoot . '/src/View/');
+    {        
+        $loader = new \Twig\Loader\FilesystemLoader(DOC_ROOT . '/src/View/');
         $this->twig = new \Twig\Environment($loader, [
-            'cache' => FALSE,//$docRoot . '/app/cache/TwigCompilation',
+            'cache' => FALSE //DOC_ROOT . '/app/cache/TwigCompilation',
         ]);
+
+        $base = APP_BASE . (!empty(APP_BASE) ? '/' : '');
+        $this->twig->addGlobal('docRoot', PROTOCOL . $_SERVER['HTTP_HOST'] . $base);
     }
 
     public function __invoke(\app\Http\Request $request) : string
@@ -23,12 +25,12 @@ class Controller
         $rpl = 'src\\Controller\\';
         if(strpos($cls, $rpl) !== FALSE){
             $view = strtolower(str_replace($rpl, '', $cls));
-            if(file_exists($_SERVER['DOCUMENT_ROOT'] . '/src/View/' . $view . '.twig'))
+            if(file_exists(DOC_ROOT . '/src/View/' . $view . '.twig'))
                 return $this->twig->render($view . '.twig', []);
         }
-        return (string)
-            print_r('<pre>') .
-            var_dump($request) .
-            print_r('</pre>');
+        print_r('<pre>');
+        var_dump($request);
+        print_r('</pre>');
+        return (string) "";
     }
 }

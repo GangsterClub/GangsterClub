@@ -4,20 +4,51 @@ declare(strict_types=1);
 
 namespace app\Container;
 
-class Application extends Container
+use app\Http\Router;
+
+class Application
 {
     private ?string $directory;
-
+    private ?Router $router;
+        
     public function __construct($dir)
     {
-        $this->directory = $dir;
-        $this->registerServices();
+        define('DOC_ROOT', $this->directory = $dir);
+        define('APP_BASE', $this->getBase());
+        define('PROTOCOL', 'http'.(isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 's': '') . '://');
+        $this->router = new Router();
     }
-    
-    private function registerServices()
+
+    public function make($className) : ?object
     {
-        $this->addService('router', function () {
-            return new \app\Http\Router();
-        });
+        if (class_exists($className))
+            return new $className($this);
+
+        throw new \Exception("Class $className not found.");
+        return null;
+    }
+
+    public function get($prop) : mixed
+    {
+        if(isset($this->$prop))
+        {
+            if (is_callable($this->$prop))
+                return $this->$prop();
+
+            return $this->$prop;
+        }
+        return null;
+    }
+
+    private function getBase() : string
+    {
+        return str_replace('\\', '/',
+            str_replace(
+                str_replace('/', '\\', $_SERVER['DOCUMENT_ROOT']), '',
+                str_replace('/', '\\',
+                    $this->directory
+                )
+            )
+        );
     }
 }

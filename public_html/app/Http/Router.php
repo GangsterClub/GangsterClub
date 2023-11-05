@@ -47,6 +47,7 @@ class Router
 
     private function replacePattern($route): string
     {
+        $route = APP_BASE . $route;
         $pattern = preg_replace('/\{([^}]+)\}/', '(?P<$1>[^/]+)', $route);
         $pattern = '~^' . $pattern . '$~i';
         return (string) $pattern;
