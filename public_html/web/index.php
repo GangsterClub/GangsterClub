@@ -12,7 +12,7 @@ $app = require_once __DIR__.'/../app/app.php';
 $kernel = $app->make(app\Http\Kernel::class);
 
 $response = $kernel->handleRequest(
-    $request = app\Http\Request::capture($app->get('router'))
+    $request = app\Http\Request::capture()
 )->send();
 
 $kernel->terminate($request, $response);

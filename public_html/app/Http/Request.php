@@ -17,11 +17,11 @@ class Request
         $this->method = $method;
     }
 
-    public static function capture(Router $router) : self
+    public static function capture() : self
     {
         $headers = getallheaders();
         $method = $_SERVER['REQUEST_METHOD'];
-        $routePattern = $router->getPattern($_SERVER['REQUEST_URI'], $method);
+        $routePattern = Router::getPattern($_SERVER['REQUEST_URI'], $method);
         $parameters = [];
 
         if ($routePattern)

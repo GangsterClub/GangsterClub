@@ -6,26 +6,32 @@ namespace app\Http;
 
 class Router
 {
-    private array $routes = [];
+    private static $routes = [];
 
     public function __construct()
     {
-        $yamlFilePath = __DIR__ . '/../config/routes.yaml';
-        $this->routes = yaml_parse_file($yamlFilePath) ?? [];
+        static::$routes = $_SESSION['routes'] = $_SESSION['routes'] ??
+            yaml_parse_file(__DIR__ . '/../config/routes.yaml') ?? [];
     }
 
-    public function getPattern($url, $method): ?string
+    public function __destruct()
     {
-        $routeData = $this->matchRoute($url, $method);
+        if(defined('DEVELOPMENT') && DEVELOPMENT === true)
+            $_SESSION['routes'] = null;
+    }
+
+    public static function getPattern($url, $method) : ?string
+    {
+        $routeData = self::matchRoute($url, $method);
         if ($routeData)
-            return $this->replacePattern($routeData['path']);
+            return self::replacePattern($routeData['path']);
 
         return null; // Return null if no match is found.
     }
 
-    public function match($url, $method): ?Route
+    public function match($url, $method) : ?Route
     {
-        $routeData = $this->matchRoute($url, $method);
+        $routeData = self::matchRoute($url, $method);
         if ($routeData) {
             $allowedMethods = $routeData['methods'] ?? ['GET'];
             return new Route($url, $routeData['controller'], $allowedMethods);
@@ -33,10 +39,10 @@ class Router
         return null; // Return null if no match is found.
     }
 
-    private function matchRoute($url, $method): ?array
+    private static function matchRoute($url, $method) : ?array // Used in Request & Kernel
     {
-        $filteredRoutes = array_filter($this->routes, function ($routeData) use ($url, $method) {
-            $pattern = $this->replacePattern($routeData['path']);
+        $filteredRoutes = array_filter(static::$routes, function ($routeData) use ($url, $method) {
+            $pattern = self::replacePattern($routeData['path']);
             return preg_match($pattern, $url) && in_array($method, $routeData['methods'] ?? ['GET']);
         });
         if (!empty($filteredRoutes))
@@ -45,7 +51,7 @@ class Router
         return null; // Return null if no match is found.
     }
 
-    private function replacePattern($route): string
+    private static function replacePattern($route) : string // Used in Request & Kernel
     {
         $route = APP_BASE . $route;
         $pattern = preg_replace('/\{([^}]+)\}/', '(?P<$1>[^/]+)', $route);

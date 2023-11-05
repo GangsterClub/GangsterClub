@@ -9,13 +9,14 @@ use app\Http\Router;
 class Application
 {
     private ?string $directory;
-    private ?Router $router;
+    private Router $router;
         
     public function __construct($dir)
     {
         define('DOC_ROOT', $this->directory = $dir);
         define('APP_BASE', $this->getBase());
-        define('PROTOCOL', 'http'.(isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 's': '') . '://');
+        define('PROTOCOL', 'http'.(isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 's' : '') . '://');
+        define('WEB_ROOT', PROTOCOL . $_SERVER['HTTP_HOST'] . APP_BASE . (!empty(APP_BASE) ? '/' : ''));
         $this->router = new Router();
     }
 

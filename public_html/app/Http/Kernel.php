@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace app\Http;
 
+use app\Container\Application;
+use src\Controller\Controller;
+
 class Kernel
 {
-    private \app\Container\Application $application;
+    private Application $application;
     private ?Response $response;
 
-    public function __construct(\app\Container\Application $application)
+    public function __construct(Application $application)
     {
         $this->application = $application;
         $this->response = null;
@@ -33,7 +36,7 @@ class Kernel
 
             $exists = class_exists($controller);
             $action = $exists && method_exists($controller, $action) ? $action : $act;
-            $controllerObj = $exists ? new $controller() : new \src\Controller\Controller();
+            $controllerObj = $exists ? new $controller() : new Controller();
             $responseContent = ($controllerObj)->$action($request);
             return new Response($responseContent);
         }
