@@ -25,29 +25,28 @@ class Kernel
         $router = $this->application->get('router');
         $route = $router->match($_SERVER['REQUEST_URI'], $method);
 
-        if ($route && !in_array($method, $allowedMethods))
+        if($route && !in_array($method, $allowedMethods))
             return $this->handleMethodNotAllowed();
 
-        if ($route) {
-            $action = $act = "__invoke";
-            $controller = $controllerAction = $route->getController();
-            if (strpos($controllerAction, '::') !== false)
-                list($controller, $action) = explode('::', $controllerAction);
+        if($route)
+        {
+            $action = $act = '__invoke';
+            $name = $nameAction = $route->getController();
+            if (strpos($nameAction, '::') !== false)
+                list($name, $action) = explode('::', $nameAction);
 
+            $namespace = SRC_CONTROLLER;
+            $prefix = !str_starts_with($name, $namespace) && strpos($name, '\\') == false ? $namespace : '';
+            $controller = $prefix . $name;
             $exists = class_exists($controller);
             $action = $exists && method_exists($controller, $action) ? $action : $act;
-            $controllerObj = $exists ? new $controller() : new Controller();
-            $responseContent = ($controllerObj)->$action($request);
+            $cntrllr = $exists ? $controller : Controller::class;
+            $controllerObj = $this->application->make($cntrllr);
+
+            $responseContent = $controllerObj->$action($request);
             return new Response($responseContent);
         }
         return $this->handleNotFound();
-    }
-
-    public function send() : void
-    {
-        $res = $this->response;
-        if (isset($res) && is_a($res, 'Response'))
-            $res->send();
     }
 
     public function terminate(Request $request, Response $response) : void
@@ -61,7 +60,7 @@ class Kernel
         return new Response('Not Found', 404);
     }
 
-    private function handleMethodNotFound() : Response
+    private function handleMethodNotAllowed() : Response
     {
         return new Response('Method Not Allowed', 405);
     }

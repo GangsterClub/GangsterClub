@@ -6,25 +6,17 @@ namespace src\Controller;
 
 class Controller
 {
-    protected $twig;
+    protected \Twig\Environment $twig;
 
-    public function __construct()
+    public function __construct(\app\Container\Application $app)
     {
-        if(!defined('DOC_ROOT') || !defined('WEB_ROOT'))
-            return;
-
-        $loader = new \Twig\Loader\FilesystemLoader(DOC_ROOT . '/src/View/');
-        $this->twig = new \Twig\Environment($loader, [
-            'cache' => false //DOC_ROOT . '/app/cache/TwigCompilation',
-        ]);
-        $this->twig->addGlobal('docRoot', WEB_ROOT);
+        $this->twig = $app->get('twig');
     }
 
     public function __invoke(\app\Http\Request $request) : string
     {
         $cls = $this::class;
-        $rpl = 'src\\Controller\\';
-        if(strpos($cls, $rpl) !== false)
+        if(strpos($cls, $rpl = SRC_CONTROLLER) !== false)
         {
             if(defined('DOC_ROOT'))
             {

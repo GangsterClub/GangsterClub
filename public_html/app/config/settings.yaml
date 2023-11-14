@@ -1,29 +1,32 @@
-# config/settings.yaml
-# TBD
-domainBase: &DOMAIN_BASE gangsterclub.nl
-ssl: true
-# developerIps can access game when appOffline below is true.
-developerIps:
+# app/config/settings.yaml
+
+# Environment
+DOMAIN_BASE: &DOMAIN_BASE gangsterclub.nl
+SSL: true
+SRC_CONTROLLER: "src\\Controller\\"
+# DEVELOPER_IPS can access game when appOffline below is true.
+DEVELOPER_IPS:
     - 127.0.0.1
-    - fe80::
+    - "fe80::"
 
-# TBD
-appName: GangsterClub Online
-appDomain: gcov1.*DOMAIN.BASE
-appDevelopment: true
-appOffline: false
+# Application
+APP_NAME: GangsterClub Online
+APP_DOMAIN: gcov1.*DOMAIN_BASE
+APP_DEVELOPMENT: true
+APP_MAX_AGE: 7200
+APP_OFFLINE: false
 
-# TBD
-databaseConnection: &DB_CONN mysql
-databaseHost: &DB_HOST localhost
-databaseName: &DB_NAME gco
-dbConnString: *DB_CONN:host=*DB_HOST;dbname=*DB_NAME
-databaseUser: root
-databasePass:
+# Database
+DB_CONNECTION: &DB_CONN mysql
+DB_HOST: &DB_HOST localhost
+DB_NAME: &DB_NAME gco
+DB_CONN_STRING: *DB_CONN:host=*DB_HOST;dbname=*DB_NAME
+DB_USER: root
+DB_PASS:
 
-# TBD
-mailHost: mail.gangsterclub.nl
-mailAddr: no-reply@gangsterclub.nl
-mailPass: n0r3p1yp4S5w0rd
-# mailPort defaults to 587 when set to false.
-mailPort: false
+# Email
+MAIL_HOST: mail.gangsterclub.nl
+MAIL_ADDR: no-reply@gangsterclub.nl
+MAIL_PASS: n0r3p1yp4S5w0rd
+# MAIL_PORT defaults to 587 when set to false.
+MAIL_PORT: false
