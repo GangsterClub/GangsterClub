@@ -25,19 +25,17 @@ class Router
         RoutesCache::storeCache($cachedYaml, $routes);
     }
 
-    public static function getPattern(string $url, string $method) : ?string
+    public static function extract(string $url, string $method, array $parameters = []) : array
     {
-        $routeData = self::matchRoute($url, $method);
-        if($routeData)
-            return self::replacePattern($routeData['path']);
-
-        return null; // Return null if no match is found.
+        if($routeData = self::matchRoute($url, $method))
+            $parameters = self::extractParameters($url, $routeData['path'], $parameters);
+            
+        return (array)$parameters;
     }
 
     public function match(string $url, string $method) : ?Route
     {
-        $routeData = self::matchRoute($url, $method);
-        if($routeData)
+        if($routeData = self::matchRoute($url, $method))
         {
             $allowedMethods = $routeData['methods'] ?? ['GET'];
             return new Route($url, $routeData['controller'], $allowedMethods);
@@ -59,9 +57,26 @@ class Router
 
     private static function replacePattern(string $route) : string
     {
-        $route = APP_BASE . $route;
-        $pattern = preg_replace('/\{([^}]+)\}/', '(?P<$1>[^/]+)', $route);
-        $pattern = '~^' . $pattern . '$~i';
+        $route = preg_replace_callback('/\{([^}]+)\}/', function($matches) {
+            return '(?P<' . preg_quote($matches[1], '/') . '>[^/]+)';
+        }, APP_BASE . $route);
+        $pattern = '~^' . $route . '$~i';
         return (string) $pattern;
+    }
+
+    private static function extractParameters(string $url, string $routePath, array $parameters = []) : array
+    {
+        $routePattern = self::replacePattern($routePath);
+        $urlParts = parse_url($url);
+        $path = isset($urlParts['path']) ? $urlParts['path'] : '/';
+        if(preg_match($routePattern, $path, $matches))
+        {
+            foreach($matches as $key => $value)
+            {
+                if(!is_numeric($key))
+                    $parameters[$key] = $value;
+            }
+        }
+        return (array)$parameters;
     }
 }

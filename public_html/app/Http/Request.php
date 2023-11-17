@@ -21,29 +21,9 @@ class Request
     {
         $headers = getallheaders();
         $method = $_SERVER['REQUEST_METHOD'];
-        $routePattern = Router::getPattern($_SERVER['REQUEST_URI'], $method);
-        $parameters = [];
-        if($routePattern)
-            $parameters = self::extractParameters($routePattern);
+        $parameters = Router::extract($_SERVER['REQUEST_URI'], $method);
 
         return new self($parameters, $headers, $method);
-    }
-
-    private static function extractParameters(string $routePattern) : array
-    {
-        $url = $_SERVER['REQUEST_URI'];
-        $urlParts = parse_url($url);
-        $path = isset($urlParts['path']) ? $urlParts['path'] : '/';
-        $parameters = [];
-        if(preg_match($routePattern, $path, $matches))
-        {
-            foreach($matches as $key => $value)
-            {
-                if(!is_numeric($key))
-                    $parameters[$key] = $value;
-            }
-        }
-        return (array)$parameters;
     }
 
     public function getParameter(string $key, ?string $default = null) : ?string
