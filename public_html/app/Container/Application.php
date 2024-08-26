@@ -36,7 +36,7 @@ class Application extends Container
         define('APP_BASE', $this->getBase());
         define('PROTOCOL', 'http'.(isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 's' : '').'://');
         define('WEB_ROOT', PROTOCOL.$this->getHostname().APP_BASE.'/');
-        define('REQUEST_URI', filter_var($_SERVER['REQUEST_URI'], FILTER_SANITIZE_URL));
+        define('REQUEST_URI', filter_var(filter_input(INPUT_SERVER, 'REQUEST_URI'), FILTER_SANITIZE_URL));
     }
 
     private function getBase() : string
