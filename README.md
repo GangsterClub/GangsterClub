@@ -1,4 +1,4 @@
-# GangsterClub Online ALPHA v0.0.1
+# GangsterClub Online ALPHA v0.0.2
 ## PHP Extensions:
 - yaml
 ## Composer dependencies:
