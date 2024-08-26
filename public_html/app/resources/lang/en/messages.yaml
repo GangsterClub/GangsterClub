@@ -1,0 +1,6 @@
+hello: "Hello, :name!"
+Made with love: "Made with love."
+goodbye: "Goodbye, :name!"
+"Hello, you didn't provide a name.": "Hello, you didn't provide a name."
+visitor: visitor
+pal: pal

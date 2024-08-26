@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace app\Http;
 
+use app\Business\YamlCacheService as RoutesCache;
+
 class Router
 {
     private static array $routes = [];
+    private static array $methods = ['GET'];
 
-    public function load(string $yaml): void
+    public function load(string $yaml) : void
     {
-        if(!file_exists($yaml))
-            return;
-
         $cachedYaml = RoutesCache::getPath($yaml);
         $cachedRoutes = RoutesCache::loadCache($cachedYaml);
-        if(!empty($cachedRoutes))
+        if(!empty($cachedRoutes) && is_array($cachedRoutes))
         {
             static::$routes = array_merge(static::$routes, $cachedRoutes);
             return;
@@ -28,8 +28,10 @@ class Router
     public static function extract(string $url, string $method, array $parameters = []) : array
     {
         if($routeData = self::matchRoute($url, $method))
+        {
+            $parameters['methods'] = $routeData['methods'] ?? static::$methods;
             $parameters = self::extractParameters($url, $routeData['path'], $parameters);
-            
+        }
         return (array)$parameters;
     }
 
@@ -37,7 +39,7 @@ class Router
     {
         if($routeData = self::matchRoute($url, $method))
         {
-            $allowedMethods = $routeData['methods'] ?? ['GET'];
+            $allowedMethods = $routeData['methods'] ?? static::$methods;
             return new Route($url, $routeData['controller'], $allowedMethods);
         }
         return null; // Return null if no match is found.
@@ -47,7 +49,7 @@ class Router
     {
         $filteredRoutes = array_filter(static::$routes, function ($routeData) use ($url, $method) {
             $pattern = self::replacePattern($routeData['path']);
-            return preg_match($pattern, $url) && in_array($method, $routeData['methods'] ?? ['GET']);
+            return preg_match($pattern, $url) && in_array($method, $routeData['methods'] ?? static::$methods);
         });
         if(!empty($filteredRoutes))
             return reset($filteredRoutes);

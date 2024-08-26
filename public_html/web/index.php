@@ -11,8 +11,10 @@ $app = require_once __DIR__.'/../app/app.php';
 
 $kernel = $app->make(app\Http\Kernel::class);
 
+require_once __DIR__.'/../app/middleware.php';
+
 $response = $kernel->handleRequest(
-    $request = app\Http\Request::capture()
+    $request = \app\Http\Request::capture()
 )->send();
 
 $kernel->terminate($request, $response);

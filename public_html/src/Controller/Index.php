@@ -12,13 +12,13 @@ class Index extends Controller
         if($name !== null)
             $name = urldecode($name);
 
-        $hello = "Hello, you didn't provide a name.";
+        $hello = __("messages.Hello, you didn't provide a name.");
         if($name)
-            $hello = "Hello, " . $name;
+            $hello = __('messages.hello', ['name' => $name]);
 
-        return $this->twig->render('index.twig', [
+        return $this->twig->render('index.twig', array_merge($this->twigVariables, [
             'name' => $name,
             'hello' => $hello
-        ]);
+        ]));
     }
 }

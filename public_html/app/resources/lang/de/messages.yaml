@@ -1,0 +1,6 @@
+hello: "Hallo, :name!"
+Made with love: "Mit Liebe gemacht."
+goodbye: "Auf Wiedersehen, :name!"
+"Hello, you didn't provide a name.": "Hallo, Sie haben keinen Namen angegeben."
+visitor: besucher
+pal: freund

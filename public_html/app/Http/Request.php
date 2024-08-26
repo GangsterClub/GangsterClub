@@ -19,19 +19,19 @@ class Request
 
     public static function capture() : self
     {
-        $headers = getallheaders();
-        $method = $_SERVER['REQUEST_METHOD'];
-        $parameters = Router::extract($_SERVER['REQUEST_URI'], $method);
+        $headers = getallheaders() ?? [];
+        $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+        $parameters = Router::extract((REQUEST_URI ?? ''), $method);
 
-        return new self($parameters, $headers, $method);
+        return new self((array)$parameters, (array)$headers, (string)$method);
     }
 
-    public function getParameter(string $key, ?string $default = null) : ?string
-    {
+    public function getParameter(string $key, ?string $default = null) : mixed
+    {                
         return $this->parameters[$key] ?? $default;
     }
 
-    public function getHeader(string $key) : ?array
+    public function getHeader(string $key) : mixed
     {
         return $this->headers[$key] ?? null;
     }

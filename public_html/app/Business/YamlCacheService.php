@@ -2,26 +2,26 @@
 
 declare(strict_types=1);
 
-namespace app\Http;
+namespace app\Business;
 
-class RoutesCache
+class YamlCacheService
 {
     private static int $maxAge = 2 * 60 * 60;
 
     private static function isCache(string $cachedYaml) : bool
     {
-        return strpos($cachedYaml, '/cache/') !== false;
+        return str_ends_with($cachedYaml, '.yaml') ? strpos($cachedYaml, '/cache/') !== false : false;
     }
 
     private static function isCacheable(string $yaml) : bool
     {
-        return strpos($yaml, '/config/') !== false;
+        return str_ends_with($yaml, '.yaml') ? strpos($yaml, '/resources/') !== false : false;
     }
 
     public static function getPath(string $yaml): string
     {
-        $dev = (!defined('APP_DEVELOPMENT') || defined('APP_DEVELOPMENT') && DEVELOPMENT == false);
-        return $dev && self::isCacheable($yaml) ? str_replace('/config/', '/cache/', $yaml) : $yaml;
+        $dev = (!defined('DEVELOPMENT') || defined('DEVELOPMENT') && DEVELOPMENT == false);
+        return $dev && self::isCacheable($yaml) ? str_replace('/resources/', '/cache/', $yaml) : $yaml;
     }
 
     public static function loadCache(string $cachedYaml) : array
@@ -29,12 +29,12 @@ class RoutesCache
         if(file_exists($cachedYaml) && self::isCache($cachedYaml))
         {
             $cachedRoutes = file_get_contents($cachedYaml);
-            $arr = @unserialize($cachedRoutes);
+            $arr = @json_decode($cachedRoutes, true);
             if($arr !== false && $cachedRoutes !== false)
             {
                 $maxAge = defined('APP_MAX_AGE') ? (int)APP_MAX_AGE : static::$maxAge;
                 if(time()-filemtime($cachedYaml) > $maxAge)
-                    unlink($cachedYaml); // Delete cached routes if older than $maxAge.
+                    unlink($cachedYaml); // Delete cached resource if older than $maxAge
 
                 return $arr ?: [];
             }
@@ -42,9 +42,14 @@ class RoutesCache
         return [];
     }
 
-    public static function storeCache(string $cachedYaml, array $routes) : void
+    public static function storeCache(string $cachedYaml, array $fileContents) : void
     {
         if(self::isCache($cachedYaml))
-            file_put_contents($cachedYaml, serialize($routes));
+        {
+            if(!is_dir(dirname($cachedYaml)))
+                mkdir(dirname($cachedYaml), 0755, true);
+
+            file_put_contents($cachedYaml, json_encode($fileContents));
+        }
     }
 }

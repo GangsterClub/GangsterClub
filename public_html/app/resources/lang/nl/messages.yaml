@@ -1,0 +1,6 @@
+hello: "Hallo, :name!"
+Made with love: "Gemaakt met liefde."
+goodbye: "Tot ziens, :name!"
+"Hello, you didn't provide a name.": "Hallo, u hebt geen naam opgegeven."
+visitor: bezoeker
+pal: maat

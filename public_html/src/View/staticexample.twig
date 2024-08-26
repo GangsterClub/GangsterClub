@@ -1,7 +1,8 @@
+{# Copy paste of index.twig but static, without url name parameter #}
 {% extends "tmpl/base.twig" %}
 
 {% block md %}
-    <title>{{ hello }}</title>
+    <title>{{ __("messages.hello", {"name": name ?? __("messages.visitor")}) }}</title>
 {% endblock %}
 
 {% block css %}
@@ -24,10 +25,9 @@
       // function([string1, string2],target id,[color1,color2])
       consoleText(
         [
-            "{{ hello }}", // Defined in Index Controller
-            // What follows are translating in twig examples:
+            '{{ __("messages.hello", {"name": name ?? __("messages.visitor") }) }}',
             '{{ __("messages.Made with love") }}',
-            '{{ __("messages.goodbye", {"name": name ?? ""}) }}'
+            '{{ __("messages.goodbye", {"name": name ?? __("messages.pal") }) }}'
         ],
         'text',
         ['tomato','rebeccapurple','lightblue']
