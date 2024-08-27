@@ -64,7 +64,7 @@ class Kernel
 
         $namespace = SRC_CONTROLLER;
         $prefix = !str_starts_with($name, $namespace) && strpos($name, '\\') === false ? $namespace : '';
-        $controller = $prefix . $name;
+        $controller = $prefix.$name;
         $exists = class_exists($controller);
         $action = $exists && method_exists($controller, $action) ? $action : $act;
         $cntrllr = $exists ? $controller : Controller::class;

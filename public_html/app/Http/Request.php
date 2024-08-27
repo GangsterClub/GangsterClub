@@ -20,7 +20,7 @@ class Request
     public static function capture() : self
     {
         $headers = getallheaders() ?? [];
-        $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+        $method = filter_input(INPUT_SERVER, 'REQUEST_METHOD', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? 'GET';
         $parameters = Router::extract((REQUEST_URI ?? ''), $method);
 
         return new self((array)$parameters, (array)$headers, (string)$method);

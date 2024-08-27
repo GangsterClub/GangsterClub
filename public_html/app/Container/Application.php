@@ -17,7 +17,7 @@ class Application extends Container
     {
         $this->initialize($dir);
         $this->registerServices();
-        $routes = $dir . '/app/resources/routes.yaml';
+        $routes = $dir.'/app/resources/routes.yaml';
         if(file_exists($routes) && $router = $this->router)
             $router->load($routes);
     }
@@ -31,10 +31,11 @@ class Application extends Container
 
     private function initialize(string $dir) : void
     {
+        $https = filter_input(INPUT_SERVER, 'HTTPS', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
         define('SRC_CONTROLLER', 'src\\Controller\\');
         define('DOC_ROOT', $this->directory = $dir);
         define('APP_BASE', $this->getBase());
-        define('PROTOCOL', 'http'.(isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 's' : '').'://');
+        define('PROTOCOL', 'http'.(isset($https) && $https === 'on' ? 's' : '').'://');
         define('WEB_ROOT', PROTOCOL.$this->getHostname().APP_BASE.'/');
         define('REQUEST_URI', filter_input(INPUT_SERVER, 'REQUEST_URI', FILTER_SANITIZE_URL));
     }

@@ -19,14 +19,14 @@ class Locale
 
     public function handle(Request $request, callable $next) : ?Response
     {
+        $sessionService = $this->application->get('sessionService');
         $translationService = $this->application->get('translationService');
-        $preferredLanguage = $_SESSION['preferred_language']
-            ?? $this->getBrowserLocale() 
-            ?? $translationService->getFallbackLanguage();
+        $fallbackLocale = $translationService->getFallbackLocale();
+        $preferredLanguage = $sessionService->get('preferred_language', $this->getBrowserLocale()) ?? $fallbackLocale;
 
-        if (!array_key_exists($preferredLanguage, $translationService->getSupportedLanguages())) {
-            $preferredLanguage = $translationService->getFallbackLanguage();
-        }
+        if (!array_key_exists($preferredLanguage, $translationService->getSupportedLanguages()))
+            $preferredLanguage = $fallbackLocale;
+
         $translationService->setLocale($preferredLanguage);
 
         return $next($request);
@@ -34,8 +34,9 @@ class Locale
 
     private function getBrowserLocale() : ?string
     {
-        if (isset($_SERVER['HTTP_ACCEPT_LANGUAGE'])) {
-            $langs = explode(',', $_SERVER['HTTP_ACCEPT_LANGUAGE']);
+        $httpAcceptLang = filter_input(INPUT_SERVER, 'HTTP_ACCEPT_LANGUAGE', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+        if (isset($httpAcceptLang)) {
+            $langs = explode(',', $httpAcceptLang);
             return substr($langs[0], 0, 2);
         }
         return null;

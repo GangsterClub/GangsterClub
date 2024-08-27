@@ -6,9 +6,18 @@ namespace app\Business;
 
 class SessionService extends \SessionHandler
 {
+    private string $ipAddress;
+    private string $userAgent;
+
+    public function __construct()
+    {
+        $this->ipAddress = filter_input(INPUT_SERVER, 'REMOTE_ADDR', FILTER_VALIDATE_IP);
+        $this->userAgent = filter_input(INPUT_SERVER, 'HTTP_USER_AGENT', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? 'Undefined';
+    }
+
     public function start(string $name, ?int $limit = 0, ?string $path = '/', ?string $domain = null, ?bool $secure = null) : void
     {
-        ini_set('session.name', $name . '_Session');
+        ini_set('session.name', $name.'_Session');
         ini_set('session.auto_start', 'Off');
         ini_set('session.cookie_domain', $domain);
         ini_set('session.use_strict_mode', 1);
@@ -22,56 +31,67 @@ class SessionService extends \SessionHandler
         ini_set('session.gc_probability', 1);
         ini_set('session.gc_divisor', 100);
         ini_set('session.gc_maxlifetime', 1440);
-        session_name($name . '_Session');
-        $https = isset($secure) ? $secure : isset($_SERVER['HTTPS']);
+        session_name($name.'_Session');
+        $https = isset($secure) ? $secure :
+            null !== filter_input(INPUT_SERVER, 'HTTPS', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+
         session_set_cookie_params($limit, $path, $domain, $https, true);
         session_start();
-        if ($this->validate()) {
-            if (!$this->preventHijacking()) {
-                $_SESSION = array();
-                $_SESSION['_IPaddress'] = $_SERVER['REMOTE_ADDR'];
-                $_SESSION['_userAgent'] = $_SERVER['HTTP_USER_AGENT'] ?? 'Undefined';
-                $this->regenerate();
-            } elseif (isset($_SESSION['_regenerate']) && $_SESSION['_regenerate'] === true) {
-                $_SESSION['_regenerate'] = null;
-                $this->regenerate();
-            } elseif (random_int(1, 100) <= 5 && $_SESSION['_lastNewSession'] < (time() - 300)) {
-                $this->regenerate();
-            }
+        if (!$this->validate())
+        {
+            $this->reset();
+            session_destroy();
+            session_start();
+            $this->regenerate();
             return;
         }
-        $_SESSION = array();
-        session_destroy();
-        session_start();
-        $this->regenerateSession();
+        $regenerate = $this->get('_regenerate');
+        if (!$this->preventHijacking())
+        {
+            $this->reset();
+            $this->set('_IPaddress', $this->ipAddress ?? '0.0.0.0');
+            $this->set('_userAgent', $this->userAgent);
+            $this->regenerate();
+            return;
+        }
+        if (isset($regenerate) && $regenerate === true)
+        {
+            $this->set('_regenerate', null);
+            $this->regenerate();
+            return;
+        }
+        if (random_int(1, 100) <= 5 && $this->get('_lastNewSession') < (time() - 300))
+            $this->regenerate();
     }
 
     public function regenerate() : void
     {
-        if (isset($_SESSION['_obsolete']) && $_SESSION['_obsolete'] === true)
+        if ($this->has('_obsolete') && $this->get('_obsolete') === true)
             return;
 
-        $_SESSION['_obsolete'] = true;
-        $_SESSION['_expires'] = time() + 10;
+        $this->set('_obsolete', true);
+        $this->set('_expires', time() + 10);
         session_regenerate_id(false);
         $newSession = session_id();
         session_write_close();
         session_id($newSession);
         session_start();
-        unset($_SESSION['_obsolete']);
-        unset($_SESSION['_expires']);
-        $_SESSION['_lastNewSession'] = time();
+        $this->remove('_obsolete');
+        $this->remove('_expires');
+        $this->set('_lastNewSession', time());
     }
 
     protected function validate() : bool
     {
-        if (!isset($_SESSION['_lastNewSession']))
-            $_SESSION['_lastNewSession'] = time();
+        if ($this->has('_lastNewSession'))
+            $this->set('_lastNewSession', time());
 
-        if (isset($_SESSION['_obsolete']) && !isset($_SESSION['_expires']))
+        $obsolete = $this->get('_obsolete');
+        $expires = $this->get('_expires');
+        if (isset($obsolete) && !isset($expires))
             return false;
 
-        if (isset($_SESSION['_obsolete']) && isset($_SESSION['_expires']) && $_SESSION['_expires'] < time())
+        if (isset($obsolete) && isset($expires) && $expires < time())
             return false;
 
         return true;
@@ -79,16 +99,18 @@ class SessionService extends \SessionHandler
 
     protected function preventHijacking() : bool
     {
-        if (!isset($_SESSION['_IPaddress']) || !isset($_SESSION['_userAgent']))
+        $IPaddress = $this->get('_IPaddress');
+        $uAgent = $this->get('_userAgent');
+        if (!isset($IPaddress) || !isset($uAgent))
             return false;
 
-        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Undefined';
+        $userAgent = $this->userAgent;
 
-        if ($_SESSION['_userAgent'] !== $userAgent)
+        if ($uAgent !== $userAgent)
             return false;
 
-        $remoteIpHeader = $_SERVER['REMOTE_ADDR'];
-        if ($_SESSION['_IPaddress'] !== $remoteIpHeader)
+        $remoteIpHeader = $this->ipAddress;
+        if ($IPaddress !== $remoteIpHeader)
             return false;
 
         return true;
@@ -97,5 +119,32 @@ class SessionService extends \SessionHandler
     public function writeClose() : void
     {
         session_write_close();
+    }
+    
+    public function get(string $key, $default = null) : mixed
+    {
+        return isset($_SESSION[$key])
+            ? filter_var($_SESSION[$key], FILTER_SANITIZE_FULL_SPECIAL_CHARS)
+            : $default;
+    }
+
+    public function set(string $key, $value): void
+    {
+        $_SESSION[$key] = filter_var($value, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+    }
+
+    public function has(string $key): bool
+    {
+        return null !== $this->get($key);
+    }
+
+    public function remove(string $key): void
+    {
+        unset($_SESSION[$key]);
+    }
+    
+    private function reset() : void
+    {
+        $_SESSION = [];
     }
 }

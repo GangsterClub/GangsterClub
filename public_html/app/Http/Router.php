@@ -60,9 +60,9 @@ class Router
     private static function replacePattern(string $route) : string
     {
         $route = preg_replace_callback('/\{([^}]+)\}/', function($matches) {
-            return '(?P<' . preg_quote($matches[1], '/') . '>[^/]+)';
-        }, APP_BASE . $route);
-        $pattern = '~^' . $route . '$~i';
+            return '(?P<'.preg_quote($matches[1], '/').'>[^/]+)';
+        }, APP_BASE.$route);
+        $pattern = '~^'.$route.'$~i';
         return (string) $pattern;
     }
 

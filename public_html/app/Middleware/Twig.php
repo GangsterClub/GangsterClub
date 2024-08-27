@@ -21,7 +21,7 @@ class Twig
     {
         $loader = new \Twig\Loader\FilesystemLoader(DOC_ROOT.'/src/View/');
         $twig = new \Twig\Environment($loader, [
-            'cache' => false //DOC_ROOT . '/app/cache/TwigCompilation',
+            'cache' => false //DOC_ROOT.'/app/cache/TwigCompilation',
         ]);
         $twig->addGlobal('docRoot', WEB_ROOT);
         $twig->addExtension(new \app\Twig\TranslationExtension());

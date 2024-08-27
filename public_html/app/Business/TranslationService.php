@@ -17,7 +17,7 @@ class TranslationService
     {
         $this->locale = $locale;
         $this->fallbackLocale = $fallbackLocale;
-        $this->supportedLanguages = include __DIR__ . '/../languages.php';
+        $this->supportedLanguages = include __DIR__.'/../languages.php';
     }
 
     public function get(string $key, array $replacements = [], bool $useFallback = true) : string
@@ -25,9 +25,9 @@ class TranslationService
         [$file, $messageKey] = explode('.', $key, 2);
         $this->loadTranslationFile($this->locale, $file);
         $translation = $this->translations[$this->locale][$file][$messageKey] ?? null;
-        if ($translation === null && $useFallback) {
+        if ($translation === null && $useFallback)
             $translation = $this->getFallbackTranslation($file, $messageKey);
-        }
+
         return $this->replacePlaceholders($translation ?? $key, $replacements);
     }
 
@@ -36,7 +36,7 @@ class TranslationService
         if (isset($this->translations[$locale][$file]))
             return; // File is already loaded in memory
 
-        $filePath = __DIR__ . "/../resources/lang/{$locale}/{$file}.yaml";
+        $filePath = __DIR__."/../resources/lang/{$locale}/{$file}.yaml";
         $cachedFilePath = TranslationsCache::getPath($filePath);
         $cachedTranslations = TranslationsCache::loadCache($cachedFilePath);
 
@@ -64,7 +64,7 @@ class TranslationService
     protected function replacePlaceholders(string $message, array $replacements) : string
     {
         foreach ($replacements as $placeholder => $value)
-            $message = str_replace(':' . $placeholder, $value, $message);
+            $message = str_replace(':'.$placeholder, $value, $message);
 
         return $message;
     }

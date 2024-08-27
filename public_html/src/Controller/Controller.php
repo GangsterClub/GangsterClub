@@ -8,6 +8,7 @@ use app\Container\Application;
 
 class Controller
 {
+    private bool $redirect = false;
     protected Application $application;
     protected \Twig\Environment $twig;
     protected array $twigVariables = [];
@@ -21,8 +22,8 @@ class Controller
     
     public function __destruct()
     {
-        if(!isset($this->redirect) || !$this->redirect)
-            $_SESSION['PREV_ROUTE'] = REQUEST_URI;
+        if(!$this->redirect)
+            $this->application->get('sessionService')->set('PREV_ROUTE', REQUEST_URI);
     }
 
     public function __invoke(\app\Http\Request $request) : string
@@ -33,8 +34,8 @@ class Controller
             if(defined('DOC_ROOT'))
             {
                 $view = strtolower(str_replace($rpl, '', $cls));
-                if(file_exists(DOC_ROOT . '/src/View/' . $view . '.twig'))
-                    return $this->twig->render($view . '.twig', $this->twigVariables);
+                if(file_exists(DOC_ROOT.'/src/View/'.$view.'.twig'))
+                    return $this->twig->render($view.'.twig', $this->twigVariables);
             }
         }
         print_r('<pre>');
@@ -45,12 +46,13 @@ class Controller
     
     private function getLocaleKey()
     {
+        $sessionService = $this->application->get('sessionService');
         $translationService = $this->application->get('translationService');
         $supportedLanguages = $translationService->getSupportedLanguages();
         $languages = [];
-        foreach($supportedLanguages AS $key => $value)
+        foreach($supportedLanguages as $key => $value)
             $languages[] = $key;
 
-        return array_search($_SESSION['preferred_language'] ?? $translationService->getFallbackLanguage(), $languages);
+        return array_search($sessionService->get('preferred_language', $translationService->getFallbackLocale()), $languages);
     }
 }
