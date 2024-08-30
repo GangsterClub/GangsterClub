@@ -83,7 +83,7 @@ class SessionService extends \SessionHandler
 
     protected function validate() : bool
     {
-        if ($this->has('_lastNewSession'))
+        if (!$this->has('_lastNewSession'))
             $this->set('_lastNewSession', time());
 
         $obsolete = $this->get('_obsolete');
