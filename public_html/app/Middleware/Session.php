@@ -17,7 +17,7 @@ class Session
         $this->application = $application;
     }
 
-    public function handle(Request $request, callable $next) : ?Response
+    public function handle(Request $request, callable $next): ?Response
     {
         $sessionService = $this->application->get('sessionService');
         $sessionService->start('myApp');

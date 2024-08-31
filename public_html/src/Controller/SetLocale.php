@@ -6,20 +6,23 @@ namespace src\Controller;
 
 class SetLocale extends Controller
 {
-    public function __invoke(\app\Http\Request $request) : string
+    public function __invoke(\app\Http\Request $request): string
     {
         $locale = $request->getParameter('locale') ?? null;
-        if($locale !== null)
+        if ($locale !== null) {
             $locale = urldecode($locale);
-
+        }
         $sessionService = $this->application->get('sessionService');
         $translationService = $this->application->get('translationService');
-        if(array_key_exists($locale, $translationService->getSupportedLanguages()))
-        {
+        if (array_key_exists($locale, $translationService->getSupportedLanguages())) {
             $translationService->setLocale($locale);
             $sessionService->set('preferred_language', $locale);
         }
         $this->redirect = true;
-        return header('Location: '.$sessionService->get('PREV_ROUTE'),  true, 301);
+        $prevRoute = $sessionService->get('PREV_ROUTE')
+            ?? filter_input(INPUT_SERVER, 'HTTP_REFERER', FILTER_SANITIZE_URL)
+            ?? APP_BASE.'/';
+
+        return header('Location: '.$prevRoute,  true, 301);
     }
 }

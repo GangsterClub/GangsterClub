@@ -17,12 +17,12 @@ class Response
         $this->headers = $headers;
     }
 
-    public function send() : Response
+    public function send(): Response
     {
         http_response_code($this->statusCode);
-        foreach ($this->headers as $header)
+        foreach ($this->headers as $header) {
             header($header);
-
+        }
         print_r($this->content);
         return $this;
     }

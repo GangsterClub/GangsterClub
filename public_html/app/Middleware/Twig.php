@@ -17,7 +17,7 @@ class Twig
         $this->application = $application;
     }
 
-    public function handle(Request $request, callable $next) : ?Response
+    public function handle(Request $request, callable $next): ?Response
     {
         $loader = new \Twig\Loader\FilesystemLoader(DOC_ROOT.'/src/View/');
         $twig = new \Twig\Environment($loader, [

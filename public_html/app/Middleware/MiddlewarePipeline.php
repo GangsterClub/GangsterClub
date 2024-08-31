@@ -10,13 +10,13 @@ class MiddlewarePipeline
 {
     private array $middleware = [];
 
-    public function addMiddleware(callable $middleware) : self
+    public function addMiddleware(callable $middleware): self
     {
         $this->middleware[] = $middleware;
         return $this;
     }
 
-    public function handle(Request $request, callable $next) : ?Response
+    public function handle(Request $request, callable $next): ?Response
     {
         $middleware = array_reverse($this->middleware);
         $handler = $next;

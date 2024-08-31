@@ -17,22 +17,20 @@ class Locale
         $this->application = $application;
     }
 
-    public function handle(Request $request, callable $next) : ?Response
+    public function handle(Request $request, callable $next): ?Response
     {
         $sessionService = $this->application->get('sessionService');
         $translationService = $this->application->get('translationService');
         $fallbackLocale = $translationService->getFallbackLocale();
         $preferredLanguage = $sessionService->get('preferred_language', $this->getBrowserLocale()) ?? $fallbackLocale;
-
-        if (!array_key_exists($preferredLanguage, $translationService->getSupportedLanguages()))
+        if (!array_key_exists($preferredLanguage, $translationService->getSupportedLanguages())) {
             $preferredLanguage = $fallbackLocale;
-
+        }
         $translationService->setLocale($preferredLanguage);
-
         return $next($request);
     }
 
-    private function getBrowserLocale() : ?string
+    private function getBrowserLocale(): ?string
     {
         $httpAcceptLang = filter_input(INPUT_SERVER, 'HTTP_ACCEPT_LANGUAGE', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
         if (isset($httpAcceptLang)) {

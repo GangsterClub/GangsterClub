@@ -17,17 +17,17 @@ class Route
         $this->methods = $methods;
     }
 
-    public function getPath() : string
+    public function getPath(): string
     {
         return (string)$this->path;
     }
 
-    public function getController() : string
+    public function getController(): string
     {
         return (string)$this->controller;
     }
 
-    public function getMethods() : array
+    public function getMethods(): array
     {
         return (array)$this->methods;
     }

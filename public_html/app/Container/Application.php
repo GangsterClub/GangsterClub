@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace app\Container;
 
-use Twig\Environment;
 use app\Http\Router;
 
 class Application extends Container
 {
     private Router $router;
-    private Environment $twig;
     private ?string $directory;
         
     public function __construct(string $dir)
@@ -18,18 +16,19 @@ class Application extends Container
         $this->initialize($dir);
         $this->registerServices();
         $routes = $dir.'/app/resources/routes.yaml';
-        if(file_exists($routes) && $router = $this->router)
+        if (file_exists($routes) && $router = $this->router) {
             $router->load($routes);
+        }
     }
 
-    private function registerServices() : void
+    private function registerServices(): void
     {
         $this->addService('router', $this->router = new Router());
-        $this->addService('translationService', new \app\Business\TranslationService());
         $this->addService('sessionService', new \app\Business\SessionService());
+        $this->addService('translationService', new \app\Business\TranslationService());
     }
 
-    private function initialize(string $dir) : void
+    private function initialize(string $dir): void
     {
         $https = filter_input(INPUT_SERVER, 'HTTPS', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
         define('SRC_CONTROLLER', 'src\\Controller\\');
@@ -40,7 +39,7 @@ class Application extends Container
         define('REQUEST_URI', filter_input(INPUT_SERVER, 'REQUEST_URI', FILTER_SANITIZE_URL));
     }
 
-    private function getBase() : string
+    private function getBase(): string
     {
         return rtrim(str_replace('\\', '/',
             str_replace(
@@ -50,12 +49,12 @@ class Application extends Container
         ), '/');
     }
 
-    private function getHostname() : string
+    private function getHostname(): string
     {
         return filter_input(INPUT_SERVER, 'SERVER_NAME');
     }
 
-    private function getDocumentRoot() : string
+    private function getDocumentRoot(): string
     {
         return str_replace(filter_input(INPUT_SERVER, 'SCRIPT_NAME'), '', filter_input(INPUT_SERVER, 'SCRIPT_FILENAME'));
     }
