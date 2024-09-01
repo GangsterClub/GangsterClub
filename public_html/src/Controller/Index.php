@@ -19,10 +19,12 @@ class Index extends Controller
         }
 
         return $this->twig->render(
-            'index.twig', array_merge($this->twigVariables, [
-                'name' => $name,
-                'hello' => $hello
-            ])
+            'index.twig', array_merge(
+                $this->twigVariables, [
+                    'name' => $name,
+                    'hello' => $hello
+                ]
+            )
         );
     }
 }
