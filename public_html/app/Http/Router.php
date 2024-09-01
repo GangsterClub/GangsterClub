@@ -72,7 +72,7 @@ class Router
         $routePattern = self::replacePattern($routePath);
         $urlParts = parse_url($url);
         $path = isset($urlParts['path']) ? $urlParts['path'] : '/';
-        if (preg_match($routePattern, $path, $matches) === true) {
+        if ((bool)(preg_match($routePattern, $path, $matches)) === true) {
             foreach ($matches as $key => $value) {
                 if (is_numeric($key) === false) {
                     $parameters[$key] = $value;
