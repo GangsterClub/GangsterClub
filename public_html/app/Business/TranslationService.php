@@ -22,7 +22,10 @@ class TranslationService
 
     public function get(string $key, array $replacements=[], bool $useFallback=true): string
     {
-        [$file, $messageKey] = explode('.', $key, 2);
+        [
+            $file,
+            $messageKey
+        ] = explode('.', $key, 2);
         $this->loadTranslationFile($this->locale, $file);
         $translation = ($this->translations[$this->locale][$file][$messageKey] ?? null);
         if ($translation === null && $useFallback === true) {
