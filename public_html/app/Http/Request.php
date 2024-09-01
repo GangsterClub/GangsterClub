@@ -23,7 +23,7 @@ class Request
         $method = filter_input(INPUT_SERVER, 'REQUEST_METHOD', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? 'GET';
         $parameters = Router::extract((REQUEST_URI ?? ''), $method);
 
-        return new self((array)$parameters, (array)$headers, (string)$method);
+        return new self((array) $parameters, (array) $headers, (string) $method);
     }
 
     public function getParameter(string $key, ?string $default = null): mixed
@@ -38,6 +38,6 @@ class Request
 
     public function getMethod(): string
     {
-        return (string)$this->method;
+        return (string) $this->method;
     }
 }

@@ -19,16 +19,16 @@ class Route
 
     public function getPath(): string
     {
-        return (string)$this->path;
+        return (string) $this->path;
     }
 
     public function getController(): string
     {
-        return (string)$this->controller;
+        return (string) $this->controller;
     }
 
     public function getMethods(): array
     {
-        return (array)$this->methods;
+        return (array) $this->methods;
     }
 }

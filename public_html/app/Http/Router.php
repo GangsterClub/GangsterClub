@@ -27,17 +27,17 @@ class Router
 
     public static function extract(string $url, string $method, array $parameters = []): array
     {
-        if ((bool)($routeData = self::matchRoute($url, $method)) === true) {
+        if ((bool) ($routeData = self::matchRoute($url, $method)) === true) {
             $parameters['methods'] = $routeData['methods'] ?? static::$methods;
             $parameters = self::extractParameters($url, $routeData['path'], $parameters);
         }
 
-        return (array)$parameters;
+        return (array) $parameters;
     }
 
     public function match(string $url, string $method): ?Route
     {
-        if ((bool)($routeData = self::matchRoute($url, $method)) === true) {
+        if ((bool) ($routeData = self::matchRoute($url, $method)) === true) {
             $allowedMethods = $routeData['methods'] ?? static::$methods;
             return new Route($url, $routeData['controller'], $allowedMethods);
         }
@@ -80,6 +80,6 @@ class Router
             }
         }
 
-        return (array)$parameters;
+        return (array) $parameters;
     }
 }
