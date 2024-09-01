@@ -23,6 +23,7 @@ class Response
         foreach ($this->headers as $header) {
             header($header);
         }
+
         print_r($this->content);
         return $this;
     }

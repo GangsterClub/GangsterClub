@@ -31,21 +31,24 @@ class YamlCacheService
             $arr = @json_decode($cachedRoutes, true);
             if ($arr !== false && $cachedRoutes !== false) {
                 $maxAge = defined('APP_MAX_AGE') ? (int)APP_MAX_AGE : static::$maxAge;
-                if (time()-filemtime($cachedYaml) > $maxAge) {
+                if ((time() - filemtime($cachedYaml)) > $maxAge) {
                     unlink($cachedYaml); // Delete cached resource if older than $maxAge
                 }
+
                 return $arr ?: [];
             }
         }
+
         return [];
     }
 
     public static function storeCache(string $cachedYaml, array $fileContents): void
     {
-        if (self::isCache($cachedYaml)) {
-            if (!is_dir(dirname($cachedYaml))) {
+        if (self::isCache($cachedYaml) === true) {
+            if (is_dir(dirname($cachedYaml)) === false) {
                 mkdir(dirname($cachedYaml), 0755, true);
             }
+
             file_put_contents($cachedYaml, json_encode($fileContents));
         }
     }

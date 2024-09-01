@@ -32,9 +32,10 @@ class Controller
         if (strpos($cls = $this::class, $rpl = SRC_CONTROLLER) !== false) {
             $view = strtolower(str_replace($rpl, '', $cls));
             if (file_exists(DOC_ROOT.'/src/View/'.$view.'.twig')) {
-                return $this->twig->render($view.'.twig', $this->twigVariables);
+                return (string) $this->twig->render($view.'.twig', $this->twigVariables);
             }
         }
+
         print_r('<pre>');
         var_dump($request);
         print_r('</pre>');
@@ -50,6 +51,7 @@ class Controller
         foreach (array_keys($supportedLanguages) as $key) {
             $languages[] = $key;
         }
-        return (int)array_search($sessionService->get('preferred_language', $translationService->getFallbackLocale()), $languages);
+
+        return (int) array_search($sessionService->get('preferred_language', $translationService->getFallbackLocale()), $languages);
     }
 }

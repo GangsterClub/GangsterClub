@@ -36,9 +36,11 @@ class Kernel
         if (!$route) {
             return $this->handleNotFound();
         }
+
         if ($route && !in_array($method, $allowedMethods)) {
             return $this->handleMethodNotAllowed();
         }
+
         if ($route) {
             $finalHandler = function ($request) use ($route) {
                 return $this->handleController($route, $request);
@@ -61,6 +63,7 @@ class Kernel
         if (strpos($nameAction, '::') !== false) {
             list($name, $action) = explode('::', $nameAction);
         }
+
         $namespace = SRC_CONTROLLER;
         $prefix = !str_starts_with($name, $namespace) && strpos($name, '\\') === false ? $namespace : '';
         $controller = $prefix.$name;

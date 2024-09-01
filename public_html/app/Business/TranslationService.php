@@ -28,6 +28,7 @@ class TranslationService
         if ($translation === null && $useFallback) {
             $translation = $this->getFallbackTranslation($file, $messageKey);
         }
+
         return $this->replacePlaceholders($translation ?? $key, $replacements);
     }
 
@@ -36,30 +37,32 @@ class TranslationService
         if (isset($this->translations[$locale][$file])) {
             return; // File is already loaded in memory
         }
+
         $filePath = __DIR__."/../resources/lang/{$locale}/{$file}.yaml";
         $cachedFilePath = TranslationsCache::getPath($filePath);
         $cachedTranslations = TranslationsCache::loadCache($cachedFilePath);
-
         if (!empty($cachedTranslations) && is_array($cachedTranslations)) {
             $this->translations[$locale][$file] = $cachedTranslations;
             return;
         }
+
         if (file_exists($filePath)) {
             $parsedTranslations = yaml_parse_file($filePath) ?: [];
             $this->translations[$locale][$file] = $parsedTranslations;
             TranslationsCache::storeCache($cachedFilePath, $parsedTranslations);
             return;
         }
-        // If the file doesn't exist, initialize as empty to avoid repeated checks
+
         $this->translations[$locale][$file] = [];
     }
 
     protected function getFallbackTranslation(string $file, string $messageKey): string
     {
         $this->loadTranslationFile($this->fallbackLocale, $file);
-        if (isset($this->translations[$this->fallbackLocale][$file][$messageKey])) {
+        if (isset($this->translations[$this->fallbackLocale][$file][$messageKey]) === true) {
             return $this->translations[$this->fallbackLocale][$file][$messageKey];
         }
+
         $errorMessage = sprintf(
             'Missing translation key "%s" for file "%s".',
             htmlspecialchars($messageKey, ENT_QUOTES, 'UTF-8'),
@@ -74,17 +77,20 @@ class TranslationService
         foreach ($replacements as $placeholder => $value) {
             $message = str_replace(':'.$placeholder, $value, $message);
         }
+
         return $message;
     }
 
     public function setLocale(string $locale): void
     {
-        if (array_key_exists($locale, $this->supportedLanguages)) {
+        if (array_key_exists($locale, $this->supportedLanguages) === true) {
             $this->locale = $locale;
         }
-        if (!array_key_exists($this->locale, $this->supportedLanguages)) {
+
+        if (array_key_exists($this->locale, $this->supportedLanguages) === false) {
             $this->locale = $this->fallbackLocale;
         }
+
         setlocale(LC_ALL, $this->locale);
         $this->translations[$this->locale] = [];
     }

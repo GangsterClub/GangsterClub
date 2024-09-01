@@ -18,6 +18,7 @@ class Container
         if (class_exists($className)) {
             return new $className($this);
         }
+
         throw new \Exception("Class ".htmlspecialchars($className)." not found.");
         return null;
     }
@@ -30,11 +31,13 @@ class Container
     public function get(string $name): ?object
     {
         if (array_key_exists($name, $this->container)) {
-            if (is_callable($this->container[$name])) {
+            if (is_callable($this->container[$name]) === true) {
                 return $this->container[$name]();
             }
+
             return $this->container[$name];
         }
+
         return null;
     }
 }

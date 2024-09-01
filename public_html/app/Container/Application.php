@@ -16,7 +16,7 @@ class Application extends Container
         $this->initialize($dir);
         $this->registerServices();
         $routes = $dir.'/app/resources/routes.yaml';
-        if (file_exists($routes) && $router = $this->router) {
+        if (file_exists($routes) === true && (bool)($router = $this->router) === true) {
             $router->load($routes);
         }
     }

@@ -23,9 +23,10 @@ class Locale
         $translationService = $this->application->get('translationService');
         $fallbackLocale = $translationService->getFallbackLocale();
         $preferredLanguage = $sessionService->get('preferred_language', $this->getBrowserLocale()) ?? $fallbackLocale;
-        if (!array_key_exists($preferredLanguage, $translationService->getSupportedLanguages())) {
+        if (array_key_exists($preferredLanguage, $translationService->getSupportedLanguages()) === false) {
             $preferredLanguage = $fallbackLocale;
         }
+
         $translationService->setLocale($preferredLanguage);
         return $next($request);
     }
@@ -37,6 +38,7 @@ class Locale
             $langs = explode(',', $httpAcceptLang);
             return substr($langs[0], 0, 2);
         }
+
         return null;
     }
 }

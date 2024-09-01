@@ -19,6 +19,7 @@ class Router
             static::$routes = array_merge(static::$routes, $cachedRoutes);
             return;
         }
+
         $routes = yaml_parse_file($yaml) ?: [];
         static::$routes = array_merge(static::$routes, $routes);
         RoutesCache::storeCache($cachedYaml, $routes);
@@ -26,19 +27,21 @@ class Router
 
     public static function extract(string $url, string $method, array $parameters = []): array
     {
-        if ($routeData = self::matchRoute($url, $method)) {
+        if ((bool)($routeData = self::matchRoute($url, $method)) === true) {
             $parameters['methods'] = $routeData['methods'] ?? static::$methods;
             $parameters = self::extractParameters($url, $routeData['path'], $parameters);
         }
+
         return (array)$parameters;
     }
 
     public function match(string $url, string $method): ?Route
     {
-        if ($routeData = self::matchRoute($url, $method)) {
+        if ((bool)($routeData = self::matchRoute($url, $method)) === true) {
             $allowedMethods = $routeData['methods'] ?? static::$methods;
             return new Route($url, $routeData['controller'], $allowedMethods);
         }
+
         return null; // Return null if no match is found.
     }
 
@@ -48,9 +51,10 @@ class Router
             $pattern = self::replacePattern($routeData['path']);
             return preg_match($pattern, $url) && in_array($method, $routeData['methods'] ?? static::$methods);
         });
-        if (!empty($filteredRoutes)) {
+        if (empty($filteredRoutes) === false) {
             return reset($filteredRoutes);
         }
+
         return null; // Return null if no match is found.
     }
 
@@ -68,13 +72,14 @@ class Router
         $routePattern = self::replacePattern($routePath);
         $urlParts = parse_url($url);
         $path = isset($urlParts['path']) ? $urlParts['path'] : '/';
-        if (preg_match($routePattern, $path, $matches)) {
+        if (preg_match($routePattern, $path, $matches) === true) {
             foreach ($matches as $key => $value) {
-                if (!is_numeric($key)) {
+                if (is_numeric($key) === false) {
                     $parameters[$key] = $value;
                 }
             }
         }
+
         return (array)$parameters;
     }
 }

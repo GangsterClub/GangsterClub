@@ -7,7 +7,9 @@ function __(string $key, array $replacements = []): string
     static $translationService = null;
 
     if ($translationService === null)
+    {
         $translationService = $app->get('translationService');
+    }
 
     return $translationService->get($key, $replacements);
 }
