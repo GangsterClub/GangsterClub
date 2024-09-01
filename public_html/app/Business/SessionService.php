@@ -12,15 +12,15 @@ class SessionService extends \SessionHandler
     public function __construct()
     {
         $ipFilters = (defined('ENVIRONMENT') && strtolower(ENVIRONMENT) === 'production' && defined('DEVELOPMENT') && DEVELOPMENT === false) ?
-            true === (FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) :
-            true === (FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6);
+            (FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === true :
+            (FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6) === true;
 
         $ipFilters |= FILTER_NULL_ON_FAILURE;
         $this->ipAddress = filter_input(INPUT_SERVER, 'REMOTE_ADDR', FILTER_VALIDATE_IP, $ipFilters);
-        $this->userAgent = filter_input(INPUT_SERVER, 'HTTP_USER_AGENT', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? 'Undefined';
+        $this->userAgent = (filter_input(INPUT_SERVER, 'HTTP_USER_AGENT', FILTER_SANITIZE_FULL_SPECIAL_CHARS)) ?? 'Undefined';
     }
 
-    public function start(string $name, ?int $limit = 0, ?string $path = '/', ?string $domain = null, ?bool $secure = null): void
+    public function start(string $name, ?int $limit=0, ?string $path='/', ?string $domain=null, ?bool $secure=null): void
     {
         ini_set('session.name', $name.'_Session');
         ini_set('session.auto_start', 'Off');
@@ -37,8 +37,8 @@ class SessionService extends \SessionHandler
         ini_set('session.gc_divisor', 100);
         ini_set('session.gc_maxlifetime', 1440);
         session_name($name.'_Session');
-        $https = isset($secure) ? $secure :
-            null !== filter_input(INPUT_SERVER, 'HTTPS', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+        $https = isset($secure) === true ? $secure :
+            (filter_input(INPUT_SERVER, 'HTTPS', FILTER_SANITIZE_FULL_SPECIAL_CHARS)) !== null;
 
         session_set_cookie_params($limit, $path, $domain, $https, true);
         session_start();
@@ -52,7 +52,7 @@ class SessionService extends \SessionHandler
 
         if ($this->preventHijacking() === false) {
             $this->reset();
-            $this->set('_IPaddress', $this->ipAddress ?? '0.0.0.0');
+            $this->set('_IPaddress', ($this->ipAddress ?? '0.0.0.0'));
             $this->set('_userAgent', $this->userAgent);
             $this->regenerate();
         }
@@ -65,7 +65,7 @@ class SessionService extends \SessionHandler
         }
 
         $this->set('_obsolete', true);
-        $this->set('_expires', time() + 10);
+        $this->set('_expires', (time() + 10));
         session_regenerate_id(false);
         $newSession = session_id();
         session_write_close();
@@ -88,7 +88,7 @@ class SessionService extends \SessionHandler
             return false;
         }
 
-        if (isset($obsolete) && isset($expires) && $expires < time()) {
+        if (isset($obsolete) === true && isset($expires) === true && $expires < time()) {
             return false;
         }
 
@@ -127,7 +127,7 @@ class SessionService extends \SessionHandler
         session_write_close();
     }
     
-    public function get(string $key, $default = null): mixed
+    public function get(string $key, $default=null): mixed
     {
         return isset($_SESSION[$key]) ?
             filter_var($_SESSION[$key], FILTER_SANITIZE_FULL_SPECIAL_CHARS) :
@@ -141,7 +141,7 @@ class SessionService extends \SessionHandler
 
     public function has(string $key): bool
     {
-        return null !== $this->get($key);
+        return $this->get($key) !== null;
     }
 
     public function remove(string $key): void
