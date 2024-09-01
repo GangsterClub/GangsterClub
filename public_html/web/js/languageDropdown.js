@@ -1,10 +1,10 @@
 // All credits and rights to Tom D.
 // https://codepen.io/donth77/pen/BaqVLXd
-const locales = ["de-DE","en-US","fr-FR","nl-NL"];
+const locales = ["de-DE", "en-US", "fr-FR", "nl-NL"];
 
 function getFlagSrc(countryCode) {
   return /^[A-Z]{2}$/.test(countryCode)
-       ? `https://flagsapi.com/${countryCode.toUpperCase()}/shiny/64.png`
+    ? `https://flagsapi.com/${countryCode.toUpperCase()}/shiny/64.png`
     : "";
 }
 
@@ -28,9 +28,9 @@ function setSelectedLocale(locale) {
 
     const listEl = document.createElement("li");
     listEl.innerHTML = `${otherLangName}<img src="${getFlagSrc(
-      otherIntlLocale.region
+      otherIntlLocale.region,
     )}" />`;
-    listEl.setAttribute('value', otherIntlLocale.language.toLowerCase());
+    listEl.setAttribute("value", otherIntlLocale.language.toLowerCase());
     listEl.addEventListener("mousedown", function () {
       setSelectedLocale(otherLocale);
       window.location.replace(document.getElementsByTagName('base')[0].getAttribute('href') + "set/locale/" + listEl.getAttribute('value'));
@@ -39,7 +39,7 @@ function setSelectedLocale(locale) {
   });
 
   dropdownBtn.innerHTML = `<img src="${getFlagSrc(
-    intlLocale.region
+    intlLocale.region,
   )}" />${langName}<span class="arrow-down"></span>`;
 }
 
