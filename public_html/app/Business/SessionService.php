@@ -12,8 +12,8 @@ class SessionService extends \SessionHandler
     public function __construct()
     {
         $ipFilters = (defined('ENVIRONMENT') && strtolower(ENVIRONMENT) === 'production' && defined('DEVELOPMENT') && DEVELOPMENT === false) ?
-            (FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === true :
-            (FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6) === true;
+            true === (FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) :
+            true === (FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6);
 
         $ipFilters |= FILTER_NULL_ON_FAILURE;
         $this->ipAddress = filter_input(INPUT_SERVER, 'REMOTE_ADDR', FILTER_VALIDATE_IP, $ipFilters);
