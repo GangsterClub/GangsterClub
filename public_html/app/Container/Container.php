@@ -15,7 +15,7 @@ class Container
 
     public function make(string $className): ?object
     {
-        if (class_exists($className)) {
+        if (class_exists($className) === true) {
             return new $className($this);
         }
 
@@ -30,7 +30,7 @@ class Container
 
     public function get(string $name): ?object
     {
-        if (array_key_exists($name, $this->container)) {
+        if (array_key_exists($name, $this->container) === true) {
             if (is_callable($this->container[$name]) === true) {
                 return $this->container[$name]();
             }

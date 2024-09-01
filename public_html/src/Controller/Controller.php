@@ -17,12 +17,14 @@ class Controller
     {
         $this->application = $application;
         $this->twig = $this->application->get('twig');
-        $this->twigVariables = ['localeKey' => $this->getLocaleKey()];
+        $this->twigVariables = [
+            'localeKey' => $this->getLocaleKey(),
+        ];
     }
     
     public function __destruct()
     {
-        if (!$this->redirect) {
+        if ($this->redirect === false) {
             $this->application->get('sessionService')->set('PREV_ROUTE', REQUEST_URI);
         }
     }
@@ -31,7 +33,7 @@ class Controller
     {
         if (strpos($cls = $this::class, $rpl = SRC_CONTROLLER) !== false) {
             $view = strtolower(str_replace($rpl, '', $cls));
-            if (file_exists(DOC_ROOT.'/src/View/'.$view.'.twig')) {
+            if (file_exists(DOC_ROOT.'/src/View/'.$view.'.twig') === true) {
                 return (string) $this->twig->render($view.'.twig', $this->twigVariables);
             }
         }

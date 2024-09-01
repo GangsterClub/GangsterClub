@@ -11,13 +11,15 @@ class SessionService extends \SessionHandler
 
     public function __construct()
     {
-        $ipFilters = (defined('ENVIRONMENT') && strtolower(ENVIRONMENT) === 'production' && defined('DEVELOPMENT') && DEVELOPMENT === false) ?
+        $production = (bool)(defined('ENVIRONMENT') === true && strtolower(ENVIRONMENT) === 'production');
+        $development = (bool)(defined('DEVELOPMENT') === true && DEVELOPMENT === true);
+        $ipFilters = ($production === true && $development === false) ?
             (FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === true :
             (FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6) === true;
 
         $ipFilters |= FILTER_NULL_ON_FAILURE;
         $this->ipAddress = filter_input(INPUT_SERVER, 'REMOTE_ADDR', FILTER_VALIDATE_IP, $ipFilters);
-        $this->userAgent = (filter_input(INPUT_SERVER, 'HTTP_USER_AGENT', FILTER_SANITIZE_FULL_SPECIAL_CHARS)) ?? 'Undefined';
+        $this->userAgent = (filter_input(INPUT_SERVER, 'HTTP_USER_AGENT', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? 'Undefined');
     }
 
     public function start(string $name, ?int $limit=0, ?string $path='/', ?string $domain=null, ?bool $secure=null): void
@@ -99,7 +101,7 @@ class SessionService extends \SessionHandler
     {
         $IPaddress = $this->get('_IPaddress');
         $uAgent = $this->get('_userAgent');
-        if (!isset($IPaddress) || !isset($uAgent)) {
+        if (isset($IPaddress) === false || isset($uAgent) === false) {
             return false;
         }
 
@@ -118,15 +120,15 @@ class SessionService extends \SessionHandler
 
     public function writeClose(): void
     {
-        $regenerate = $this->get('_regenerate');
-        if (random_int(1, 100) <= 5 && $this->get('_lastNewSession') < (time() - 300) || (isset($regenerate) && $regenerate === true)) {
+        $regenerate = ($this->get('_regenerate') ?? false);
+        if (random_int(1, 100) <= 5 && $this->get('_lastNewSession') < (time() - 300) || ($regenerate === true)) {
             $this->set('_regenerate', null);
             $this->regenerate();
         }
 
         session_write_close();
     }
-    
+
     public function get(string $key, $default=null): mixed
     {
         return isset($_SESSION[$key]) ?
@@ -148,7 +150,7 @@ class SessionService extends \SessionHandler
     {
         unset($_SESSION[$key]);
     }
-    
+
     private function reset(): void
     {
         $_SESSION = [];

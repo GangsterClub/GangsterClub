@@ -8,13 +8,13 @@ class Index extends Controller
 {
     public function sayHello(\app\Http\Request $request): string
     {
-        $name = $request->getParameter('name') ?? null;
+        $name = ($request->getParameter('name') ?? null);
         if ($name !== null) {
             $name = urldecode($name);
         }
 
         $hello = __("messages.Hello, you didn't provide a name.");
-        if ($name) {
+        if ((bool)$name === true) {
             $hello = __('messages.hello', ['name' => $name]);
         }
 

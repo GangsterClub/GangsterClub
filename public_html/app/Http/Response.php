@@ -10,7 +10,7 @@ class Response
     private int $statusCode;
     private array $headers = [];
 
-    public function __construct(string $content, int $statusCode = 200, array $headers = [])
+    public function __construct(string $content, int $statusCode=200, array $headers=[])
     {
         $this->content = $content;
         $this->statusCode = $statusCode;

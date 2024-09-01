@@ -30,18 +30,18 @@ class Kernel
     public function handleRequest(Request $request): Response
     {
         $method = $request->getMethod();
-        $allowedMethods = $request->getParameter('methods') ?? ['GET'];
+        $allowedMethods = ($request->getParameter('methods') ?? ['GET']);
         $router = $this->application->get('router');
         $route = $router->match(REQUEST_URI, $method);
-        if (!$route) {
+        if ((bool)$route === false) {
             return $this->handleNotFound();
         }
 
-        if ($route && !in_array($method, $allowedMethods)) {
+        if ((bool)$route === true && in_array($method, $allowedMethods) === false) {
             return $this->handleMethodNotAllowed();
         }
 
-        if ($route) {
+        if ((bool)$route === true) {
             $finalHandler = function ($request) use ($route) {
                 return $this->handleController($route, $request);
             };
@@ -55,7 +55,7 @@ class Kernel
         // Perform any termination tasks, such as closing database connections, logging, etc.
         // You can access the request and response objects here if needed.
     }
-    
+
     private function handleController(Route $route, Request $request): Response
     {
         $action = $act = '__invoke';
@@ -65,11 +65,11 @@ class Kernel
         }
 
         $namespace = SRC_CONTROLLER;
-        $prefix = !str_starts_with($name, $namespace) && strpos($name, '\\') === false ? $namespace : '';
+        $prefix = str_starts_with($name, $namespace) === false && strpos($name, '\\') === false ? $namespace : '';
         $controller = $prefix.$name;
         $exists = class_exists($controller);
-        $action = $exists && method_exists($controller, $action) ? $action : $act;
-        $cntrllr = $exists ? $controller : Controller::class;
+        $action = $exists === true && method_exists($controller, $action) === true ? $action : $act;
+        $cntrllr = $exists === true ? $controller : Controller::class;
         $controllerObj = $this->application->make($cntrllr);
 
         return new Response($controllerObj->$action($request));

@@ -13,41 +13,41 @@ class TranslationService
     protected array $supportedLanguages = [];
     protected array $translations = [];
 
-    public function __construct(string $locale = 'en', string $fallbackLocale = 'en')
+    public function __construct(string $locale='en', string $fallbackLocale='en')
     {
         $this->locale = $locale;
         $this->fallbackLocale = $fallbackLocale;
         $this->supportedLanguages = include __DIR__.'/../languages.php';
     }
 
-    public function get(string $key, array $replacements = [], bool $useFallback = true): string
+    public function get(string $key, array $replacements=[], bool $useFallback=true): string
     {
         [$file, $messageKey] = explode('.', $key, 2);
         $this->loadTranslationFile($this->locale, $file);
-        $translation = $this->translations[$this->locale][$file][$messageKey] ?? null;
-        if ($translation === null && $useFallback) {
+        $translation = ($this->translations[$this->locale][$file][$messageKey] ?? null);
+        if ($translation === null && $useFallback === true) {
             $translation = $this->getFallbackTranslation($file, $messageKey);
         }
 
-        return $this->replacePlaceholders($translation ?? $key, $replacements);
+        return $this->replacePlaceholders(($translation ?? $key), $replacements);
     }
 
     protected function loadTranslationFile(string $locale, string $file): void
     {
-        if (isset($this->translations[$locale][$file])) {
-            return; // File is already loaded in memory
+        if (isset($this->translations[$locale][$file]) === true) {
+            return;
         }
 
         $filePath = __DIR__."/../resources/lang/{$locale}/{$file}.yaml";
         $cachedFilePath = TranslationsCache::getPath($filePath);
         $cachedTranslations = TranslationsCache::loadCache($cachedFilePath);
-        if (!empty($cachedTranslations) && is_array($cachedTranslations)) {
+        if (empty($cachedTranslations) === false && is_array($cachedTranslations) === true) {
             $this->translations[$locale][$file] = $cachedTranslations;
             return;
         }
 
-        if (file_exists($filePath)) {
-            $parsedTranslations = yaml_parse_file($filePath) ?: [];
+        if (file_exists($filePath) === true) {
+            $parsedTranslations = (@yaml_parse_file($filePath) ?: []);
             $this->translations[$locale][$file] = $parsedTranslations;
             TranslationsCache::storeCache($cachedFilePath, $parsedTranslations);
             return;

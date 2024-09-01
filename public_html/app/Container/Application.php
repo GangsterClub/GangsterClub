@@ -10,7 +10,7 @@ class Application extends Container
 {
     private Router $router;
     private ?string $directory;
-        
+
     public function __construct(string $dir)
     {
         $this->initialize($dir);
@@ -34,28 +34,30 @@ class Application extends Container
         define('SRC_CONTROLLER', 'src\\Controller\\');
         define('DOC_ROOT', $this->directory = $dir);
         define('APP_BASE', $this->getBase());
-        define('PROTOCOL', 'http'.(isset($https) && $https === 'on' ? 's' : '').'://');
+        define('PROTOCOL', 'http'.(isset($https) === true && $https === 'on' ? 's' : '').'://');
         define('WEB_ROOT', PROTOCOL.$this->getHostname().APP_BASE.'/');
         define('REQUEST_URI', filter_input(INPUT_SERVER, 'REQUEST_URI', FILTER_SANITIZE_URL));
     }
 
     private function getBase(): string
     {
-        return rtrim(str_replace('\\', '/',
-            str_replace(
-                str_replace('/', '\\', $this->getDocumentRoot()), '',
-                str_replace('/', '\\', $this->directory)
-            )
-        ), '/');
+        return rtrim(
+            str_replace('\\', '/',
+                str_replace(
+                    str_replace('/', '\\', $this->getDocumentRoot()), '',
+                    str_replace('/', '\\', $this->directory)
+                )
+            ), '/'
+        );
     }
 
     private function getHostname(): string
     {
-        return filter_input(INPUT_SERVER, 'SERVER_NAME');
+        return filter_input(INPUT_SERVER, 'SERVER_NAME', FILTER_SANITIZE_URL);
     }
 
     private function getDocumentRoot(): string
     {
-        return str_replace(filter_input(INPUT_SERVER, 'SCRIPT_NAME'), '', filter_input(INPUT_SERVER, 'SCRIPT_FILENAME'));
+        return str_replace(filter_input(INPUT_SERVER, 'SCRIPT_NAME', FILTER_SANITIZE_URL), '', filter_input(INPUT_SERVER, 'SCRIPT_FILENAME', FILTER_SANITIZE_URL));
     }
 }

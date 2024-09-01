@@ -15,20 +15,20 @@ class Router
     {
         $cachedYaml = RoutesCache::getPath($yaml);
         $cachedRoutes = RoutesCache::loadCache($cachedYaml);
-        if (!empty($cachedRoutes) && is_array($cachedRoutes)) {
+        if (empty($cachedRoutes) === false && is_array($cachedRoutes) === true) {
             static::$routes = array_merge(static::$routes, $cachedRoutes);
             return;
         }
 
-        $routes = yaml_parse_file($yaml) ?: [];
+        $routes = (@yaml_parse_file($yaml) ?: []);
         static::$routes = array_merge(static::$routes, $routes);
         RoutesCache::storeCache($cachedYaml, $routes);
     }
 
-    public static function extract(string $url, string $method, array $parameters = []): array
+    public static function extract(string $url, string $method, array $parameters=[]): array
     {
         if ((bool) ($routeData = self::matchRoute($url, $method)) === true) {
-            $parameters['methods'] = $routeData['methods'] ?? static::$methods;
+            $parameters['methods'] = ($routeData['methods'] ?? static::$methods);
             $parameters = self::extractParameters($url, $routeData['path'], $parameters);
         }
 
@@ -38,40 +38,44 @@ class Router
     public function match(string $url, string $method): ?Route
     {
         if ((bool) ($routeData = self::matchRoute($url, $method)) === true) {
-            $allowedMethods = $routeData['methods'] ?? static::$methods;
+            $allowedMethods = ($routeData['methods'] ?? static::$methods);
             return new Route($url, $routeData['controller'], $allowedMethods);
         }
 
-        return null; // Return null if no match is found.
+        return null;
     }
 
     private static function matchRoute(string $url, string $method): ?array
     {
-        $filteredRoutes = array_filter(static::$routes, function ($routeData) use ($url, $method) {
-            $pattern = self::replacePattern($routeData['path']);
-            return preg_match($pattern, $url) && in_array($method, $routeData['methods'] ?? static::$methods);
-        });
+        $filteredRoutes = array_filter(
+            static::$routes, function ($routeData) use ($url, $method) {
+                $pattern = self::replacePattern($routeData['path']);
+                return preg_match($pattern, $url) && in_array($method, ($routeData['methods'] ?? static::$methods));
+            }
+        );
         if (empty($filteredRoutes) === false) {
             return reset($filteredRoutes);
         }
 
-        return null; // Return null if no match is found.
+        return null;
     }
 
     private static function replacePattern(string $route): string
     {
-        $route = preg_replace_callback('/\{([^}]+)\}/', function($matches) {
-            return '(?P<'.preg_quote($matches[1], '/').'>[^/]+)';
-        }, APP_BASE.$route);
+        $route = preg_replace_callback(
+            '/\{([^}]+)\}/', function ($matches) {
+                return '(?P<'.preg_quote($matches[1], '/').'>[^/]+)';
+            }, APP_BASE.$route
+        );
         $pattern = '~^'.$route.'$~i';
         return (string) $pattern;
     }
 
-    private static function extractParameters(string $url, string $routePath, array $parameters = []): array
+    private static function extractParameters(string $url, string $routePath, array $parameters=[]): array
     {
         $routePattern = self::replacePattern($routePath);
         $urlParts = parse_url($url);
-        $path = isset($urlParts['path']) ? $urlParts['path'] : '/';
+        $path = isset($urlParts['path']) === true ? $urlParts['path'] : '/';
         if ((bool) (preg_match($routePattern, $path, $matches)) === true) {
             foreach ($matches as $key => $value) {
                 if (is_numeric($key) === false) {

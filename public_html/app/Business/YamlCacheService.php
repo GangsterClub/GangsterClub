@@ -6,33 +6,33 @@ namespace app\Business;
 
 class YamlCacheService
 {
-    private static int $maxAge = 2 * 60 * 60;
+    private static int $maxAge = (2 * 60 * 60);
 
     private static function isCache(string $cachedYaml): bool
     {
-        return str_ends_with($cachedYaml, '.yaml') ? strpos($cachedYaml, '/cache/') !== false : false;
+        return str_ends_with($cachedYaml, '.yaml') === true ? strpos($cachedYaml, '/cache/') !== false : false;
     }
 
     private static function isCacheable(string $yaml): bool
     {
-        return str_ends_with($yaml, '.yaml') ? strpos($yaml, '/resources/') !== false : false;
+        return str_ends_with($yaml, '.yaml') === true ? strpos($yaml, '/resources/') !== false : false;
     }
 
     public static function getPath(string $yaml): string
     {
-        $dev = (!defined('DEVELOPMENT') || defined('DEVELOPMENT') && DEVELOPMENT == false);
-        return $dev && self::isCacheable($yaml) ? str_replace('/resources/', '/cache/', $yaml) : $yaml;
+        $dev = (defined('DEVELOPMENT') === false || defined('DEVELOPMENT') === true && DEVELOPMENT == false);
+        return $dev === true && self::isCacheable($yaml) === true ? str_replace('/resources/', '/cache/', $yaml) : $yaml;
     }
 
     public static function loadCache(string $cachedYaml): array
     {
-        if (file_exists($cachedYaml) && self::isCache($cachedYaml)) {
+        if (file_exists($cachedYaml) === true && self::isCache($cachedYaml) === true) {
             $cachedRoutes = file_get_contents($cachedYaml);
             $arr = @json_decode($cachedRoutes, true);
             if ($arr !== false && $cachedRoutes !== false) {
-                $maxAge = defined('APP_MAX_AGE') ? (int)APP_MAX_AGE : static::$maxAge;
+                $maxAge = defined('APP_MAX_AGE') === true ? (int) APP_MAX_AGE : static::$maxAge;
                 if ((time() - filemtime($cachedYaml)) > $maxAge) {
-                    unlink($cachedYaml); // Delete cached resource if older than $maxAge
+                    unlink($cachedYaml); // Delete cached resource if older than $maxAge.
                 }
 
                 return $arr ?: [];

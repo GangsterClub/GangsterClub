@@ -22,7 +22,7 @@ class Locale
         $sessionService = $this->application->get('sessionService');
         $translationService = $this->application->get('translationService');
         $fallbackLocale = $translationService->getFallbackLocale();
-        $preferredLanguage = $sessionService->get('preferred_language', $this->getBrowserLocale()) ?? $fallbackLocale;
+        $preferredLanguage = ($sessionService->get('preferred_language', $this->getBrowserLocale()) ?? $fallbackLocale);
         if (array_key_exists($preferredLanguage, $translationService->getSupportedLanguages()) === false) {
             $preferredLanguage = $fallbackLocale;
         }
@@ -34,7 +34,7 @@ class Locale
     private function getBrowserLocale(): ?string
     {
         $httpAcceptLang = filter_input(INPUT_SERVER, 'HTTP_ACCEPT_LANGUAGE', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
-        if (isset($httpAcceptLang)) {
+        if (isset($httpAcceptLang) === true) {
             $langs = explode(',', $httpAcceptLang);
             return substr($langs[0], 0, 2);
         }
