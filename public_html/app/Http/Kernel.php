@@ -33,15 +33,15 @@ class Kernel
         $allowedMethods = ($request->getParameter('methods') ?? ['GET']);
         $router = $this->application->get('router');
         $route = $router->match(REQUEST_URI, $method);
-        if ((bool)$route === false) {
+        if ((bool) $route === false) {
             return $this->handleNotFound();
         }
 
-        if ((bool)$route === true && in_array($method, $allowedMethods) === false) {
+        if ((bool) $route === true && in_array($method, $allowedMethods) === false) {
             return $this->handleMethodNotAllowed();
         }
 
-        if ((bool)$route === true) {
+        if ((bool) $route === true) {
             $finalHandler = function ($request) use ($route) {
                 return $this->handleController($route, $request);
             };

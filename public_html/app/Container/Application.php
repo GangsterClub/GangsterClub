@@ -42,8 +42,8 @@ class Application extends Container
     private function getBase(): string
     {
         return rtrim(
-            str_replace('\\', '/',
-                str_replace(
+            str_replace(
+                '\\', '/', str_replace(
                     str_replace('/', '\\', $this->getDocumentRoot()), '',
                     str_replace('/', '\\', $this->directory)
                 )

@@ -14,13 +14,15 @@ class Index extends Controller
         }
 
         $hello = __("messages.Hello, you didn't provide a name.");
-        if ((bool)$name === true) {
+        if ((bool) $name === true) {
             $hello = __('messages.hello', ['name' => $name]);
         }
 
-        return $this->twig->render('index.twig', array_merge($this->twigVariables, [
-            'name' => $name,
-            'hello' => $hello
-        ]));
+        return $this->twig->render(
+            'index.twig', array_merge($this->twigVariables, [
+                'name' => $name,
+                'hello' => $hello
+            ])
+        );
     }
 }
