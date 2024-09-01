@@ -12,7 +12,7 @@ class Controller
     protected \Twig\Environment $twig;
     protected array $twigVariables = [];
     private bool $redirect = false;
-    
+
     public function __construct(Application $application)
     {
         $this->application = $application;
@@ -21,7 +21,7 @@ class Controller
             'localeKey' => $this->getLocaleKey(),
         ];
     }
-    
+
     public function __destruct()
     {
         if ($this->redirect === false) {
@@ -43,7 +43,7 @@ class Controller
         print_r('</pre>');
         return (string) "";
     }
-    
+
     private function getLocaleKey(): int
     {
         $sessionService = $this->application->get('sessionService');

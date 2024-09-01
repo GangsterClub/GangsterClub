@@ -1,9 +1,10 @@
 <?PHP
 
-define('GCO_START', microtime(true)); // TBD
+define('GCO_START', microtime(true));
 
-if (file_exists($maintenance = __DIR__.'/../app/maintenance.php'))
+if ((bool) file_exists($maintenance = __DIR__.'/../app/maintenance.php') === true) {
     require_once $maintenance;
+}
 
 require_once __DIR__.'/../vendor/autoload.php';
 

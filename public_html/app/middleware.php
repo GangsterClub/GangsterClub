@@ -15,12 +15,6 @@ $kernel->addMiddleware(
     }
 );
 
-// Other middleware
-//$kernel->addMiddleware(function ($request, $next) {
-    // Another middleware logic
-//    return $next($request);
-//});
-
 // Mount twig to your kernel last, if possible
 $kernel->addMiddleware(
     function ($request, $next) use ($app) {

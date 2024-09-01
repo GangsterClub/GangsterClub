@@ -131,7 +131,7 @@ class SessionService extends \SessionHandler
 
     public function get(string $key, $default=null): mixed
     {
-        return isset($_SESSION[$key]) ?
+        return isset($_SESSION[$key]) === true ?
             filter_var($_SESSION[$key], FILTER_SANITIZE_FULL_SPECIAL_CHARS) :
             $default;
     }

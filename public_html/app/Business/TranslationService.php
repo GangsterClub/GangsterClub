@@ -17,7 +17,7 @@ class TranslationService
     {
         $this->locale = $locale;
         $this->fallbackLocale = $fallbackLocale;
-        $this->supportedLanguages = include __DIR__.'/../languages.php';
+        $this->supportedLanguages = include_once __DIR__.'/../languages.php';
     }
 
     public function get(string $key, array $replacements=[], bool $useFallback=true): string

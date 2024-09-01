@@ -32,7 +32,7 @@ class YamlCacheService
             if ($arr !== false && $cachedRoutes !== false) {
                 $maxAge = defined('APP_MAX_AGE') === true ? (int) APP_MAX_AGE : static::$maxAge;
                 if ((time() - filemtime($cachedYaml)) > $maxAge) {
-                    unlink($cachedYaml); // Delete cached resource if older than $maxAge.
+                    unlink($cachedYaml);
                 }
 
                 return $arr ?: [];
