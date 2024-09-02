@@ -27,6 +27,7 @@ class Locale
             $preferredLanguage = $fallbackLocale;
         }
 
+        $sessionService->set('preferred_language', $locale);
         $translationService->setLocale($preferredLanguage);
         return $next($request);
     }
