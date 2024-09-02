@@ -27,7 +27,7 @@
             "{{ hello }}", // Defined in Index Controller
             // What follows are translating in twig examples:
             '{{ __("messages.Made with love") }}',
-            '{{ __("messages.goodbye", {"name": name ?? ""}) }}'
+            '{{ __("messages.goodbye", {"name": name ?? __("messages.pal") }) }}'
         ],
         'text',
         ['tomato','rebeccapurple','lightblue']
