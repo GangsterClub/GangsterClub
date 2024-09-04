@@ -8,11 +8,34 @@ use app\Container\Application;
 
 class Controller
 {
+    /**
+     * Summary of application
+     * @var Application
+     */
     protected Application $application;
+
+    /**
+     * Summary of twig
+     * @var \Twig\Environment
+     */
     protected \Twig\Environment $twig;
+
+    /**
+     * Summary of twigVariables
+     * @var array
+     */
     protected array $twigVariables = [];
+
+    /**
+     * Summary of redirect
+     * @var bool
+     */
     private bool $redirect = false;
 
+    /**
+     * Summary of __construct
+     * @param \app\Container\Application $application
+     */
     public function __construct(Application $application)
     {
         $this->application = $application;
@@ -29,7 +52,12 @@ class Controller
         }
     }
 
-    public function __invoke(\app\Http\Request $request): string
+    /**
+     * Summary of __invoke
+     * @param \app\Http\Request $request
+     * @return string|null
+     */
+    public function __invoke(\app\Http\Request $request): ?string
     {
         if (strpos($cls = $this::class, $rpl = SRC_CONTROLLER) !== false) {
             $view = strtolower(str_replace($rpl, '', $cls));
@@ -41,9 +69,13 @@ class Controller
         print_r('<pre>');
         var_dump($request);
         print_r('</pre>');
-        return (string) "";
+        return null;
     }
 
+    /**
+     * Summary of getLocaleKey
+     * @return int
+     */
     private function getLocaleKey(): int
     {
         $sessionService = $this->application->get('sessionService');

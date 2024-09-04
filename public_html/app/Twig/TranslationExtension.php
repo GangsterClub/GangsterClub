@@ -9,6 +9,10 @@ use Twig\TwigFunction;
 
 class TranslationExtension extends AbstractExtension
 {
+    /**
+     * Summary of getFunctions
+     * @return array
+     */
     public function getFunctions(): array
     {
         return [

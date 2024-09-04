@@ -6,7 +6,12 @@ namespace src\Controller;
 
 class SetLocale extends Controller
 {
-    public function __invoke(\app\Http\Request $request): string
+    /**
+     * Summary of __invoke
+     * @param \app\Http\Request $request
+     * @return string|void
+     */
+    public function __invoke(\app\Http\Request $request): ?string
     {
         $locale = ($request->getParameter('locale') ?? null);
         if ($locale !== null) {

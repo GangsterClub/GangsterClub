@@ -10,13 +10,27 @@ use app\Http\Response;
 
 class Locale
 {
+    /**
+     * Summary of application
+     * @var Application
+     */
     protected Application $application;
 
+    /**
+     * Summary of __construct
+     * @param \app\Container\Application $application
+     */
     public function __construct(Application $application)
     {
         $this->application = $application;
     }
 
+    /**
+     * Summary of handle
+     * @param \app\Http\Request $request
+     * @param callable $next
+     * @return \app\Http\Response|object
+     */
     public function handle(Request $request, callable $next): ?Response
     {
         $sessionService = $this->application->get('sessionService');
@@ -32,6 +46,10 @@ class Locale
         return $next($request);
     }
 
+    /**
+     * Summary of getBrowserLocale
+     * @return string|null
+     */
     private function getBrowserLocale(): ?string
     {
         $httpAcceptLang = filter_input(INPUT_SERVER, 'HTTP_ACCEPT_LANGUAGE', FILTER_SANITIZE_FULL_SPECIAL_CHARS);

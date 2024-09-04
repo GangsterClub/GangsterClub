@@ -6,6 +6,11 @@ namespace src\Controller;
 
 class Index extends Controller
 {
+    /**
+     * Summary of sayHello
+     * @param \app\Http\Request $request
+     * @return string
+     */
     public function sayHello(\app\Http\Request $request): string
     {
         $name = ($request->getParameter('name') ?? null);

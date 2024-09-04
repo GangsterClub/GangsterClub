@@ -1,5 +1,7 @@
 <?PHP
 
+global $app;
+
 $kernel->addMiddleware(
     function ($request, $next) use ($app) {
         $sessionMiddleware = $app->make(\app\Middleware\Session::class);
