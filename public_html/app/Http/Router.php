@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace app\Http;
 
+use Symfony\Component\Yaml\Yaml;
 use app\Business\YamlCacheService as RoutesCache;
 
 class Router
@@ -23,9 +24,10 @@ class Router
     /**
      * Summary of load
      * @param string $yaml
+     * @param array $parsed
      * @return void
      */
-    public function load(string $yaml): void
+    public function load(string $yaml, array $parsed=[]): void
     {
         $cachedYaml = RoutesCache::getPath($yaml);
         $cachedRoutes = RoutesCache::loadCache($cachedYaml);
@@ -34,7 +36,14 @@ class Router
             return;
         }
 
-        $routes = (@yaml_parse_file($yaml) ?: []);
+        if ((bool) function_exists('yaml_parse_file') === true) {
+            $routes = @yaml_parse_file($yaml) ?: $parsed;
+        }
+
+        if ((bool) class_exists('Yaml') === true && $routes === []) {
+            $routes = @Yaml::parseFile($yaml) ?: $parsed;
+        }
+
         static::$routes = array_merge(static::$routes, $routes);
         RoutesCache::storeCache($cachedYaml, $routes);
     }

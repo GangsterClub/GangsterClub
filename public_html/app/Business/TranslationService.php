@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace app\Business;
 
+use Symfony\Component\Yaml\Yaml;
 use app\Business\YamlCacheService as TranslationsCache;
 
 class TranslationService
@@ -87,7 +88,15 @@ class TranslationService
         }
 
         if (file_exists($filePath) === true) {
-            $parsedTranslations = (@yaml_parse_file($filePath) ?: []);
+            $parsed = [];
+            if ((bool) function_exists('yaml_parse_file') === true) {
+                $parsedTranslations = @yaml_parse_file($yaml) ?: $parsed;
+            }
+    
+            if ((bool) class_exists('Yaml') === true && $parsedTranslations === []) {
+                $parsedTranslations = @Yaml::parseFile($yaml) ?: $parsed;
+            }
+
             $this->translations[$locale][$file] = $parsedTranslations;
             TranslationsCache::storeCache($cachedFilePath, $parsedTranslations);
             return;
