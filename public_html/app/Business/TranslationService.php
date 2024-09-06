@@ -90,11 +90,11 @@ class TranslationService
         if (file_exists($filePath) === true) {
             $parsed = [];
             if ((bool) function_exists('yaml_parse_file') === true) {
-                $parsedTranslations = @yaml_parse_file($yaml) ?: $parsed;
+                $parsedTranslations = @yaml_parse_file($filePath) ?: $parsed;
             }
     
             if ((bool) class_exists('Yaml') === true && $parsedTranslations === []) {
-                $parsedTranslations = @Yaml::parseFile($yaml) ?: $parsed;
+                $parsedTranslations = @Yaml::parseFile($filePath) ?: $parsed;
             }
 
             $this->translations[$locale][$file] = $parsedTranslations;
