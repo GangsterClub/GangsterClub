@@ -8,7 +8,7 @@ class SessionService extends \SessionHandler
 {
     /**
      * Summary of ipAddress
-     * @var mixed
+     * @var string|null
      */
     private ?string $ipAddress;
 
@@ -31,7 +31,7 @@ class SessionService extends \SessionHandler
             (FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === true :
             (FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6) === true;
 
-        $ipFilters |= FILTER_NULL_ON_FAILURE;
+        $ipFilters |= FILTER_NULL_ON_FAILURE === true;
         $this->ipAddress = filter_input(INPUT_SERVER, 'REMOTE_ADDR', FILTER_VALIDATE_IP, $ipFilters);
         $this->userAgent = (filter_input(INPUT_SERVER, 'HTTP_USER_AGENT', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? 'Undefined');
     }
@@ -67,6 +67,14 @@ class SessionService extends \SessionHandler
 
         session_set_cookie_params($limit, $path, $domain, $https, true);
         session_start();
+        if ($this->has('_IPaddress') === false) {
+            $this->set('_IPaddress', ($this->ipAddress ?? '0.0.0.0'));
+        }
+
+        if ($this->has('_userAgent') === false) {
+            $this->set('_userAgent', $this->userAgent);
+        }
+
         if ($this->validate() === false) {
             $this->reset();
             session_destroy();
@@ -77,8 +85,6 @@ class SessionService extends \SessionHandler
 
         if ($this->preventHijacking() === false) {
             $this->reset();
-            $this->set('_IPaddress', ($this->ipAddress ?? '0.0.0.0'));
-            $this->set('_userAgent', $this->userAgent);
             $this->regenerate();
         }
     }
@@ -145,8 +151,7 @@ class SessionService extends \SessionHandler
             return false;
         }
 
-        $remoteIpHeader = $this->ipAddress;
-        if ($IPaddress !== $remoteIpHeader) {
+        if ($IPaddress !== $this->ipAddress) {
             return false;
         }
 
@@ -161,7 +166,7 @@ class SessionService extends \SessionHandler
     {
         $regenerate = ($this->get('_regenerate') ?? false);
         if (random_int(1, 100) <= 5 && $this->get('_lastNewSession') < (time() - 300) || ($regenerate === true)) {
-            $this->set('_regenerate', null);
+            $this->remove('_regenerate');
             $this->regenerate();
         }
 
