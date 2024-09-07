@@ -20,7 +20,7 @@ class Index extends Controller
 
         $hello = __("messages.Hello, you didn't provide a name.");
         if ((bool) $name === true) {
-            $hello = __('messages.hello', ['name' => $name]);
+            $hello = __('hello', ['name' => $name]);
         }
 
         return $this->twig->render(

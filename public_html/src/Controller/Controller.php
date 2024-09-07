@@ -42,6 +42,7 @@ class Controller
         $this->twig = $this->application->get('twig');
         $this->twigVariables = [
             'localeKey' => $this->getLocaleKey(),
+            'translation' => $this->application->get('translationService'),
         ];
     }
 

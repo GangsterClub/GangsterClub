@@ -34,6 +34,12 @@ class TranslationService
     protected array $translations = [];
 
     /**
+     * Summary of file
+     * @var string
+     */
+    protected string $file = 'messages';
+
+    /**
      * Summary of __construct
      * @param string $locale
      * @param string $fallbackLocale
@@ -54,10 +60,15 @@ class TranslationService
      */
     public function get(string $key, array $replacements=[], bool $useFallback=true): string
     {
-        [
-            $file,
-            $messageKey
-        ] = explode('.', $key, 2);
+        $file = $this->file;
+        $messageKey = $key;
+        if ((bool) strpos($key, '.') === true) {
+            [
+                $file,
+                $messageKey
+            ] = explode('.', $key, 2);
+        }
+
         $this->loadTranslationFile($this->locale, $file);
         $translation = ($this->translations[$this->locale][$file][$messageKey] ?? null);
         if ($translation === null && $useFallback === true) {
@@ -197,5 +208,15 @@ class TranslationService
     public function getSupportedLanguages(): array
     {
         return $this->supportedLanguages;
+    }
+
+    /**
+     * Summary of setFile
+     * @param string $filename
+     * @return void
+     */
+    public function setFile(string $filenameWithoutExtension) : void
+    {
+        $this->file = $filenameWithoutExtension;
     }
 }

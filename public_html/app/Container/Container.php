@@ -29,11 +29,11 @@ class Container
      */
     public function make(string $className): ?object
     {
-        if (class_exists($className) === true) {
+        if ((bool) class_exists($className) === true) {
             return new $className($this);
         }
 
-        if (class_exists($className) === false) {
+        if ((bool) class_exists($className) === false) {
             throw new \Exception("Class ".htmlspecialchars($className)." not found.");
         }
         return null;

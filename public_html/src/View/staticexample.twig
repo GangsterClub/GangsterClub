@@ -2,7 +2,9 @@
 {% extends "tmpl/base.twig" %}
 
 {% block md %}
-    <title>{{ __("messages.hello", {"name": name ?? __("messages.visitor")}) }}</title>
+    {# Set before required translation. Set other file if needed #}
+    {% set translate = translation.setFile('duplicate-test') %}
+    <title>{{ __("hello", {"name": name ?? __("visitor")}) }}</title>
 {% endblock %}
 
 {% block css %}
@@ -25,9 +27,9 @@
       // function([string1, string2],target id,[color1,color2])
       consoleText(
         [
-            '{{ __("messages.hello", {"name": name ?? __("messages.visitor") }) }}',
-            '{{ __("messages.Made with love") }}',
-            '{{ __("messages.goodbye", {"name": name ?? __("messages.pal") }) }}'
+            '{{ __("hello", {"name": name ?? __("visitor") }) }}',
+            '{{ __("Made with love") }}',
+            '{{ __("goodbye", {"name": name ?? __("pal") }) }}'
         ],
         'text',
         ['tomato','rebeccapurple','lightblue']
