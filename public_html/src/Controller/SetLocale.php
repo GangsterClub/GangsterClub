@@ -9,9 +9,9 @@ class SetLocale extends Controller
     /**
      * Summary of __invoke
      * @param \app\Http\Request $request
-     * @return string|void
+     * @return string|null
      */
-    public function __invoke(\app\Http\Request $request): ?string
+    public function __invoke(\app\Http\Request $request): null
     {
         $locale = ($request->getParameter('locale') ?? null);
         if ($locale !== null) {

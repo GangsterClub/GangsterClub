@@ -58,7 +58,7 @@ class Controller
      * @param \app\Http\Request $request
      * @return string|null
      */
-    public function __invoke(\app\Http\Request $request): ?string
+    public function __invoke(\app\Http\Request $request): string|null
     {
         if (strpos($cls = $this::class, $rpl = SRC_CONTROLLER) !== false) {
             $view = strtolower(str_replace($rpl, '', $cls));
@@ -70,7 +70,6 @@ class Controller
         print_r('<pre>');
         var_dump($request);
         print_r('</pre>');
-        return null;
     }
 
     /**
