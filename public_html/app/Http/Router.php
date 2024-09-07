@@ -24,10 +24,9 @@ class Router
     /**
      * Summary of load
      * @param string $yaml
-     * @param array $parsed
      * @return void
      */
-    public function load(string $yaml, array $parsed=[]): void
+    public function load(string $yaml): void
     {
         $cachedYaml = RoutesCache::getPath($yaml);
         $cachedRoutes = RoutesCache::loadCache($cachedYaml);
@@ -36,6 +35,19 @@ class Router
             return;
         }
 
+        $routes = $this->parse($yaml);
+        static::$routes = array_merge(static::$routes, $routes);
+        RoutesCache::storeCache($cachedYaml, $routes);
+    }
+
+    /**
+     * Summary of parse
+     * @param string $yaml
+     * @param array $parsed
+     * @return array
+     */
+    private function parse(string $yaml, array $parsed=[]) : array
+    {
         if ((bool) function_exists('yaml_parse_file') === true) {
             $routes = @yaml_parse_file($yaml) ?: $parsed;
         }
@@ -44,8 +56,7 @@ class Router
             $routes = @Yaml::parseFile($yaml) ?: $parsed;
         }
 
-        static::$routes = array_merge(static::$routes, $routes);
-        RoutesCache::storeCache($cachedYaml, $routes);
+        return $routes ?: $parsed;
     }
 
     /**

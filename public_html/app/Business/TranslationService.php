@@ -99,21 +99,32 @@ class TranslationService
         }
 
         if (file_exists($filePath) === true) {
-            $parsed = [];
-            if ((bool) function_exists('yaml_parse_file') === true) {
-                $parsedTranslations = @yaml_parse_file($filePath) ?: $parsed;
-            }
-    
-            if ((bool) class_exists('Yaml') === true && $parsedTranslations === []) {
-                $parsedTranslations = @Yaml::parseFile($filePath) ?: $parsed;
-            }
-
+            $parsedTranslations = $this->parseTranslationFile($filePath);
             $this->translations[$locale][$file] = $parsedTranslations;
             TranslationsCache::storeCache($cachedFilePath, $parsedTranslations);
             return;
         }
 
         $this->translations[$locale][$file] = [];
+    }
+
+    /**
+     * Summary of parseTranslationFile
+     * @param string $filePath
+     * @param array $parsed
+     * @return array
+     */
+    private function parseTranslationFile(string $filePath, array $parsed=[]) : array
+    {
+        if ((bool) function_exists('yaml_parse_file') === true) {
+            $parsedTranslations = @yaml_parse_file($filePath) ?: $parsed;
+        }
+
+        if ((bool) class_exists('Yaml') === true && $parsedTranslations === []) {
+            $parsedTranslations = @Yaml::parseFile($filePath) ?: $parsed;
+        }
+
+        return $parsedTranslations ?: $parsed;
     }
 
     /**
