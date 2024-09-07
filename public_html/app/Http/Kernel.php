@@ -118,7 +118,7 @@ class Kernel
         $cntrllr = $exists === true ? $controller : Controller::class;
         $controllerObj = $this->application->make($cntrllr);
 
-        return new Response($controllerObj->$action($request));
+        return new Response((string) ($controllerObj->$action($request) ?? ""));
     }
 
     /**
