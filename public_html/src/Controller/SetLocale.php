@@ -30,6 +30,6 @@ class SetLocale extends Controller
             (filter_input(INPUT_SERVER, 'HTTP_REFERER', FILTER_SANITIZE_URL)) ??
             (APP_BASE.'/'));
 
-        return header('Location: '.$prevRoute,  true, 301);
+        header('Location: '.$prevRoute,  true, 301);
     }
 }
