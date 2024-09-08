@@ -58,29 +58,20 @@ class Kernel
     public function handleRequest(Request $request): Response
     {
         $method = $request->getMethod();
-        $allowedMethods = ($request->getParameter('methods') ?? ['GET']);
-        $isAllowed = in_array($method, $allowedMethods) === true;
+        $allowedMethods = $request->getParameter('methods') ?? ['GET'];
+        $isAllowed = (bool) in_array($method, $allowedMethods);
+        
         $router = $this->application->get('router');
         $route = $router->match(REQUEST_URI, $method);
-        $finalHandler = new Response('Empty');
-        if ((bool) $route === false && $isAllowed === true) {
-            $finalHandler = function () {
-                return $this->handleNotFound();
-            };
-        }
-
-        if (in_array($method, $allowedMethods) === false) {
-            $finalHandler = function () {
-                return $this->handleMethodNotAllowed();
-            };
-        }
-                
-        if ((bool) $route === true && $isAllowed === true) {
-            $finalHandler = function ($request) use ($route) {
-                return $this->handleController($route, $request);
-            };
-        }                
-
+        $isRoute = (bool) $route;
+        
+        $finalHandler = match (true) {
+            $isRoute === false && $isAllowed === false => fn() => $this->handleNotFound(),
+            $isRoute === true && $isAllowed === false => fn() => $this->handleMethodNotAllowed(),
+            $isRoute === true && $isAllowed === true => fn($request) => $this->handleController($route, $request),
+            default => fn() => new Response('Internal Server Error', 500),
+        };
+    
         return $this->middlewarePipeline->handle($request, $finalHandler);
     }
 
@@ -117,8 +108,8 @@ class Kernel
         $action = $exists === true && method_exists($controller, $action) === true ? $action : $act;
         $cntrllr = $exists === true ? $controller : Controller::class;
         $controllerObj = $this->application->make($cntrllr);
-
-        return new Response((string) ($controllerObj->$action($request) ?? ""));
+        $response = $controllerObj->$action($request);
+        return new Response((string) $response);
     }
 
     /**

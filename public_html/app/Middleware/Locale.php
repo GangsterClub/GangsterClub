@@ -33,16 +33,16 @@ class Locale
      */
     public function handle(Request $request, callable $next): ?Response
     {
-        $sessionService = $this->application->get('sessionService');
+        $session = $this->application->get('sessionService');
         $translationService = $this->application->get('translationService');
         $fallbackLocale = $translationService->getFallbackLocale();
-        $preferredLanguage = ($sessionService->get('preferred_language', $this->getBrowserLocale()) ?? $fallbackLocale);
+        $preferredLanguage = ($session->get('preferred_language', $this->getBrowserLocale($request)) ?? $fallbackLocale);
         if (array_key_exists($preferredLanguage, $translationService->getSupportedLanguages()) === false) {
             $preferredLanguage = $fallbackLocale;
         }
 
         $translationService->setLocale($preferredLanguage);
-        $sessionService->set('preferred_language', $preferredLanguage);
+        $session->set('preferred_language', $preferredLanguage);
         return $next($request);
     }
 
@@ -50,14 +50,14 @@ class Locale
      * Summary of getBrowserLocale
      * @return string|null
      */
-    private function getBrowserLocale(): ?string
+    private function getBrowserLocale(Request $request): ?string
     {
-        $httpAcceptLang = filter_input(INPUT_SERVER, 'HTTP_ACCEPT_LANGUAGE', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+        $httpAcceptLang = $request->server('HTTP_ACCEPT_LANG');
         if (isset($httpAcceptLang) === true) {
             $langs = explode(',', $httpAcceptLang);
             return substr($langs[0], 0, 2);
         }
 
-        return null;
+        return $httpAcceptLang;
     }
 }

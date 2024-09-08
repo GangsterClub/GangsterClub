@@ -32,9 +32,9 @@ class Response
      */
     public function __construct(string $content, int $statusCode=200, array $headers=[])
     {
-        $this->content = $content;
-        $this->statusCode = $statusCode;
-        $this->headers = $headers;
+        $this->content = (string) $content;
+        $this->statusCode = (int) $statusCode;
+        $this->headers = (array) $headers;
     }
 
     /**
@@ -43,9 +43,11 @@ class Response
      */
     public function send(): Response
     {
-        http_response_code($this->statusCode);
-        foreach ($this->headers as $header) {
-            header($header);
+        if (headers_sent() === false) {
+            http_response_code($this->statusCode);
+            foreach ($this->headers as $header) {
+                header($header);
+            }
         }
 
         print_r($this->content);

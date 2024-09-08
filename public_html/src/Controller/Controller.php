@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace src\Controller;
 
 use app\Container\Application;
+use app\Http\Request;
 
 class Controller
 {
@@ -27,12 +28,6 @@ class Controller
     protected array $twigVariables = [];
 
     /**
-     * Summary of redirect
-     * @var bool
-     */
-    private bool $redirect = false;
-
-    /**
      * Summary of __construct
      * @param \app\Container\Application $application
      */
@@ -48,9 +43,7 @@ class Controller
 
     public function __destruct()
     {
-        if ($this->redirect === false) {
-            $this->application->get('sessionService')->set('PREV_ROUTE', REQUEST_URI);
-        }
+        $this->application->get('sessionService')->set('PREV_ROUTE', REQUEST_URI);
     }
 
     /**
@@ -58,7 +51,7 @@ class Controller
      * @param \app\Http\Request $request
      * @return string|null
      */
-    public function __invoke(\app\Http\Request $request): string|null
+    public function __invoke(Request $request): string|null
     {
         if (strpos($cls = $this::class, $rpl = SRC_CONTROLLER) !== false) {
             $view = strtolower(str_replace($rpl, '', $cls));
@@ -66,10 +59,10 @@ class Controller
                 return (string) $this->twig->render($view.'.twig', $this->twigVariables);
             }
         }
-
         print_r('<pre>');
         var_dump($request);
         print_r('</pre>');
+        return null;
     }
 
     /**
@@ -78,7 +71,7 @@ class Controller
      */
     private function getLocaleKey(): int
     {
-        $sessionService = $this->application->get('sessionService');
+        $session = $this->application->get('sessionService');
         $translationService = $this->application->get('translationService');
         $supportedLanguages = $translationService->getSupportedLanguages();
         $languages = [];
@@ -86,6 +79,23 @@ class Controller
             $languages[] = $key;
         }
 
-        return (int) array_search($sessionService->get('preferred_language', $translationService->getFallbackLocale()), $languages);
+        return (int) array_search($session->get('preferred_language', $translationService->getFallbackLocale()), $languages);
+    }
+
+    /**
+     * Summary of redirect
+     * @return void
+     */
+    protected function redirect(Request $request): void
+    {
+        $session = $this->application->get('sessionService');        
+        $prevRoute = ($session->get('PREV_ROUTE') ??
+            ($request->server('HTTP_REFERER')) ??
+            (APP_BASE.'/'));
+
+        if (headers_sent() === false) {
+            header('Location: '.$prevRoute,  true, 301);
+            $this->application->exit();
+        }
     }
 }

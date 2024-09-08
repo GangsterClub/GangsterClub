@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace app\Business;
 
+use app\Http\Request;
+
 class SessionService extends \SessionHandler
 {
     /**
@@ -18,13 +20,16 @@ class SessionService extends \SessionHandler
      */
     private string $userAgent;
 
+    private Request $request;
+
     /**
      * Summary of __construct
      * $this->ipAddress = $_SERVER["REMOTE_ADDR"];
      * $this->userAgent = $_SERVER['HTTP_USER_AGENT'];
      */
-    public function __construct()
+    public function __construct(Request $request)
     {
+        $this->request = $request;
         $production = (bool) (defined('ENVIRONMENT') === true && strtolower(ENVIRONMENT) === 'production');
         $development = (bool) (defined('DEVELOPMENT') === true && DEVELOPMENT === true);
         $ipFilters = ($production === true && $development === false) ?
@@ -32,8 +37,8 @@ class SessionService extends \SessionHandler
             (FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6) === true;
 
         $ipFilters |= FILTER_NULL_ON_FAILURE === true;
-        $this->ipAddress = filter_input(INPUT_SERVER, 'REMOTE_ADDR', FILTER_VALIDATE_IP, $ipFilters);
-        $this->userAgent = (filter_input(INPUT_SERVER, 'HTTP_USER_AGENT', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? 'Undefined');
+        $this->ipAddress = filter_var($request->server('REMOTE_ADDR'), FILTER_VALIDATE_IP, $ipFilters);
+        $this->userAgent = (filter_var($request->server('HTTP_USER_AGENT'), 515) ?? 'Undefined');
     }
 
     /**
@@ -63,7 +68,7 @@ class SessionService extends \SessionHandler
         ini_set('session.gc_maxlifetime', 1440);
         session_name($name.'_Session');
         $https = isset($secure) === true ? $secure :
-            (filter_input(INPUT_SERVER, 'HTTPS', FILTER_SANITIZE_FULL_SPECIAL_CHARS)) !== null;
+            $this->request->server('HTTPS') !== null;
 
         session_set_cookie_params($limit, $path, $domain, $https, true);
         session_start();
@@ -174,15 +179,20 @@ class SessionService extends \SessionHandler
     }
 
     /**
-     * Summary of get
+     * Summary of get, Lazy session initialization
      * @param string $key
      * @param mixed $default
      * @return mixed
      */
-    public function get(string $key, $default=null): mixed
+    public function get(string $key, $default = null): mixed
     {
-        return isset($_SESSION[$key]) === true ?
-            filter_var($_SESSION[$key], FILTER_SANITIZE_FULL_SPECIAL_CHARS) :
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            return $default;
+        }
+
+        $session = $_SESSION ?? [];
+        return isset($session[$key]) === true ?
+            filter_var($session[$key], 515) :
             $default;
     }
 
@@ -192,19 +202,25 @@ class SessionService extends \SessionHandler
      * @param mixed $value
      * @return void
      */
-    public function set(string $key, $value): void
+    public function set(string $key, mixed $value): void
     {
-        $_SESSION[$key] = filter_var($value, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $_SESSION[$key] = filter_var($value, 515);
+        }
     }
 
     /**
-     * Summary of has
+     * Summary of has, using Lazy session initialization
      * @param string $key
      * @return bool
      */
     public function has(string $key): bool
     {
-        return $this->get($key) !== null;
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            return $this->get($key) !== null;
+        }
+
+        return false;
     }
 
     /**
@@ -214,7 +230,9 @@ class SessionService extends \SessionHandler
      */
     public function remove(string $key): void
     {
-        unset($_SESSION[$key]);
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            unset($_SESSION[$key]);
+        }
     }
 
     /**

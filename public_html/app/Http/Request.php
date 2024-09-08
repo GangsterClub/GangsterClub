@@ -4,8 +4,15 @@ declare(strict_types=1);
 
 namespace app\Http;
 
-class Request
+class Request extends Superglobal
 {
+    /**
+     * Summary of method
+     * @var string
+     */
+    private string $method;
+    private static string $requestMethod = 'HEAD';
+
     /**
      * Summary of parameters
      * @var array
@@ -19,22 +26,18 @@ class Request
     private array $headers;
 
     /**
-     * Summary of method
-     * @var string
-     */
-    private string $method;
-
-    /**
      * Summary of __construct
-     * @param array $parameters
-     * @param array $headers
      * @param string $method
+     * @param array $headers
+     * @param array $parameters
      */
-    public function __construct(array $parameters, array $headers, string $method)
+    public function __construct(string $method, array $headers, ...$parameters)
     {
-        $this->parameters = $parameters;
-        $this->headers = $headers;
+        parent::__construct();
         $this->method = $method;
+        static::$requestMethod = $this->server('REQUEST_METHOD');
+        $this->headers = $headers;
+        $this->parameters = $parameters;
     }
 
     /**
@@ -44,21 +47,19 @@ class Request
     public static function capture(): self
     {
         $headers = (getallheaders() ?? []);
-        $method = (filter_input(INPUT_SERVER, 'REQUEST_METHOD', FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? 'GET');
+        $method = (static::$requestMethod ?? 'GET');
         $parameters = Router::extract((REQUEST_URI ?? ''), $method);
 
-        return new self((array) $parameters, (array) $headers, (string) $method);
+        return new self((string) $method, (array) $headers, ...$parameters);
     }
 
     /**
-     * Summary of getParameter
-     * @param string $key
-     * @param mixed $default
-     * @return mixed
+     * Summary of getMethod
+     * @return string
      */
-    public function getParameter(string $key, ?string $default=null): mixed
+    public function getMethod(): string
     {
-        return ($this->parameters[$key] ?? $default);
+        return (string) $this->method;
     }
 
     /**
@@ -72,11 +73,13 @@ class Request
     }
 
     /**
-     * Summary of getMethod
-     * @return string
+     * Summary of getParameter
+     * @param string $key
+     * @param mixed $default
+     * @return mixed
      */
-    public function getMethod(): string
+    public function getParameter(string $key, ?string $default=null): mixed
     {
-        return (string) $this->method;
+        return ($this->parameters[$key] ?? $default);
     }
 }

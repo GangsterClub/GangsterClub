@@ -66,11 +66,11 @@ class Router
      * @param array $parameters
      * @return array
      */
-    public static function extract(string $url, string $method, array $parameters=[]): array
+    public static function extract(string $url, string $method, ...$parameters): array
     {
         if ((bool) ($routeData = self::matchRoute($url, $method)) === true) {
             $parameters['methods'] = ($routeData['methods'] ?? static::$methods);
-            $parameters = self::extractParameters($url, $routeData['path'], $parameters);
+            $parameters = self::extractParameters($url, $routeData['path'], ...$parameters);
         }
 
         return (array) $parameters;
@@ -136,7 +136,7 @@ class Router
      * @param array $parameters
      * @return array
      */
-    private static function extractParameters(string $url, string $routePath, array $parameters=[]): array
+    private static function extractParameters(string $url, string $routePath, ...$parameters): array
     {
         $routePattern = self::replacePattern($routePath);
         $urlParts = parse_url($url);

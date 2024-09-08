@@ -76,7 +76,7 @@ class YamlCacheService
     {
         if (self::isCache($cachedYaml) === true) {
             if (is_dir(dirname($cachedYaml)) === false) {
-                mkdir(dirname($cachedYaml), 0755, true);
+                @mkdir(dirname($cachedYaml), 0755, true);
             }
 
             file_put_contents($cachedYaml, json_encode($fileContents));

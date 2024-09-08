@@ -18,18 +18,13 @@ class SetLocale extends Controller
             $locale = urldecode($locale);
         }
 
-        $sessionService = $this->application->get('sessionService');
+        $session = $this->application->get('sessionService');
         $translationService = $this->application->get('translationService');
         if (array_key_exists($locale, $translationService->getSupportedLanguages()) === true) {
             $translationService->setLocale($locale);
-            $sessionService->set('preferred_language', $locale);
+            $session->set('preferred_language', $locale);
         }
 
-        $this->redirect = true;
-        $prevRoute = ($sessionService->get('PREV_ROUTE') ??
-            (filter_input(INPUT_SERVER, 'HTTP_REFERER', FILTER_SANITIZE_URL)) ??
-            (APP_BASE.'/'));
-
-        header('Location: '.$prevRoute,  true, 301);
+        $this->redirect($request);
     }
 }

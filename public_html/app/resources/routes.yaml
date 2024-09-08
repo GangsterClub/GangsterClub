@@ -2,7 +2,7 @@
 home:
     path: /
     controller: Home
-    methods: ['GET', 'HEAD']
+    methods: ['GET', 'HEAD', 'POST']
 
 hello:
     path: /hello(?:/)?(?:/{name})?
