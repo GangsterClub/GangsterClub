@@ -66,7 +66,7 @@ class Kernel
         $isRoute = (bool) $route;
 
         $finalHandler = match (true) {
-            $isRoute === false && $isAllowed === false => fn() => $this->handleNotFound(),
+            $isRoute === false && $isAllowed === true => fn() => $this->handleNotFound(),
             $isRoute === true && $isAllowed === false => fn() => $this->handleMethodNotAllowed(),
             $isRoute === true && $isAllowed === true => fn($request) => $this->handleController($route, $request),
             default => fn() => new Response('Internal Server Error', 500),

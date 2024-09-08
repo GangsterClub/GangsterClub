@@ -125,7 +125,7 @@ class Superglobal
      */
     protected function parseRequestMethod(string $method): array
     {
-        if ($this->server['REQUEST_METHOD'] === $method) {
+        if (REQUEST_METHOD === $method) {
             parse_str(file_get_contents('php://input'), $data);
             return filter_var_array($data, 515) ?? [];
         }

@@ -11,19 +11,18 @@ class Request extends Superglobal
      * @var string
      */
     private string $method;
-    private static string $requestMethod = 'HEAD';
-
-    /**
-     * Summary of parameters
-     * @var array
-     */
-    private array $parameters;
 
     /**
      * Summary of headers
      * @var array
      */
     private array $headers;
+
+    /**
+     * Summary of parameters
+     * @var array
+     */
+    private array $parameters;
 
     /**
      * Summary of __construct
@@ -35,7 +34,6 @@ class Request extends Superglobal
     {
         parent::__construct();
         $this->method = $method;
-        static::$requestMethod = $this->server('REQUEST_METHOD');
         $this->headers = $headers;
         $this->parameters = $parameters;
     }
@@ -47,7 +45,7 @@ class Request extends Superglobal
     public static function capture(): self
     {
         $headers = (getallheaders() ?? []);
-        $method = (static::$requestMethod ?? 'GET');
+        $method = (REQUEST_METHOD ?? 'GET');
         $parameters = Router::extract((REQUEST_URI ?? ''), $method);
 
         return new self((string) $method, (array) $headers, ...$parameters);

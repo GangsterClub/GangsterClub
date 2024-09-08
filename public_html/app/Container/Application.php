@@ -57,7 +57,8 @@ class Application extends Container
         define('APP_BASE', $this->getBase());
         define('PROTOCOL', 'http' . (isset($https) === true && $https === 'on' ? 's' : '') . '://');
         define('WEB_ROOT', PROTOCOL . $this->getHostname() . APP_BASE . '/');
-        define('REQUEST_URI', filter_input(INPUT_SERVER, 'REQUEST_URI', FILTER_SANITIZE_URL));
+        define('REQUEST_URI', (string) filter_input(INPUT_SERVER, 'REQUEST_URI', FILTER_SANITIZE_URL));
+        define('REQUEST_METHOD', (string) filter_input(INPUT_SERVER, 'REQUEST_METHOD', 515));
     }
 
     /**
