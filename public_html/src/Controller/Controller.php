@@ -59,8 +59,8 @@ class Controller
                 return (string) $this->twig->render($view . '.twig', $this->twigVariables);
             }
         }
-    
-        if (defined('ENVIRONMENT') && ENVIRONMENT !== "production" && defined('DEVELOPMENT') && DEVELOPMENT === true) {
+
+        if (defined('ENVIRONMENT') === true && ENVIRONMENT !== "production" && defined('DEVELOPMENT') === true && DEVELOPMENT === true) {
             print_r('<pre>');
             var_dump($request);
             print_r('</pre>');
