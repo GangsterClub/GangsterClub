@@ -78,7 +78,7 @@ class Request extends Superglobal
      * @param mixed $default
      * @return mixed
      */
-    public function getParameter(string $key, ?string $default=null): mixed
+    public function getParameter(string $key, ?string $default = null): mixed
     {
         return ($this->parameters[$key] ?? $default);
     }

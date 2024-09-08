@@ -24,7 +24,7 @@ class Application extends Container
     {
         $this->initialize($dir);
         $this->registerServices();
-        $routes = $dir.'/app/resources/routes.yaml';
+        $routes = $dir . '/app/resources/routes.yaml';
         if (file_exists($routes) === true && (bool) ($router = $this->router) === true) {
             $router->load($routes);
         }
@@ -51,8 +51,8 @@ class Application extends Container
         define('SRC_CONTROLLER', 'src\\Controller\\');
         define('DOC_ROOT', $this->directory = $dir);
         define('APP_BASE', $this->getBase());
-        define('PROTOCOL', 'http'.(isset($https) === true && $https === 'on' ? 's' : '').'://');
-        define('WEB_ROOT', PROTOCOL.$this->getHostname().APP_BASE.'/');
+        define('PROTOCOL', 'http' . (isset($https) === true && $https === 'on' ? 's' : '') . '://');
+        define('WEB_ROOT', PROTOCOL . $this->getHostname() . APP_BASE . '/');
         define('REQUEST_URI', filter_input(INPUT_SERVER, 'REQUEST_URI', FILTER_SANITIZE_URL));
     }
 
@@ -64,11 +64,15 @@ class Application extends Container
     {
         return rtrim(
             str_replace(
-                '\\', '/', str_replace(
-                    str_replace('/', '\\', $this->getDocumentRoot()), '',
+                '\\',
+                '/',
+                str_replace(
+                    str_replace('/', '\\', $this->getDocumentRoot()),
+                    '',
                     str_replace('/', '\\', $this->directory)
                 )
-            ), '/'
+            ),
+            '/'
         );
     }
 

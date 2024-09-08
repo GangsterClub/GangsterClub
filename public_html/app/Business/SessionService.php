@@ -50,9 +50,9 @@ class SessionService extends \SessionHandler
      * @param mixed $secure
      * @return void
      */
-    public function start(string $name, ?int $limit=0, ?string $path='/', ?string $domain=null, ?bool $secure=null): void
+    public function start(string $name, ?int $limit = 0, ?string $path = '/', ?string $domain = null, ?bool $secure = null): void
     {
-        ini_set('session.name', $name.'_Session');
+        ini_set('session.name', $name . '_Session');
         ini_set('session.auto_start', 'Off');
         ini_set('session.cookie_domain', $domain);
         ini_set('session.use_strict_mode', 1);
@@ -66,7 +66,7 @@ class SessionService extends \SessionHandler
         ini_set('session.gc_probability', 1);
         ini_set('session.gc_divisor', 100);
         ini_set('session.gc_maxlifetime', 1440);
-        session_name($name.'_Session');
+        session_name($name . '_Session');
         $https = isset($secure) === true ? $secure :
             $this->request->server('HTTPS') !== null;
 
@@ -234,6 +234,7 @@ class SessionService extends \SessionHandler
             unset($_SESSION[$key]);
         }
     }
+
 
     /**
      * Summary of reset

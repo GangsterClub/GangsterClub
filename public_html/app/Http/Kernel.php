@@ -60,18 +60,18 @@ class Kernel
         $method = $request->getMethod();
         $allowedMethods = $request->getParameter('methods') ?? ['GET'];
         $isAllowed = (bool) in_array($method, $allowedMethods);
-        
+
         $router = $this->application->get('router');
         $route = $router->match(REQUEST_URI, $method);
         $isRoute = (bool) $route;
-        
+
         $finalHandler = match (true) {
             $isRoute === false && $isAllowed === false => fn() => $this->handleNotFound(),
             $isRoute === true && $isAllowed === false => fn() => $this->handleMethodNotAllowed(),
             $isRoute === true && $isAllowed === true => fn($request) => $this->handleController($route, $request),
             default => fn() => new Response('Internal Server Error', 500),
         };
-    
+
         return $this->middlewarePipeline->handle($request, $finalHandler);
     }
 
@@ -103,7 +103,7 @@ class Kernel
 
         $namespace = SRC_CONTROLLER;
         $prefix = str_starts_with($name, $namespace) === false && strpos($name, '\\') === false ? $namespace : '';
-        $controller = $prefix.$name;
+        $controller = $prefix . $name;
         $exists = class_exists($controller);
         $action = $exists === true && method_exists($controller, $action) === true ? $action : $act;
         $cntrllr = $exists === true ? $controller : Controller::class;

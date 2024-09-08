@@ -14,7 +14,7 @@ class Router
      * @var array
      */
     private static array $routes = [];
-    
+
     /**
      * Summary of methods
      * @var array
@@ -46,7 +46,7 @@ class Router
      * @param array $parsed
      * @return array
      */
-    private function parse(string $yaml, array $parsed=[]) : array
+    private function parse(string $yaml, array $parsed = []): array
     {
         if ((bool) function_exists('yaml_parse_file') === true) {
             $routes = @yaml_parse_file($yaml) ?: $parsed;
@@ -101,7 +101,8 @@ class Router
     private static function matchRoute(string $url, string $method): ?array
     {
         $filteredRoutes = array_filter(
-            static::$routes, function ($routeData) use ($url, $method) {
+            static::$routes,
+            function ($routeData) use ($url, $method) {
                 $pattern = self::replacePattern($routeData['path']);
                 return preg_match($pattern, $url) && in_array($method, ($routeData['methods'] ?? static::$methods));
             }
@@ -121,11 +122,13 @@ class Router
     private static function replacePattern(string $route): string
     {
         $route = preg_replace_callback(
-            '/\{([^}]+)\}/', function ($matches) {
-                return '(?P<'.preg_quote($matches[1], '/').'>[^/]+)';
-            }, APP_BASE.$route
+            '/\{([^}]+)\}/',
+            function ($matches) {
+                return '(?P<' . preg_quote($matches[1], '/') . '>[^/]+)';
+            },
+            APP_BASE . $route
         );
-        $pattern = '~^'.$route.'$~i';
+        $pattern = '~^' . $route . '$~i';
         return (string) $pattern;
     }
 

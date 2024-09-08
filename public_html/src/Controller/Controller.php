@@ -55,8 +55,8 @@ class Controller
     {
         if (strpos($cls = $this::class, $rpl = SRC_CONTROLLER) !== false) {
             $view = strtolower(str_replace($rpl, '', $cls));
-            if (file_exists(DOC_ROOT.'/src/View/'.$view.'.twig') === true) {
-                return (string) $this->twig->render($view.'.twig', $this->twigVariables);
+            if (file_exists(DOC_ROOT . '/src/View/' . $view . '.twig') === true) {
+                return (string) $this->twig->render($view . '.twig', $this->twigVariables);
             }
         }
         print_r('<pre>');
@@ -88,13 +88,13 @@ class Controller
      */
     protected function redirect(Request $request): void
     {
-        $session = $this->application->get('sessionService');        
+        $session = $this->application->get('sessionService');
         $prevRoute = ($session->get('PREV_ROUTE') ??
             ($request->server('HTTP_REFERER')) ??
-            (APP_BASE.'/'));
+            (APP_BASE . '/'));
 
         if (headers_sent() === false) {
-            header('Location: '.$prevRoute,  true, 301);
+            header('Location: ' . $prevRoute, true, 301);
             $this->application->exit();
         }
     }

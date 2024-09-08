@@ -33,9 +33,10 @@ class Twig
      */
     public function handle(Request $request, callable $next): ?Response
     {
-        $loader = new \Twig\Loader\FilesystemLoader(DOC_ROOT.'/src/View/');
+        $loader = new \Twig\Loader\FilesystemLoader(DOC_ROOT . '/src/View/');
         $twig = new \Twig\Environment(
-            $loader, [
+            $loader,
+            [
                 'cache' => false // DOC_ROOT.'/app/cache/TwigCompilation',
             ]
         );

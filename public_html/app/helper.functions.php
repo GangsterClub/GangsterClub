@@ -6,7 +6,7 @@
  * @param array $replacements
  * @return string
  */
-function __(string $key, array $replacements=[]): string
+function __(string $key, array $replacements = []): string
 {
     global $app;
     static $translationService = null;
@@ -24,7 +24,7 @@ function __(string $key, array $replacements=[]): string
  * @param array $replacements
  * @return string
  */
-function translate(string $key, array $replacements=[]): string
+function translate(string $key, array $replacements = []): string
 {
     return __($key, $replacements);
 }

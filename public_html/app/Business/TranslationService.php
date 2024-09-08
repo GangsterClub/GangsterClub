@@ -44,11 +44,11 @@ class TranslationService
      * @param string $locale
      * @param string $fallbackLocale
      */
-    public function __construct(string $locale='en', string $fallbackLocale='en')
+    public function __construct(string $locale = 'en', string $fallbackLocale = 'en')
     {
         $this->locale = $locale;
         $this->fallbackLocale = $fallbackLocale;
-        $this->supportedLanguages = include_once __DIR__.'/../languages.php';
+        $this->supportedLanguages = include_once __DIR__ . '/../languages.php';
     }
 
     /**
@@ -58,7 +58,7 @@ class TranslationService
      * @param bool $useFallback
      * @return string
      */
-    public function get(string $key, array $replacements=[], bool $useFallback=true): string
+    public function get(string $key, array $replacements = [], bool $useFallback = true): string
     {
         $file = $this->file;
         $messageKey = $key;
@@ -90,7 +90,7 @@ class TranslationService
             return;
         }
 
-        $filePath = __DIR__."/../resources/lang/{$locale}/{$file}.yaml";
+        $filePath = __DIR__ . "/../resources/lang/{$locale}/{$file}.yaml";
         $cachedFilePath = TranslationsCache::getPath($filePath);
         $cachedTranslations = TranslationsCache::loadCache($cachedFilePath);
         if (empty($cachedTranslations) === false && is_array($cachedTranslations) === true) {
@@ -114,7 +114,7 @@ class TranslationService
      * @param array $parsed
      * @return array
      */
-    private function parseTranslationFile(string $filePath, array $parsed=[]) : array
+    private function parseTranslationFile(string $filePath, array $parsed = []): array
     {
         if ((bool) function_exists('yaml_parse_file') === true) {
             $parsedTranslations = @yaml_parse_file($filePath) ?: $parsed;
@@ -159,7 +159,7 @@ class TranslationService
     protected function replacePlaceholders(string $message, array $replacements): string
     {
         foreach ($replacements as $placeholder => $value) {
-            $message = str_replace(':'.$placeholder, $value, $message);
+            $message = str_replace(':' . $placeholder, $value, $message);
         }
 
         return $message;
@@ -226,7 +226,7 @@ class TranslationService
      * @param string $filename
      * @return void
      */
-    public function setFile(string $filenameWithoutExtension) : void
+    public function setFile(string $filenameWithoutExtension): void
     {
         $this->file = $filenameWithoutExtension;
     }
