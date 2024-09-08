@@ -20,6 +20,10 @@ class Application extends Container
      */
     private ?string $directory;
 
+    /**
+     * Summary of __construct
+     * @param string $dir
+     */
     public function __construct(string $dir)
     {
         $this->initialize($dir);
@@ -96,10 +100,10 @@ class Application extends Container
 
     /**
      * Summary of exit
-     * @param int $code
+     * @param int|null $code
      * @return void
      */
-    public function exit(int $code = 0): void
+    public function exit(?int $code = 0): void
     {
         exit($code);
     }
