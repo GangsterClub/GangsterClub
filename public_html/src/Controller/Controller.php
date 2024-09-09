@@ -86,10 +86,10 @@ class Controller
     }
 
     /**
-     * Summary of redirect
+     * Summary of redirectPrevRoute
      * @return void
      */
-    protected function redirect(Request $request): void
+    protected function redirectPrevRoute(Request $request): void
     {
         $session = $this->application->get('sessionService');
         $prevRoute = ($session->get('PREV_ROUTE') ??

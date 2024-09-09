@@ -23,7 +23,7 @@ class SetLocale extends Controller
         if (array_key_exists($locale, $translationService->getSupportedLanguages()) === true) {
             $translationService->setLocale($locale);
             $session->set('preferred_language', $locale);
-            $this->redirect($request);
+            $this->redirectPrevRoute($request);
         }
     }
 }
