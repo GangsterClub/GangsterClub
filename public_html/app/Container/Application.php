@@ -104,7 +104,7 @@ class Application extends Container
      * @param int|null $code
      * @return void
      */
-    public function exit(?int $code = 0): void
+    public function exit(int|null $code = 0): void
     {
         exit($code);
     }

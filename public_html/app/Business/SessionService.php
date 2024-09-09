@@ -20,6 +20,10 @@ class SessionService extends \SessionHandler
      */
     private string $userAgent;
 
+    /**
+     * Summary of request
+     * @var \app\Http\Request
+     */
     private Request $request;
 
     /**
@@ -234,7 +238,6 @@ class SessionService extends \SessionHandler
             unset($_SESSION[$key]);
         }
     }
-
 
     /**
      * Summary of reset

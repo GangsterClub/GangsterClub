@@ -28,6 +28,9 @@
       consoleText(
         [
             '{{ __("hello", {"name": name ?? __("visitor") }) }}',
+            {#  Do you notice only one line has missing translations other than EN?
+                The following line is the cause, as a "fix" to setFile on line 6.  #}
+            {% set translate = translation.setFile('messages') %}
             '{{ __("Made with love") }}',
             '{{ __("goodbye", {"name": name ?? __("pal") }) }}'
         ],
