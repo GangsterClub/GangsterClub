@@ -41,7 +41,7 @@ function loadEnv(string $envFilePath): void
         throw new \RuntimeException("Env file not found: " . htmlspecialchars($envFilePath));
     }
 
-    $envContent = file($envFilePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    $envContent = file($envFilePath, (FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES));
 
     foreach ($envContent as $line) {
         $line = trim($line);
@@ -53,26 +53,24 @@ function loadEnv(string $envFilePath): void
             $key,
             $value,
         ] = array_map('trim', explode('=', $line, 2));
-        if (preg_match('/^["\'](.*)["\']$/', $value, $matches)) {
+        if ((bool) preg_match('/^["\'](.*)["\']$/', $value, $matches) === true) {
             $value = $matches[1];
         }
 
         $lowerValue = strtolower($value);
         if ($lowerValue === 'true') {
             $value = true;
-        } elseif ($lowerValue === 'false') {
+        } else if ($lowerValue === 'false') {
             $value = false;
-        } elseif ($lowerValue === 'null') {
+        } else if ($lowerValue === 'null') {
             $value = null;
-        } elseif (strpos($value, ',') !== false) {
-            $value = explode(',', $value);
         }
 
-        $value = preg_replace_callback('/\$\{([A-Z_]+)\}/', fn($matches) => getenv($matches[1]) ?: $matches[0], $value);
-
-        if (is_array($value)) {
-            $value = implode(',', $value);
-        }
+        $value = preg_replace_callback(
+            '/\$\{([A-Z_]+)\}/',
+            fn($matches) => getenv($matches[1]) ?: $matches[0],
+            $value
+        );
 
         putenv("{$key}={$value}");
         $_ENV[$key] = $value;
