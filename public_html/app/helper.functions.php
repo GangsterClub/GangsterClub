@@ -28,3 +28,55 @@ function translate(string $key, array $replacements = []): string
 {
     return __($key, $replacements);
 }
+
+/**
+ * Summary of loadEnv
+ * @param string $envFilePath
+ * @throws \RuntimeException
+ * @return void
+ */
+function loadEnv(string $envFilePath): void
+{
+    if (!file_exists($envFilePath)) {
+        throw new \RuntimeException("Env file not found: " . htmlspecialchars($envFilePath));
+    }
+
+    $envContent = file($envFilePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+    foreach ($envContent as $line) {
+        $line = trim($line);
+        if (strpos($line, '#') === 0) {
+            continue;
+        }
+
+        [
+            $key,
+            $value,
+        ] = array_map('trim', explode('=', $line, 2));
+        if (preg_match('/^["\'](.*)["\']$/', $value, $matches)) {
+            $value = $matches[1];
+        }
+
+        $lowerValue = strtolower($value);
+        if ($lowerValue === 'true') {
+            $value = true;
+        } elseif ($lowerValue === 'false') {
+            $value = false;
+        } elseif ($lowerValue === 'null') {
+            $value = null;
+        } elseif (strpos($value, ',') !== false) {
+            $value = explode(',', $value);
+        }
+
+        $value = preg_replace_callback('/\$\{([A-Z_]+)\}/', fn($matches) => getenv($matches[1]) ?: $matches[0], $value);
+
+        if (is_array($value)) {
+            $value = implode(',', $value);
+        }
+
+        putenv("{$key}={$value}");
+        $_ENV[$key] = $value;
+        define($key, $value);
+        //$_SERVER[$key] = $value; // Optionally set in $_SERVER superglobal.
+    }
+}
