@@ -37,12 +37,11 @@ function translate(string $key, array $replacements = []): string
  */
 function loadEnv(string $envFilePath): void
 {
-    if (!file_exists($envFilePath)) {
+    if ((bool) file_exists($envFilePath) === false) {
         throw new \RuntimeException("Env file not found: " . htmlspecialchars($envFilePath));
     }
 
     $envContent = file($envFilePath, (FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES));
-
     foreach ($envContent as $line) {
         $line = trim($line);
         if (strpos($line, '#') === 0) {
@@ -57,6 +56,12 @@ function loadEnv(string $envFilePath): void
             $value = $matches[1];
         }
 
+        $value = preg_replace_callback(
+            '/\$\{([A-Z_]+)\}/',
+            fn($matches) => getenv($matches[1]) ?: $matches[0],
+            $value
+        );
+
         $lowerValue = strtolower($value);
         if ($lowerValue === 'true') {
             $value = true;
@@ -65,12 +70,6 @@ function loadEnv(string $envFilePath): void
         } else if ($lowerValue === 'null') {
             $value = null;
         }
-
-        $value = preg_replace_callback(
-            '/\$\{([A-Z_]+)\}/',
-            fn($matches) => getenv($matches[1]) ?: $matches[0],
-            $value
-        );
 
         putenv("{$key}={$value}");
         $_ENV[$key] = $value;
