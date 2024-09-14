@@ -1,0 +1,8 @@
+#!/bin/sh
+
+<?PHP
+require_once __DIR__ . '/app/helper.functions.php';
+
+loadEnv(__DIR__ . '/.env');
+
+include_once(__DIR__ . "/app/console.php");
