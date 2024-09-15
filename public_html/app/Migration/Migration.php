@@ -1,35 +1,56 @@
 <?PHP
 
-namespace app\Migration;
+declare(strict_types=1);
 
-use src\Data\Connection;
+namespace app\Migration;
 
 class Migration implements MigrationInterface
 {
-    protected $db;
+    /**
+     * Summary of dbh
+     * @var \src\Data\Connection
+     */
+    protected $dbh;
 
-    public function __construct()
+    public function __construct(\src\Data\Connection $dbh)
     {
-        $this->db = new Connection();
+        $this->dbh = $dbh;
     }
 
-    public function up()
+    /**
+     * Summary of up
+     * @return void
+     */
+    public function up(): void
     {
         // Define the schema changes for the migration
     }
 
-    public function down()
+    /**
+     * Summary of down
+     * @return void
+     */
+    public function down(): void
     {
         // Define the rollback changes for the migration
     }
 
-    public function log(string $message)
+    /**
+     * Summary of log
+     * @param string $message
+     * @return void
+     */
+    public function log(string $message): void
     {
-        print_r($message ."/n");
+        print_r($message . PHP_EOL);
     }
-
-    protected function execute(string $sql)
+    /**
+     * Summary of execute
+     * @param string $sql
+     * @return void
+     */
+    protected function execute(string $sql): void
     {
-        $this->db->query($sql);
+        $this->dbh->query($sql);
     }
 }

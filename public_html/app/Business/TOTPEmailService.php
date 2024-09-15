@@ -9,13 +9,11 @@ use src\Data\Repository\TOTPEmailRepository;
 class TOTPEmailService
 {
     /**
-     * Summary of totp
      * @var TOTPService
      */
     protected TOTPService $totp;
 
     /**
-     * Summary of TOTPEmailRepository totpEmailRepository
      * @var TOTPEmailRepository
      */
     protected $totpEmailRepository;
@@ -27,15 +25,15 @@ class TOTPEmailService
     }
 
     /**
-     * Generate a 6-digit OTP for email and save it using the repository.
+     * Generate a 6-digit time-based OTP for email and save it using the repository.
      *
      * @param int $userId
      * @return string The generated OTP.
      */
     public function generateEmailOTP(int $userId): string
     {
-        $otp = $this->totp->generateSecret();
-        $this->totpEmailRepository->storeOTP($userId, $otp, time() + 900); // Expires in 15 minutes
+        $otp = $this->totp->generateSecret(TOTP_DIGITS, TOTP_PERIOD);
+        $this->totpEmailRepository->storeOTP($userId, $otp, (microtime(true) + TOTP_PERIOD));
         return $otp;
     }
 

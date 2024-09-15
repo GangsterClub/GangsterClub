@@ -60,7 +60,7 @@ class Controller
             }
         }
 
-        if (defined('ENVIRONMENT') === true && ENVIRONMENT !== "production" && defined('DEVELOPMENT') === true && DEVELOPMENT === true) {
+        if (strtolower(ENVIRONMENT) !== "production" && DEVELOPMENT === true) {
             print_r('<pre>');
             var_dump($request);
             print_r('</pre>');

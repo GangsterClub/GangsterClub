@@ -1,31 +1,16 @@
 <?PHP
 
-namespace app\Migration;
+declare(strict_types=1);
 
-use src\Data\Connection;
+namespace app\Migration;
 
 class MigrationManager
 {
-    /**
-     * Summary of db
-     * @var Connection
-     */
-    protected Connection $db;
-
     /**
      * Summary of migrations
      * @var array
      */
     protected array $migrations = [];
-
-    /**
-     * Summary of __construct
-     * @param \src\Data\Connection $db
-     */
-    public function __construct(Connection $db)
-    {
-        $this->db = $db;
-    }
 
     /**
      * Summary of addMigration

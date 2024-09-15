@@ -5,19 +5,25 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use src\Data\Connection;
 use app\Migration\MigrationManager;
 
-$db = new Connection();
-
-$migrationManager = new MigrationManager($db);
+$dbh = new Connection();
+$migrationManager = new MigrationManager();
 
 // Add migrations here
-$migrationManager->addMigration(new \app\Migration\CreateTOTPEmail());
+$migrationManager->addMigration(new \app\Migration\CreateTOTPEmail($dbh));
 
-if ($argv[1] === 'migrate') {
+$allowedArgs = ['--migrate', '--rollback'];
+if (in_array($argv[1], $allowedArgs) === false) {
+    print_r("Invalid command. Use '-m = --migrate' or '-r = --rollback'." . PHP_EOL);
+}
+
+$mArgs = ['-m', $allowedArgs[0]];
+if (in_array($argv[1], $mArgs) === true) {
     $migrationManager->migrate();
-    echo "Migrations applied successfully.";
-} else if ($argv[1] === 'rollback') {
+    print_r("Migrations applied successfully." . PHP_EOL);
+}
+
+$rArgs = ['-r', $allowedArgs[1]];
+if (in_array($argv[1], $rArgs) === true) {
     $migrationManager->rollback();
-    echo "Migrations rolled back successfully.";
-} else {
-    echo "Invalid command. Use 'migrate' or 'rollback'.";
+    print_r("Migrations rolled back successfully." . PHP_EOL);
 }
