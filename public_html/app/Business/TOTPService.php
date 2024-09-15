@@ -43,7 +43,7 @@ class TOTPService
      */
     public function verifyTOTP(string $secret, string $code): bool
     {
-        $totp = TOTP::createFromSecret($secret);
+        $totp = TOTP::create($secret);
         return $totp->verify($code);
     }
 }
