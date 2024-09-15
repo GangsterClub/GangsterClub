@@ -16,7 +16,7 @@ class TOTPEmailService
     /**
      * @var TOTPEmailRepository
      */
-    protected $totpEmailRepository;
+    protected TOTPEmailRepository $totpEmailRepository;
 
     public function __construct(TOTPEmailRepository $totpEmailRepository, TOTPService $totp)
     {
@@ -25,7 +25,7 @@ class TOTPEmailService
     }
 
     /**
-     * Generate a 6-digit time-based OTP for email and save it using the repository.
+     * Generate a {ENV:TOTP_DIGITS}-digit time-based {ENV:TOTP_PERIOD} OTP for email and save it using the repository.
      *
      * @param int $userId
      * @return string The generated OTP.

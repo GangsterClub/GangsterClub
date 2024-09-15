@@ -9,10 +9,10 @@ use src\Data\Connection;
 class TOTPEmailRepository
 {
     /**
-     * Summary of db
+     * Summary of dbh
      * @var Connection
      */
-    private Connection $db;
+    private Connection $dbh;
 
     /**
      * Summary of __construct
@@ -20,7 +20,7 @@ class TOTPEmailRepository
      */
     public function __construct(\app\Container\Application $application)
     {
-        $this->db = $application->get('db');
+        $this->dbh = $application->get('dbh');
     }
 
     /**
@@ -39,7 +39,7 @@ class TOTPEmailRepository
             'expires_at' => $expiresAt,
         ];
 
-        $this->db->table('totp_email')->insert($otpRecord);
+        $this->dbh->table('totp_email')->insert($otpRecord);
     }
 
     /**
@@ -51,7 +51,7 @@ class TOTPEmailRepository
      */
     public function findValidOTP(int $userId, string $otp): ?object
     {
-        return $this->db->table('totp_email')
+        return $this->dbh->table('totp_email')
             ->where('user_id', $userId)
             ->where('totp', $otp)
             ->where('expires_at', '>=', microtime(true))
@@ -66,7 +66,7 @@ class TOTPEmailRepository
      */
     public function deleteOTP(int $otpId): void
     {
-        $this->db->table('totp_email')
+        $this->dbh->table('totp_email')
             ->where('id', $otpId)
             ->delete();
     }
