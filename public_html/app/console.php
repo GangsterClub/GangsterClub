@@ -16,8 +16,7 @@ if ((bool) isset($argv[1]) === false || in_array($argv[1], $allowedArgs) === fal
     print_r("Invalid command. Use '-m = --migrate' or '-r = --rollback'." . PHP_EOL);
 }
 
-if((bool) isset($argv[1]) === true)
-{
+if ((bool) isset($argv[1]) === true) {
     $mArgs = ['-m', $allowedArgs[0]];
     if (in_array($argv[1], $mArgs) === true) {
         $migrationManager->migrate();
