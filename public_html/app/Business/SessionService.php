@@ -34,8 +34,8 @@ class SessionService extends \SessionHandler
     public function __construct(Request $request)
     {
         $this->request = $request;
-        $production = (bool) (defined('ENVIRONMENT') === true && strtolower(ENVIRONMENT) === 'production');
-        $development = (bool) (defined('DEVELOPMENT') === true && DEVELOPMENT === true);
+        $production = (bool) strtolower(ENVIRONMENT) === 'production';
+        $development = (bool) DEVELOPMENT === true;
         $ipFilters = ($production === true && $development === false) ?
             (FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === true :
             (FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6) === true;
