@@ -32,7 +32,7 @@ class TOTPService
      */
     public function generateTOTP(string $secret = null, int $digits = MFA_TOTP_DIGITS, int $period = MFA_TOTP_PERIOD): string
     {
-        $totp = TOTP::createFromSecret($secret ?? TOTP::generateSecret(), $period);
+        $totp = TOTP::create($secret ?? TOTP::generateSecret(), $period);
         $totp->setDigits($digits);
         return $totp->now();
     }
