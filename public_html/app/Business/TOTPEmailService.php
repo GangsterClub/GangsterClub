@@ -88,7 +88,6 @@ class TOTPEmailService
     {
         $session = $this->sessionService;
         $session->remove('UNAUTHENTICATED_UID');
-        $session->remove('TOTP_SECRET');
         $session->set('UID', $userId);
         $session->regenerate();
     }
