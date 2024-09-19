@@ -1,0 +1,52 @@
+{% extends "tmpl/base.twig" %}
+
+{% block md %}
+    <title>Login - GangsterClub.com</title>
+{% endblock %}
+
+{% block css %}
+    <link rel="stylesheet" href="css/languageDropdown.css" />
+    <link rel="stylesheet" href="css/login.css" />
+{% endblock %}
+
+{% block content %}
+    <div class="language-dropdown" tab-index="0">
+      <button id="language-dropdown-btn"></button>
+      <ul class="language-dropdown-content" id="language-dropdown-content"></ul>
+    </div>
+    {% if (uUID or UID) %}
+        <a class="logout" href="{{ docRoot }}logout">Logout</a>
+    {% endif %}
+    <div class="logo"></div>
+    <div class="login">
+        {% for error in login.errors %}
+            <div class="error">{{ error }}</div>
+        {% endfor %}
+        {% for success in login.success %}
+            <div class="success">{{ success }}</div>
+        {% endfor %}
+        <form method="POST">
+            {% if (uUID or UID) %}
+                <div class="form-field">
+                    <label for="totp">{{ __('verification-code') }}</label>
+                    <input type="text" id="totp" name="totp" value="{{ totp }}">
+                </div>
+                <input type="submit" name="submit_totp" value="{{ __('verify') }}" />
+            {% else %}
+                <div class="form-field">
+                    <label for="email">{{ __('email-address') }}</label>
+                    <input type="email" id="email" name="email" value="{{ email }}">
+                </div>
+                <input type="submit" name="submit_login" value="{{ __('login') }}" />
+            {% endif %}
+        </form>
+    </div>
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript" src="js/languageDropdown.js"></script>
+    <script type="text/javascript">
+      // Locales hard coded in languageDropdown, identical in keys to value pairs to make things work..
+      setSelectedLocale(locales[{{ localeKey }}]);
+    </script>
+{% endblock %}

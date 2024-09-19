@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace app\Business;
 
 use src\Data\Repository\TOTPEmailRepository;
+use src\Entity\TOTPEmail;
 
 class TOTPEmailService
 {
@@ -18,54 +19,77 @@ class TOTPEmailService
      */
     protected TOTPEmailRepository $totpEmailRepository;
 
-    public function __construct(TOTPEmailRepository $totpEmailRepository, TOTPService $totp)
+    /**
+     * Summary of sessionService
+     * @var SessionService
+     */
+    protected SessionService $sessionService;
+
+    /**
+     * Summary of __construct
+     * @param \app\Container\Application $application
+     */
+    public function __construct(\app\Container\Application $application)
     {
-        $this->totp = $totp;
-        $this->totpEmailRepository = $totpEmailRepository;
+        $this->totp = new TOTPService();
+        $this->totpEmailRepository = new TOTPEmailRepository($application->get('dbh'));
+        $this->sessionService = $application->get('sessionService');
     }
 
     /**
-     * Generate a {ENV:TOTP_DIGITS}-digit time-based {ENV:TOTP_PERIOD} OTP for email and save it using the repository.
+     * Generate a {ENV:TOTP_DIGITS}-digit time-based {ENV:TOTP_PERIOD} TOTP for email and save it using the repository.
      *
      * @param int $userId
-     * @return string The generated OTP.
+     * @return string The generated TOTP of {ENV:TOTP_DIGITS}-digits.
      */
-    public function generateEmailOTP(int $userId): string
+    public function generateEmailTOTP(int $userId): string
     {
-        $otp = $this->totp->generateSecret(TOTP_DIGITS, TOTP_PERIOD);
-        $this->totpEmailRepository->storeOTP($userId, $otp, (microtime(true) + TOTP_PERIOD));
-        return $otp;
+        $secret = $this->totp->generateSecret(TOTP_DIGITS, TOTP_PERIOD);
+        $this->sessionService->set('TOTP_SECRET', $secret);
+        $this->totpEmailRepository->storeTOTP(
+            $userId,
+            $secret,
+            date('Y-m-d H:i:s', (time() + TOTP_PERIOD))
+        );
+        return $this->totp->generateTOTP($secret, TOTP_DIGITS, TOTP_PERIOD);
     }
 
     /**
-     * Verify the provided OTP for a user and delete it upon successful authentication.
+     * Verify the provided TOTP for a user and delete it upon successful authentication.
      *
      * @param int $userId
-     * @param string $otp
-     * @return bool True if the OTP is valid, false otherwise.
+     * @param string $totp
+     * @return bool True if the TOTP is valid, false otherwise.
      */
-    public function verifyEmailOTP(int $userId, string $otp): bool
+    public function verifyEmailTOTP(int $userId, string $totp): bool
     {
-        $otpRecord = $this->totpEmailRepository->findValidOTP($userId, $otp);
-        if ((bool) $otpRecord === false) {
+        $secret = $this->sessionService->get('TOTP_SECRET');
+        $totpRecord = $this->totpEmailRepository->findValidTOTP($userId, $secret);
+        if ((bool) $totpRecord === false || strtotime($totpRecord->expires_at) <  time()) {
             return false;
         }
 
-        // $this->authenticateUser($userId);
-        $this->totpEmailRepository->deleteOTP($otpRecord->id);
-        return true;
+        $isValid = $this->totp->verifyTOTP($totpRecord->totp_secret, $totp, TOTP_DIGITS, TOTP_PERIOD);
+        if ((bool) $isValid === true) {
+            $this->totpEmailRepository->deleteTOTP($totpRecord->id);
+        }
+
+        $this->authenticateUser($userId);
+        return $isValid;
     }
 
     /**
-     * Placeholder for user authentication after successful OTP validation.
+     * Placeholder for user authentication after successful TOTP validation.
      *
      * @param int $userId
      * @return void
      */
-    /*
-    protected function authenticateUser(int $userId): void
+    private function authenticateUser(int $userId): void
     {
-        // Logic for authenticating the user (e.g., setting session, token generation, etc.)
+        $session = $this->sessionService;
+        $session->remove('UNAUTHENTICATED_UID');
+        $session->remove('TOTP_SECRET');
+        $session->set('UID', $userId);
+        $session->regenerate();
     }
-    */
 }

@@ -9,6 +9,11 @@ body {
   box-sizing: border-box;
   margin: 0;
 }
+.language-dropdown {
+  display: inline-block;
+  width: auto;
+  height: auto;
+}
 .language-dropdown button {
   background-color: #253849;
   min-width: 130px;

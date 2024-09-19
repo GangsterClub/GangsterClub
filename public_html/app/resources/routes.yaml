@@ -18,3 +18,13 @@ setLocale:
     path: /set/locale/{locale}
     controller: SetLocale
     methods: ['GET', 'HEAD']
+
+login:
+    path: /login
+    controller: Login
+    methods: ['GET', 'HEAD', 'POST']
+
+logout:
+    path: /logout
+    controller: Logout
+    methods: ['GET', 'HEAD']

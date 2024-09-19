@@ -10,6 +10,7 @@ $migrationManager = new MigrationManager();
 
 // Add migrations here
 $migrationManager->addMigration(new \app\Migration\CreateTOTPEmail($dbh));
+$migrationManager->addMigration(new \app\Migration\CreateUser($dbh));
 
 $allowedArgs = ['--migrate', '--rollback', '-m', '-r'];
 if ((bool) isset($argv[1]) === false || in_array($argv[1], $allowedArgs) === false) {

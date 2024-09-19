@@ -52,7 +52,7 @@ class Application extends Container
      */
     private function configure(string $dir): void
     {
-        loadEnv($dir.'/.env');
+        loadEnv($dir . '/.env');
         $https = filter_input(INPUT_SERVER, 'HTTPS', 515);
         define('DOC_ROOT', $this->directory = $dir);
         define('APP_BASE', $this->getBase());
@@ -98,6 +98,19 @@ class Application extends Container
     private function getDocumentRoot(): string
     {
         return str_replace(filter_input(INPUT_SERVER, 'SCRIPT_NAME', FILTER_SANITIZE_URL), '', filter_input(INPUT_SERVER, 'SCRIPT_FILENAME', FILTER_SANITIZE_URL));
+    }
+
+    /**
+     * Summary of header
+     * @param string $location
+     * @param bool $replace
+     * @param int $response_code
+     * @return never
+     */
+    public function header(string $location, bool $replace = true, int $response_code = 301): never
+    {
+        header('Location: ' . APP_BASE . $location, $replace, $response_code);
+        $this->exit(0);
     }
 
     /**

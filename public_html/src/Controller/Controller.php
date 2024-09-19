@@ -87,6 +87,7 @@ class Controller
 
     /**
      * Summary of redirectPrevRoute
+     * @param \app\Http\Request $request
      * @return void
      */
     protected function redirectPrevRoute(Request $request): void

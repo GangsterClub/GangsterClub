@@ -1,0 +1,7 @@
+email-address: "Adresse email"
+login: "Se connecter"
+verification-code: "Le code de vérification"
+verify: "Vérifier"
+error-email: "Échec de l'envoi de l'e-mail OTP. Contactez un administrateur si ce problème persiste."
+error-invalid-otp: "L'OTP n'est pas valide ou a expiré."
+success-authenticated: "L'OTP est valide, l'utilisateur est authentifié."

@@ -54,7 +54,7 @@ class YamlCacheService
             $cachedRoutes = file_get_contents($cachedYaml);
             $arr = @json_decode($cachedRoutes, true);
             if ($arr !== false && $cachedRoutes !== false) {
-                $maxAge = defined('APP_MAX_AGE') === true ? (int) APP_MAX_AGE : static::$maxAge;
+                $maxAge = (int) (APP_MAX_AGE ?: static::$maxAge);
                 if ((time() - filemtime($cachedYaml)) > $maxAge) {
                     @unlink($cachedYaml);
                 }

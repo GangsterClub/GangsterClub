@@ -11,23 +11,19 @@ class Connection
      * @var \PDO|null
      */
     private \PDO|null $connection = null;
-    // private static $instanceCount = 0; // Testing purposes
+    //private static $instanceCount = 0; // Testing purposes
 
-    /**
-     * Summary of __construct
-     */
     public function __construct()
     {
-        // self::$instanceCount++;
-        // error_log("Connecting, instance count: " . self::$instanceCount);
+        //self::$instanceCount++;
+        //error_log("Connecting, instance count: " . self::$instanceCount);
         try {
-            $dsn = DB_CONN_STRING . ";charset=utf8mb4";
             $options = [
                 \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_OBJ,
                 \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
             ];
 
-            $this->connection = new \PDO($dsn, DB_USER, DB_PASS, $options);
+            $this->connection = new \PDO(DB_CONN_STRING, DB_USER, DB_PASS, $options);
         } catch (\PDOException $exc) {
             $error = "Unable to establish a database connection.";
             if (strtolower(string: ENVIRONMENT) !== "production" && DEVELOPMENT === true) {
@@ -41,8 +37,8 @@ class Connection
 
     public function __destruct()
     {
-        // self::$instanceCount--;
-        // error_log("Disconnected, instance count: " . self::$instanceCount);
+        //self::$instanceCount--;
+        //error_log("Disconnected, instance count: " . self::$instanceCount);
         $this->connection = null;
     }
 

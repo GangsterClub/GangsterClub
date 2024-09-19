@@ -69,6 +69,8 @@ function loadEnv(string $envFilePath): void
             $value = false;
         } else if ($lowerValue === 'null') {
             $value = null;
+        } else if ((bool) is_numeric($lowerValue) === true) {
+            $value = (int) $lowerValue;
         }
 
         putenv("{$key}={$value}");

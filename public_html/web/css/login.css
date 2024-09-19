@@ -1,0 +1,103 @@
+html, body {
+    margin: 0;
+    font-family:"Calibri", sans-serif;
+}
+
+body {
+    background-image: url('../images/background.webp');
+    background-repeat: no-repeat;
+    background-position: center;
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    -o-background-size: cover;
+    background-size: cover;
+    padding:20px;
+}
+
+.logo
+{
+    background-image: url(../images/logo.webp);
+    background-repeat: no-repeat;
+    background-position: center;
+    -webkit-background-size: contain;
+    -moz-background-size: contain;
+    -o-background-size: contain;
+    background-size: contain;
+    max-width: 100%;
+    width: 25rem;
+    height: 25rem;
+    z-index: -1;
+    display: inherit;
+    margin: 0 auto;
+}
+
+.login
+{
+    background: rgba(0, 0, 0, 0.92);
+    max-width: 100%;
+    width: auto;
+    height: auto;
+    position: relative;
+    top: -5rem;
+    z-index: 0;
+    display: table;
+    margin: 0 auto;
+    padding: 0;
+    border: 1px solid #eee;
+}
+
+input[type=email] {
+    min-width: 20rem;
+}
+
+.form-field {
+    display: inline;
+    margin: 0 0 1rem 0;
+    &:focus-within {
+        label {
+        color: white;
+        }
+    }
+}
+
+label {
+    display: block;
+    padding: .5rem 1.5rem .5rem;
+    text-align: left;
+    color: darkgrey;
+}
+
+input {
+    max-width: 100%;
+    background: none;
+    color: white;
+    border: 2px solid darkgrey;
+    padding: 1.5rem;
+    box-sizing: border-box;
+    &:focus {
+        border-color: white;
+        outline: 0;
+    }
+}
+
+.error {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: orangered;
+    color:darkred
+}
+
+.success {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: limegreen;
+    color: darkgreen
+}
+
+.logout {
+    position: absolute;
+    margin-left: .6rem;
+    background: oldlace;
+}

@@ -13,10 +13,10 @@ class CreateTOTPEmail extends Migration
         $sql = "CREATE TABLE IF NOT EXISTS `totp_email` (
             `id` INT AUTO_INCREMENT PRIMARY KEY,
             `user_id` INT(8) NOT NULL,
-            `totp` INT(12) NOT NULL,
-            `expires_at` DECIMAL(14, 4) NOT NULL,
+            `totp_secret` VARCHAR(255) NOT NULL,
+            `expires_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE KEY `by_user_id_by_totp` (`user_id`, `totp`)
+            UNIQUE KEY `by_user_id_by_totp` (`user_id`, `totp_secret`)
         )";
         $this->execute($sql);
         $this->log("TOTPEmail created successfully.");

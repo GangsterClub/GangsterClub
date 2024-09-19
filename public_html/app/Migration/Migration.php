@@ -12,6 +12,10 @@ class Migration implements MigrationInterface
      */
     protected $dbh;
 
+    /**
+     * Summary of __construct
+     * @param \src\Data\Connection $dbh
+     */
     public function __construct(\src\Data\Connection $dbh)
     {
         $this->dbh = $dbh;
@@ -44,6 +48,7 @@ class Migration implements MigrationInterface
     {
         print_r($message . PHP_EOL);
     }
+
     /**
      * Summary of execute
      * @param string $sql

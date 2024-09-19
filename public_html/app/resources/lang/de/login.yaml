@@ -1,0 +1,7 @@
+email-address: "E-Mail-Adresse"
+login: "Login"
+verification-code: "Bestätigungscode"
+verify: "Verifizieren"
+error-email: "Das Senden der OTP-E-Mail ist fehlgeschlagen. Wenden Sie sich an einen Administrator, wenn das Problem weiterhin besteht."
+error-invalid-otp: "OTP ist ungültig oder abgelaufen."
+success-authenticated: "OTP ist gültig, Benutzer authentifiziert."
