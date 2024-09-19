@@ -26,6 +26,7 @@ class Login extends Controller
         $email = $session->get('login.email');
         $uUID = $session->get('UNAUTHENTICATED_UID');
         $totp = $session->get('login.totp');
+        $uid = $session->get('UID');
 
         return $this->twig->render(
             'login.twig',
@@ -35,6 +36,7 @@ class Login extends Controller
                     'email' => $email,
                     'uUID' => $uUID,
                     'totp' => $totp,
+                    'UID' => $uid
                 ]
             )
         );
@@ -69,9 +71,10 @@ class Login extends Controller
 
             if ($emailSent) {
                 $this->redirectPrevRoute($request);
-            } else {
-                $this->twigVariables['login']['errors'][] = __('error-email');
+                return;
             }
+
+            $this->twigVariables['login']['errors'][] = __('error-email');
         }
     }
 
