@@ -48,7 +48,7 @@ class Login extends Controller
      * @param \app\Business\SessionService $session
      * @return void
      */
-    private function login(Request $request, SessionService $session)
+    private function login(Request $request, SessionService $session): void
     {
         $submit = $request->post('submit_login');
         $email = $request->post('email');

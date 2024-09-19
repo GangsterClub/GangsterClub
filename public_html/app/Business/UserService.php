@@ -43,11 +43,11 @@ class UserService
     /**
      * Summary of createUserByEmail
      * @param string $email
-     * @param mixed $ipAddress
-     * @param mixed $user
+     * @param string $ipAddress
+     * @param \src\Entity\User|null $user
      * @return \src\Entity\User|null
      */
-    public function createUserByEmail(string $email, $ipAddress, $user = null): User|null
+    public function createUserByEmail(string $email, string $ipAddress, User|null $user = null): User|null
     {
         $data = $this->userRepository->findByEmail($email);
         if ($data === false) {
