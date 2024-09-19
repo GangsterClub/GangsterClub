@@ -23,7 +23,7 @@ class User
         \DateTimeInterface $updatedAt,
         \DateTimeInterface $deletedAt
     ) {
-        $this->id = (int)$id;
+        $this->id = (int) $id;
         $this->username = $username;
         $this->email = $email;
         $this->ipAddress = $ipAddress;

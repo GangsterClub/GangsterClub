@@ -57,7 +57,7 @@ class UserService
         if ($created === true) {
             $data = $this->userRepository->findByEmail($email);
         }
-    
+
         if (is_object($data)) {
             $user = $this->entity($data);
         }

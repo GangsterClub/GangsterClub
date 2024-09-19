@@ -35,7 +35,7 @@ class EmailService
             $this->mailer->Password = MAIL_PASS;
             $this->mailer->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mailPort = 587;
-            if((bool) is_numeric(MAIL_PORT) === true) {
+            if ((bool) is_numeric(MAIL_PORT) === true) {
                 $mailPort = (int) MAIL_PORT;
             }
 
@@ -58,7 +58,7 @@ class EmailService
             $this->mailer->clearAddresses();
             $this->mailer->addAddress($toEmail);
             $this->mailer->Subject = "Your OTP Code is: $totp";
-            $this->mailer->Body    = "Your GangsterClub.com OTP code is: $totp. Please do not share this code nor your email address
+            $this->mailer->Body = "Your GangsterClub.com OTP code is: $totp. Please do not share this code nor your email address
                 with anyone. If you did not request a login code you can ignore this email. Or if you experience spam you can have us
                 blacklist your email address by writing us at
                 <a href='mailto:info@gangsterclub.com?subject=Blacklist my email'>info@gangsterclub.com</a>.";

@@ -75,7 +75,7 @@ class Login extends Controller
             }
 
             $this->twigVariables['login']['errors'][] = __('error-email');
-        }
+        } //end if
     }
 
     /**
@@ -107,6 +107,6 @@ class Login extends Controller
             }
 
             $this->twigVariables['login']['errors'][] = __('error-invalid-otp');
-        }
+        } //end if
     }
 }

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace app\Business;
 
 use src\Data\Repository\TOTPEmailRepository;
-use src\Entity\TOTPEmail;
 
 class TOTPEmailService
 {
@@ -65,7 +64,7 @@ class TOTPEmailService
     {
         $secret = $this->sessionService->get('TOTP_SECRET');
         $totpRecord = $this->totpEmailRepository->findValidTOTP($userId, $secret);
-        if ((bool) $totpRecord === false || strtotime($totpRecord->expires_at) <  time()) {
+        if ((bool) $totpRecord === false || strtotime($totpRecord->expires_at) < time()) {
             return false;
         }
 

@@ -77,5 +77,5 @@ function loadEnv(string $envFilePath): void
         $_ENV[$key] = $value;
         define($key, $value);
         //$_SERVER[$key] = $value; // Optionally set in $_SERVER superglobal.
-    }
+    } //end foreach
 }

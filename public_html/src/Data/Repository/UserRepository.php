@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace src\Data\Repository;
 
 use src\Data\Connection;
-use src\Entity\User;
 
 class UserRepository
 {
