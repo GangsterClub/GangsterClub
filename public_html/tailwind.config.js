@@ -2,7 +2,7 @@
 module.exports = {
   content: [
     './src/View/*.{html,twig,js}',
-	'./src/View/tmpl/*.{html,twig,js}',
+    './src/View/tmpl/*.{html,twig,js}',
     './web/js/*.{html,js}',
   ],
   theme: {
@@ -24,7 +24,7 @@ module.exports = {
       borderRadius: {
         '4xl': '2rem',
       },
-	  backgroundImage: {
+      backgroundImage: {
         'background': "url('../images/background.webp')",
         'logo': "url('../images/logo.webp')",
       }
