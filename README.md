@@ -17,8 +17,8 @@ Execute composer install from public_html
 - phpmailer/phpmailer ^6.8.1
 - spomky-labs/otphp ^11.3.0
 
-## Tailwind dependency
+## Tailwindcss
 
-Execute the following command from public_html
+Execute the following command from public_html, requires [tailwindcss installation](https://tailwindcss.com/docs/installation)
 
 - tailwindcss -i web/css/tailwind.css -o web/cache/tailwind.css --minify
