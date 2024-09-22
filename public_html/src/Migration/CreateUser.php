@@ -1,8 +1,8 @@
 <?php
 
-namespace app\Migration;
+namespace src\Migration;
 
-class CreateUser extends Migration
+class CreateUser extends \app\Middleware\Migration
 {
     /**
      * Summary of up

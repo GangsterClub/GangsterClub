@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace app\Migration;
+namespace app\Middleware;
 
-class MigrationManager
+class MigrationPipeline
 {
     /**
      * Summary of migrations
@@ -14,7 +14,7 @@ class MigrationManager
 
     /**
      * Summary of addMigration
-     * @param \app\Migration\Migration $migration
+     * @param \app\Middleware\Migration $migration
      * @return void
      */
     public function addMigration(Migration $migration)

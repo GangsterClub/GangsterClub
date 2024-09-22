@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace app\Business;
+namespace src\Business;
 
 use src\Data\Repository\TOTPEmailRepository;
+use app\Service\SessionService;
 
 class TOTPEmailService
 {

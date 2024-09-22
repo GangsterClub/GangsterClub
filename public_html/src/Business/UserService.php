@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace app\Business;
+namespace src\Business;
 
 use src\Data\Repository\UserRepository;
 use src\Entity\User;
@@ -67,10 +67,10 @@ class UserService
 
     /**
      * Summary of entity
-     * @param mixed $object
+     * @param \stdClass $object
      * @return \src\Entity\User
      */
-    private function entity($object): User
+    private function entity(\stdClass $object): User
     {
         return new User(
             $object->id,

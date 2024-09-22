@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace app\Business;
+namespace app\Service;
 
 use Symfony\Component\Yaml\Yaml;
-use app\Business\YamlCacheService as TranslationsCache;
+use app\Service\YamlCacheService as TranslationsCache;
 
 class TranslationService
 {
@@ -90,7 +90,7 @@ class TranslationService
             return;
         }
 
-        $filePath = __DIR__ . "/../resources/lang/{$locale}/{$file}.yaml";
+        $filePath = realpath(DOC_ROOT . "/src/resources/lang/{$locale}/{$file}.yaml");
         $cachedFilePath = TranslationsCache::getPath($filePath);
         $cachedTranslations = TranslationsCache::loadCache($cachedFilePath);
         if (empty($cachedTranslations) === false && is_array($cachedTranslations) === true) {
@@ -109,7 +109,7 @@ class TranslationService
     }
 
     /**
-     * Summary of parseTranslationFile
+     * Summary of parseTranslationFile make this its own class or YamlCacheService class function, if more parsing is required
      * @param string $filePath
      * @param array $parsed
      * @return array

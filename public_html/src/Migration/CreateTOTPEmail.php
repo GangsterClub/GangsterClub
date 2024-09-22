@@ -1,8 +1,8 @@
 <?php
 
-namespace app\Migration;
+namespace src\Migration;
 
-class CreateTOTPEmail extends Migration
+class CreateTOTPEmail extends \app\Middleware\Migration
 {
     /**
      * Summary of up

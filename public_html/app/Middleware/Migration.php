@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace app\Migration;
+namespace app\Middleware;
 
 class Migration implements MigrationInterface
 {

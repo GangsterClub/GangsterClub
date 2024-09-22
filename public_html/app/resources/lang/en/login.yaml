@@ -1,7 +1,0 @@
-email-address: "Email Address"
-login: "Login"
-verification-code: "Verification Code"
-verify: "Verify"
-error-email: "Failed to sent OTP email. Contact an Administrator if this issue persists."
-error-invalid-otp: OTP is invalid or expired."
-success-authenticated: "OTP is valid, user authenticated."

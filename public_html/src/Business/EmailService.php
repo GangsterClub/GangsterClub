@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace app\Business;
+namespace src\Business;
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;

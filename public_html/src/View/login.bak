@@ -1,0 +1,124 @@
+{% extends "tmpl/base.twig" %}
+
+{% block md %}
+    <title>Login - GangsterClub.com</title>
+{% endblock %}
+
+{% block css %}
+    <link rel="stylesheet" href="cache/tailwind.css" />
+    <link rel="stylesheet" href="css/languageDropdown.css" />
+    <link rel="stylesheet" href="css/login.css" />
+{% endblock %}
+
+{% block content %}
+    <div class="dropdown inline-block absolute">
+        <button class="bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded inline-flex items-center">
+        <span class="mr-1">Dropdown</span>
+        <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/> </svg>
+        </button>
+        <ul class="dropdown-menu absolute hidden text-gray-700 pt-1">
+        <li class=""><a class="rounded-t bg-gray-200 hover:bg-gray-400 py-2 px-4 block whitespace-no-wrap" href="#">One</a></li>
+        <li class=""><a class="bg-gray-200 hover:bg-gray-400 py-2 px-4 block whitespace-no-wrap" href="#">Two</a></li>
+        <li class=""><a class="rounded-b bg-gray-200 hover:bg-gray-400 py-2 px-4 block whitespace-no-wrap" href="#">Three is the magic number</a></li>
+        </ul>
+    </div>
+    <div class="language-dropdown" tab-index="0">
+        <button id="language-dropdown-btn"></button>
+        <ul class="language-dropdown-content" id="language-dropdown-content"></ul>
+    </div>
+    {% if (uUID or UID) %}
+        <a class="logout" href="{{ docRoot }}logout">Logout</a>
+    {% endif %}
+    <section class="flex flex-col md:flex-row h-screen">
+        <div class="bg-transparent flex w-full h-full md:w-1/2 xl:w-3/4 items-center justify-center">
+            <div class="bg-logo bg-no-repeat bg-cover w-96 h-96 m-auto"></div>
+        </div>
+        <div class="bg-white w-full md:max-w-md lg:max-w-full md:mx-auto md:w-1/2 xl:w-1/4 h-screen px-6 lg:px-16 xl:px-12
+                flex items-center justify-center">
+
+            <div class="w-full h-100">
+                {% if not uUID and not UID %}
+                    <h1 class="sr-only {# text-xl md:text-2xl font-bold leading-tight mt-12 #}">Log in to your account</h1>
+                {% endif %}
+                <form class="mt-6" method="POST">
+                    {% for error in login.errors %}
+                        <div class="error">{{ error }}</div>
+                    {% endfor %}
+                    {% for success in login.success %}
+                        <div class="success">{{ success }}</div>
+                    {% endfor %}
+                    {% if (uUID or UID) %}
+                        {% set label = __('verification-code') %}
+                        {% set name = 'totp' %}
+                        {% set value = totp %}
+                        {% set type = 'text' %}
+                        {% set invalidTxt = __('provide-valid-totp') %}
+                        {% set submitName = 'submit_totp' %}
+                        {% set submit = __('verify') %}
+                    {% else %}
+                        {% set label = __('email-address') %}
+                        {% set name = 'email' %}
+                        {% set value = email %}
+                        {% set type = 'email' %}
+                        {% set invalidTxt = __('provide-valid-email-address') %}
+                        {% set submitName = 'submit_login' %}
+                        {% set submit = __('sign-in') %}
+                    {% endif %}
+                    <div>
+                        <label class="block text-gray-700">{{ __('verification-code') }}</label>
+                        <input type="{{ type }}" name="{{ name }}" id="totp" placeholder="{{ label }}"
+                            class="peer w-full px-4 py-3 bg-gray-200 mt-2 border focus:border-black focus:bg-white focus:outline-none"
+                            value="{{ value }}" autofocus autocomplete required />
+                        <p class="mt-2 invisible peer-placeholder-shown:!invisible peer-invalid:visible text-pink-600 text-sm">
+                            {{ invalidTxt }}
+                        </p>
+                    </div>
+                    <input type="submit" name="{{ submitName }}" class="w-full block bg-black hover:bg-black focus:bg-black
+                        text-white font-semibold px-4 py-3 mt-6" value="{{ submit }}" />
+                </form>
+                {% if not uUID and not UID %}
+                    <hr class="my-6 border-gray-300 w-full">
+                    <p class="mt-8">{{ __('need-an-account') }} <a href="#" class="text-gray-500 hover:text-gray-700 font-semibold">{{ __('create-an-account') }}</a>.</p>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+{#
+    {% if (uUID or UID) %}
+        <a class="logout" href="{{ docRoot }}logout">Logout</a>
+    {% endif %}
+    <div class="logo"></div>
+    <div class="login">
+        {% for error in login.errors %}
+            <div class="error">{{ error }}</div>
+        {% endfor %}
+        {% for success in login.success %}
+            <div class="success">{{ success }}</div>
+        {% endfor %}
+        <form method="POST">
+            {% if (uUID or UID) %}
+                <div class="form-field">
+                    <label for="totp">{{ __('verification-code') }}</label>
+                    <input type="text" id="totp" name="totp" value="{{ totp }}">
+                </div>
+                <input type="submit" name="submit_totp" value="{{ __('verify') }}" />
+            {% else %}
+                <div class="form-field">
+                    <label for="email">{{ __('email-address') }}</label>
+                    <input type="email" id="email" name="email" value="{{ email }}">
+                </div>
+                <input type="submit" name="submit_login" value="{{ __('login') }}" />
+            {% endif %}
+        </form>
+    </div>
+#}
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript" src="js/languageDropdown.js"></script>
+    <script type="text/javascript">
+      // Locales hard coded in languageDropdown, identical in keys to value pairs to make things work..
+      setSelectedLocale(locales[{{ localeKey }}]);
+    </script>
+{% endblock %}

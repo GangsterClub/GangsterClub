@@ -1,6 +1,8 @@
 <?PHP
 
-namespace app\Migration;
+declare(strict_types=1);
+
+namespace app\Middleware;
 
 interface MigrationInterface
 {
