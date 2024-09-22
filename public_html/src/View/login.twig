@@ -45,7 +45,7 @@
                         {% set submit = __('sign-in') %}
                     {% endif %}
                     <div>
-                        <label class="block text-gray-700">{{ __('verification-code') }}</label>
+                        <label class="block text-gray-700">{{ label }}</label>
                         <input type="{{ type }}" name="{{ name }}" id="totp" placeholder="{{ label }}"
                             class="peer w-full px-4 py-3 bg-gray-200 mt-2 border focus:border-black focus:bg-white focus:outline-none"
                             value="{{ value }}" autofocus autocomplete required />
