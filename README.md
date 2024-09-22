@@ -10,12 +10,20 @@ This is a boilerplate custom MVC framework in progress written in PHP.
 
 ## Composer dependencies
 
-Execute composer install from public_html
+Execute command "composer install" from public_html, requires [composer installation](https://getcomposer.org/download/)
 
 - twig/twig ^3.7.1
 - voku/anti-xss ^4.1.42
 - phpmailer/phpmailer ^6.8.1
 - spomky-labs/otphp ^11.3.0
+
+Optional depencency as defined by suggest:
+
+- "symfony/yaml": "PHP's yaml_parse_file() fallback package"
+
+Install fallback package is PHP's yaml extension is unavailable to you with command:
+
+- composer require symfony/yaml
 
 ## Tailwindcss
 
