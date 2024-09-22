@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace src\Controller;
 
 use app\Http\Request;
-use app\Business\SessionService;
-use app\Business\UserService;
-use app\Business\TOTPEmailService;
-use app\Business\EmailService;
+use app\Service\SessionService;
+use src\Business\UserService;
+use src\Business\TOTPEmailService;
+use src\Business\EmailService;
 
 class Login extends Controller
 {
@@ -45,7 +45,7 @@ class Login extends Controller
     /**
      * Summary of login
      * @param \app\Http\Request $request
-     * @param \app\Business\SessionService $session
+     * @param \app\Service\SessionService $session
      * @return void
      */
     private function login(Request $request, SessionService $session): void
@@ -81,7 +81,7 @@ class Login extends Controller
     /**
      * Summary of verify
      * @param \app\Http\Request $request
-     * @param \app\Business\SessionService $session
+     * @param \app\Service\SessionService $session
      * @return void
      */
     private function verify(Request $request, SessionService $session): void

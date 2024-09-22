@@ -5,14 +5,16 @@
 /vendor/*
 !vendor/.htaccess
 
+# Src caches
+/src/cache/*
+
 # Web assets
 /web/downloads/*
 /web/vendor/*
 /web/cache/*
-
+/web/images/*
 /web/composer.json_
 /web/composer.lock
-/web/images/*
 
 # Root files
 /.ftpquota

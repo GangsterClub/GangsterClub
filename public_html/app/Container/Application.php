@@ -28,7 +28,7 @@ class Application extends Container
     {
         $this->configure($dir);
         $this->registerServices();
-        $routes = $dir . '/app/resources/routes.yaml';
+        $routes = $dir . '/src/resources/routes.yaml';
         if (file_exists($routes) === true && (bool) ($router = $this->router) === true) {
             $router->load($routes);
         }
@@ -42,7 +42,7 @@ class Application extends Container
     {
         $this->addService('dbh', new \src\Data\Connection());
         $this->addService('router', $this->router = new Router());
-        $this->addService('translationService', new \app\Business\TranslationService());
+        $this->addService('translationService', new \app\Service\TranslationService());
     }
 
     /**

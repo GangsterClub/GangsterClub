@@ -43,14 +43,14 @@ class Session
      */
     public function handle(Request $request, callable $next): ?Response
     {
-        $session = new \app\Business\SessionService($request);
+        $session = new \app\Service\SessionService($request);
         $this->application->addService('sessionService', $session);
         ini_set('session.save_handler', 'files');
         session_set_save_handler($session, true);
         session_save_path($this->savePath);
 
         // session_start() alternative
-        $session->start('myApp');
+        $session->start(seoUrl(APP_NAME));
         $response = $next($request);
         $session->writeClose();
         return $response;

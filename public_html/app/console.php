@@ -3,14 +3,14 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use src\Data\Connection;
-use app\Migration\MigrationManager;
+use app\Middleware\MigrationPipeline;
 
 $dbh = new Connection();
-$migrationManager = new MigrationManager();
+$migrationManager = new MigrationPipeline();
 
 // Add migrations here
-$migrationManager->addMigration(new \app\Migration\CreateTOTPEmail($dbh));
-$migrationManager->addMigration(new \app\Migration\CreateUser($dbh));
+$migrationManager->addMigration(new \src\Migration\CreateTOTPEmail($dbh));
+$migrationManager->addMigration(new \src\Migration\CreateUser($dbh));
 
 $allowedArgs = ['--migrate', '--rollback', '-m', '-r'];
 if ((bool) isset($argv[1]) === false || in_array($argv[1], $allowedArgs) === false) {
@@ -18,13 +18,13 @@ if ((bool) isset($argv[1]) === false || in_array($argv[1], $allowedArgs) === fal
 }
 
 if ((bool) isset($argv[1]) === true) {
-    $mArgs = ['-m', $allowedArgs[0]];
+    $mArgs = [$allowedArgs[0], $allowedArgs[2]];
     if (in_array($argv[1], $mArgs) === true) {
         $migrationManager->migrate();
         print_r("Migrations applied successfully." . PHP_EOL);
     }
 
-    $rArgs = ['-r', $allowedArgs[1]];
+    $rArgs = [$allowedArgs[1], $allowedArgs[3]];
     if (in_array($argv[1], $rArgs) === true) {
         $migrationManager->rollback();
         print_r("Migrations rolled back successfully." . PHP_EOL);

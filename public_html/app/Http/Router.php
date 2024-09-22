@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace app\Http;
 
 use Symfony\Component\Yaml\Yaml;
-use app\Business\YamlCacheService as RoutesCache;
+use app\Service\YamlCacheService as RoutesCache;
 
 class Router
 {
@@ -41,7 +41,7 @@ class Router
     }
 
     /**
-     * Summary of parse
+     * Summary of parse make this its own class or YamlCacheService class function, if more parsing is required
      * @param string $yaml
      * @param array $parsed
      * @return array

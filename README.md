@@ -10,7 +10,15 @@ This is a boilerplate custom MVC framework in progress written in PHP.
 
 ## Composer dependencies
 
+Execute composer install from public_html
+
 - twig/twig ^3.7.1
 - voku/anti-xss ^4.1.42
 - phpmailer/phpmailer ^6.8.1
 - spomky-labs/otphp ^11.3.0
+
+## Tailwind dependency
+
+Execute the following command from public_html
+
+- tailwindcss -i web/css/tailwind.css -o web/cache/tailwind.css --minify
