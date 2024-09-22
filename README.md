@@ -21,7 +21,7 @@ Optional depencency as defined by suggest:
 
 - "symfony/yaml": "PHP's yaml_parse_file() fallback package"
 
-Install fallback package is PHP's yaml extension is unavailable to you with command:
+Install fallback package if PHP's yaml extension is unavailable to you with command:
 
 - composer require symfony/yaml
 
