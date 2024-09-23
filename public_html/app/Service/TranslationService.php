@@ -90,15 +90,16 @@ class TranslationService
             return;
         }
 
-        $filePath = realpath(DOC_ROOT . "/src/resources/lang/{$locale}/{$file}.yaml");
-        $cachedFilePath = TranslationsCache::getPath($filePath);
-        $cachedTranslations = TranslationsCache::loadCache($cachedFilePath);
-        if (empty($cachedTranslations) === false && is_array($cachedTranslations) === true) {
-            $this->translations[$locale][$file] = $cachedTranslations;
-            return;
-        }
-
+        $filePath = DOC_ROOT . "/src/resources/lang/{$locale}/{$file}.yaml";
         if (file_exists($filePath) === true) {
+            $filePath = realpath($filePath);
+            $cachedFilePath = TranslationsCache::getPath($filePath);
+            $cachedTranslations = TranslationsCache::loadCache($cachedFilePath);
+            if (empty($cachedTranslations) === false && is_array($cachedTranslations) === true) {
+                $this->translations[$locale][$file] = $cachedTranslations;
+                return;
+            }
+
             $parsedTranslations = $this->parseTranslationFile($filePath);
             $this->translations[$locale][$file] = $parsedTranslations;
             TranslationsCache::storeCache($cachedFilePath, $parsedTranslations);
