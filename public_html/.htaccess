@@ -2,5 +2,3 @@
    RewriteEngine On   
    RewriteRule ^(.*)$ web/$1 [L]
 </IfModule>
-
-SetEnvIfNoCase CF-Connecting-IP "(.*)" REMOTE_ADDR=$1
