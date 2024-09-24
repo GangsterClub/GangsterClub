@@ -22,7 +22,7 @@
         <div class="bg-transparent flex w-full h-full md:w-1/2 xl:w-3/4 items-center justify-center">
             <div class="bg-logo bg-no-repeat bg-cover w-96 h-96 m-auto"></div>
         </div>
-        <div class="bg-white w-full md:max-w-md lg:max-w-full md:mx-auto md:w-1/2 xl:w-1/4 h-screen px-6 lg:px-16 xl:px-12
+        <div class="bg-white dark:bg-slate-900 w-full md:max-w-md lg:max-w-full md:mx-auto md:w-1/2 xl:w-1/4 h-screen px-6 lg:px-16 xl:px-12
                 flex items-center justify-center">
 
             <div class="w-full h-100">
@@ -45,16 +45,18 @@
                         {% set submit = __('sign-in') %}
                     {% endif %}
                     <div>
-                        <label class="block text-gray-700">{{ label }}</label>
+                        <label class="block text-gray-700 dark:text-gray-200">{{ label }}</label>
                         <input type="{{ type }}" name="{{ name }}" id="totp" placeholder="{{ label }}"
-                            class="peer w-full px-4 py-3 bg-gray-200 mt-2 border focus:border-black focus:bg-white focus:outline-none"
-                            value="{{ value }}" autofocus autocomplete required />
+                            class="peer w-full px-4 py-3 bg-gray-200 dark:bg-slate-800 mt-2 border focus:border-black focus:bg-white dark:focus:border-gray-100
+                                dark:focus:bg-slate-900 focus:outline-none" value="{{ value }}" autofocus autocomplete required />
+
                         <p class="mt-2 invisible peer-placeholder-shown:!invisible peer-invalid:visible text-pink-600 text-sm">
                             {{ invalidTxt }}
                         </p>
                     </div>
-                    <input type="submit" name="{{ submitName }}" class="w-full block bg-black hover:bg-black focus:bg-black
-                        text-white font-semibold px-4 py-3 mt-6" value="{{ submit }}" />
+                    <input type="submit" name="{{ submitName }}" class="w-full block bg-black hover:bg-black focus:bg-black dark:bg-gray-200 dark:hover:bg-gray-200
+                        dark:focus:bg-gray-200 text-white dark:text-black font-semibold px-4 py-3 mt-6" value="{{ submit }}" />
+
                 </form>
                 {% if not uUID and not UID %}
                     {# Fixing this later as an extension of login:
