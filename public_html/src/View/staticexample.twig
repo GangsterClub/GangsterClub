@@ -8,20 +8,14 @@
 {% endblock %}
 
 {% block css %}
-    <link rel="stylesheet" href="css/languageDropdown.css" />
     <link rel="stylesheet" href="css/consoleText.css" />
 {% endblock %}
 
 {% block content %}
-    <div class="language-dropdown" tab-index="0">
-      <button id="language-dropdown-btn"></button>
-      <ul class="language-dropdown-content" id="language-dropdown-content"></ul>
-    </div>
     <div class='console-container'><span id='text'></span><div class='console-underscore' id='console'>&#95;</div></div>
 {% endblock %}
 
 {% block js %}
-    <script type="text/javascript" src="js/languageDropdown.js"></script>
     <script type="text/javascript" src="js/consoleText.js"></script>
     <script type="text/javascript">
       // function([string1, string2],target id,[color1,color2])
@@ -37,7 +31,5 @@
         'text',
         ['tomato','rebeccapurple','lightblue']
       );
-      // Locales hard coded in languageDropdown, identical in keys to value pairs to make things work..
-      setSelectedLocale(locales[{{ localeKey }}]);
     </script>
 {% endblock %}

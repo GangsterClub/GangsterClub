@@ -11,9 +11,29 @@
             <meta name="keywords" content="Hello, World" />
             <meta name="author" content="John Doe" />
         {% endblock %}
+        <link rel="stylesheet" href="cache/tailwind.css" />
         {% block css %}{% endblock %}
     </head>
     <body class="bg-background bg-no-repeat bg-cover bg-center backdrop-blur-[2px] dark:backdrop-brightness-75">
+        {% set lang = translation.getLocale %}
+        {% set langs = translation.getSupportedLanguages %}
+        <div class="dropdown inline-block absolute m-5">
+            <button class="bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 font-semibold py-2 px-4 rounded inline-flex items-center">
+                <span class="mr-1">
+                    <i class="inline-block {% if lang == 'de' %}bg-flag-de{% elseif lang == 'en' %}bg-flag-en{% elseif lang == 'fr' %}bg-flag-fr{% elseif lang == 'nl' %}bg-flag-nl{%endif%} bg-no-repeat bg-cover bg-center w-6 h-5 ml-auto -mt-1 mr-1 -mb-1"></i>&nbsp;{{ langs[lang]|raw }}
+                </span>
+                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+            </button>
+            <ul class="dropdown-menu relative hidden text-gray-200 dark:text-gray-700 pt-1">
+                {% for key, value in langs %}
+                    {% if key != lang %}
+                        <li class="">
+                            <a class="{% if loop.first %}rounded-t {% elseif loop.last %}rounded-b {% endif %}bg-slate-800 dark:bg-gray-100 hover:bg-slate-700 dark:hover:bg-gray-200 py-2 px-4 block whitespace-no-wrap" href="{{ docRoot }}set/locale/{{ key }}"><i class="inline-block {% if key == 'de' %}bg-flag-de{% elseif key == 'en' %}bg-flag-en{% elseif key == 'fr' %}bg-flag-fr{% elseif key == 'nl' %}bg-flag-nl{%endif%} bg-no-repeat bg-cover bg-center w-6 h-5 ml-auto -mt-1 mr-1 -mb-1"></i>&nbsp;{{ value|raw }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+        </div>
         {% block content %}Hello World!{% endblock %}
         {% block js %}{% endblock %}
     </body>

@@ -5,16 +5,10 @@
 {% endblock %}
 
 {% block css %}
-    <link rel="stylesheet" href="cache/tailwind.css" />
-    <link rel="stylesheet" href="css/languageDropdown.css" />
     <link rel="stylesheet" href="css/login.css" />
 {% endblock %}
 
 {% block content %}
-    <div class="language-dropdown" tab-index="0">
-        <button id="language-dropdown-btn"></button>
-        <ul class="language-dropdown-content" id="language-dropdown-content"></ul>
-    </div>
     {% if (uUID or UID) %}
         <a class="logout" href="{{ docRoot }}logout">Logout</a>
     {% endif %}
@@ -67,12 +61,4 @@
             </div>
         </div>
     </section>
-{% endblock %}
-
-{% block js %}
-    <script type="text/javascript" src="js/languageDropdown.js"></script>
-    <script type="text/javascript">
-      // Locales hard coded in languageDropdown, identical in keys to value pairs to make things work..
-      setSelectedLocale(locales[{{ localeKey }}]);
-    </script>
 {% endblock %}
