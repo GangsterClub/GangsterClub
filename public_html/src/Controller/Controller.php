@@ -36,7 +36,6 @@ class Controller
         $this->application = $application;
         $this->twig = $this->application->get('twig');
         $this->twigVariables = [
-            'localeKey' => $this->getLocaleKey(),
             'translation' => $this->application->get('translationService'),
         ];
     }
@@ -66,23 +65,6 @@ class Controller
             print_r('</pre>');
         }
         return null;
-    }
-
-    /**
-     * Summary of getLocaleKey
-     * @return int
-     */
-    private function getLocaleKey(): int
-    {
-        $session = $this->application->get('sessionService');
-        $translationService = $this->application->get('translationService');
-        $supportedLanguages = $translationService->getSupportedLanguages();
-        $languages = [];
-        foreach (array_keys($supportedLanguages) as $key) {
-            $languages[] = $key;
-        }
-
-        return (int) array_search($session->get('preferred_language', $translationService->getFallbackLocale()), $languages);
     }
 
     /**
