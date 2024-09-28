@@ -92,7 +92,6 @@ class TranslationService
 
         $filePath = DOC_ROOT . "/src/resources/lang/{$locale}/{$file}.yaml";
         if (file_exists($filePath) === true) {
-            $filePath = realpath($filePath);
             $cachedFilePath = TranslationsCache::getPath($filePath);
             $cachedTranslations = TranslationsCache::loadCache($cachedFilePath);
             if (empty($cachedTranslations) === false && is_array($cachedTranslations) === true) {
