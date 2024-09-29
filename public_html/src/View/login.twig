@@ -20,7 +20,7 @@
                 flex items-center justify-center">
 
             <div class="w-full h-100">
-                <form class="mt-6" method="POST">
+                <form class="mt-6" method="POST" autocomplete="off">
                     {% for error in login.errors %}
                         <div class="error">{{ error }}</div>
                     {% endfor %}
