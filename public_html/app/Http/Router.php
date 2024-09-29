@@ -52,7 +52,7 @@ class Router
             $routes = @yaml_parse_file($yaml) ?: $parsed;
         }
 
-        if ((bool) class_exists('Yaml') === true && $routes === []) {
+        if ((bool) class_exists('\Symfony\Component\Yaml\Yaml') === true && isset($routes) === false) {
             $routes = @Yaml::parseFile($yaml) ?: $parsed;
         }
 

@@ -120,7 +120,7 @@ class TranslationService
             $parsedTranslations = @yaml_parse_file($filePath) ?: $parsed;
         }
 
-        if ((bool) class_exists('Yaml') === true && $parsedTranslations === []) {
+        if ((bool) class_exists('\Symfony\Component\Yaml\Yaml') === true && isset($parsedTranslations) === false) {
             $parsedTranslations = @Yaml::parseFile($filePath) ?: $parsed;
         }
 
