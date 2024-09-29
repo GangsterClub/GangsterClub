@@ -1,5 +1,7 @@
 {% extends "tmpl/base.twig" %}
 
+{% import "macro/forms.twig" as forms %}
+
 {% block md %}
     <title>Login - GangsterClub.com</title>
 {% endblock %}
@@ -32,16 +34,15 @@
                         {% set label = __('verification-code') %}
                         {% set invalidTxt = __('provide-valid-totp') %}
                         {% set submit = __('verify') %}
-                        {% include "tmpl/forms.6-digit-otp-input.twig" %}
+                        {{ forms.otpInput(name, value, type, label, value) }}
                     {% else %}
                         {% set name, value, type, submitName = 'email', email, 'email', 'submit_login' %}
                         {% set label = __('email-address') %}
                         {% set invalidTxt = __('provide-valid-email-address') %}
                         {% set submit = __('sign-in') %}
-                        {% include "tmpl/forms.text-input.twig" %}
+                        {{ forms.textInput(name, value, type, label, invalidTxt) }}
                     {% endif %}
-                    <input type="submit" name="{{ submitName }}" class="w-full block bg-black hover:bg-black focus:bg-black dark:bg-gray-200 dark:hover:bg-gray-200
-                        dark:focus:bg-gray-200 text-white dark:text-black font-semibold px-4 py-3 mt-6" value="{{ submit }}" />
+                    {{ forms.submitInput(submitName, submit) }}
 
                 </form>
                 {% if not uUID and not UID %}
