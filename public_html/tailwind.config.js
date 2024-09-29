@@ -2,7 +2,7 @@
 module.exports = {
   content: [
     './src/View/*.{html,twig,js}',
-    './src/View/tmpl/*.{html,twig,js}',
+    './src/View/*/*.{html,twig,js}',
     './web/js/*.{html,js}',
   ],
   theme: {
