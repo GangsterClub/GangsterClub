@@ -78,6 +78,7 @@
                 const nextId = this.getAttribute('data-focus-input-next');
                 focusNextInput(this, prevId, nextId);
             });
+            element.value = element.getAttribute('placeholder');
         });
     </script>
 {% endblock %}
