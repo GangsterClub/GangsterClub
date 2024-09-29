@@ -25,7 +25,8 @@ class Login extends Controller
         $this->verify($request, $session);
         $email = $session->get('login.email');
         $uUID = $session->get('UNAUTHENTICATED_UID');
-        $totp = $session->get('login.totp');
+        $loginTotp = $session->get('login.totp');
+        $totp = is_array($loginTotp) === false ? str_split((string) $loginTotp) : (array) $loginTotp;
         $uid = $session->get('UID');
 
         return $this->twig->render(
@@ -89,6 +90,7 @@ class Login extends Controller
         $submit = $request->post('submit_totp');
         $otp = $request->post('totp');
         if ((bool) $submit === true && (bool) $otp === true) {
+            $otp = is_array($otp) ? implode('', $otp) : (string) $otp;
             $session->set('login.totp', $otp);
             $userId = (int) $session->get('UNAUTHENTICATED_UID');
 

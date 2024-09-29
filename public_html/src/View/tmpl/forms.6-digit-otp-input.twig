@@ -1,0 +1,45 @@
+<label for="input[name=code[]]" class="block">{{ label }}</label>
+<div class="flex mt-2 mb-2 space-x-2 rtl:space-x-reverse text-gray-700 dark:text-gray-200">
+    <div>
+        <label for="code-1" class="sr-only">First digit</label>
+        <input type="{{ type }}" name="{{ name }}[]" value="{{ value[0] }}" maxlength="1" data-focus-input-init data-focus-input-next="code-2" id="code-1"
+            class="block w-9 h-9 py-3 text-sm font-extrabold text-center
+        bg-gray-200 border border-gray-400 focus:bg-white focus:ring-black focus:border-black dark:bg-slate-800 dark:border-gray-600 dark:placeholder-gray-400
+        dark:focus:bg-slate-900 dark:focus:ring-white dark:focus:border-gray-100" required />
+    </div>
+    <div>
+        <label for="code-2" class="sr-only">Second digit</label>
+        <input type="{{ type }}" name="{{ name }}[]" value="{{ value[1] }}" maxlength="1" data-focus-input-init data-focus-input-prev="code-1" data-focus-input-next="code-3" id="code-2"
+            class="block w-9 h-9 py-3 text-sm font-extrabold text-center
+        bg-gray-200 border border-gray-400 focus:bg-white focus:ring-black focus:border-black dark:bg-slate-800 dark:border-gray-600 dark:placeholder-gray-400
+        dark:focus:bg-slate-900 dark:focus:ring-white dark:focus:border-gray-100" required />
+    </div>
+    <div>
+        <label for="code-3" class="sr-only">Third digit</label>
+        <input type="{{ type }}" name="{{ name }}[]" value="{{ value[2] }}" maxlength="1" data-focus-input-init data-focus-input-prev="code-2" data-focus-input-next="code-4" id="code-3"
+            class="block w-9 h-9 py-3 text-sm font-extrabold text-center
+        bg-gray-200 border border-gray-400 focus:bg-white focus:ring-black focus:border-black dark:bg-slate-800 dark:border-gray-600 dark:placeholder-gray-400
+        dark:focus:bg-slate-900 dark:focus:ring-white dark:focus:border-gray-100" required />
+    </div>
+    <div>
+        <label for="code-4" class="sr-only">Fourth digit</label>
+        <input type="{{ type }}" name="{{ name }}[]" value="{{ value[3] }}" maxlength="1" data-focus-input-init data-focus-input-prev="code-3" data-focus-input-next="code-5" id="code-4"
+            class="block w-9 h-9 py-3 text-sm font-extrabold text-center
+        bg-gray-200 border border-gray-400 focus:bg-white focus:ring-black focus:border-black dark:bg-slate-800 dark:border-gray-600 dark:placeholder-gray-400
+        dark:focus:bg-slate-900 dark:focus:ring-white dark:focus:border-gray-100" required />
+    </div>
+    <div>
+        <label for="code-5" class="sr-only">Fifth digit</label>
+        <input type="{{ type }}" name="{{ name }}[]" value="{{ value[4] }}" maxlength="1" data-focus-input-init data-focus-input-prev="code-4" data-focus-input-next="code-6" id="code-5"
+            class="block w-9 h-9 py-3 text-sm font-extrabold text-center
+        bg-gray-200 border border-gray-400 focus:bg-white focus:ring-black focus:border-black dark:bg-slate-800 dark:border-gray-600 dark:placeholder-gray-400
+        dark:focus:bg-slate-900 dark:focus:ring-white dark:focus:border-gray-100" required />
+    </div>
+    <div>
+        <label for="code-6" class="sr-only">Sixth digit</label>
+        <input type="{{ type }}" name="{{ name }}[]" value="{{ value[5] }}" maxlength="1" data-focus-input-init data-focus-input-prev="code-5" id="code-6"
+            class="block w-9 h-9 py-3 text-sm font-extrabold text-center
+        bg-gray-200 border border-gray-400 focus:bg-white focus:ring-black focus:border-black dark:bg-slate-800 dark:border-gray-600 dark:placeholder-gray-400
+        dark:focus:bg-slate-900 dark:focus:ring-white dark:focus:border-gray-100" required />
+    </div>
+</div>
