@@ -27,10 +27,6 @@ module.exports = {
       backgroundImage: {
         'background': "url('../images/background.webp')",
         'logo': "url('../images/logo.webp')",
-        'flag-de': "url('../images/flags/DE.png')",
-        'flag-en': "url('../images/flags/EN.png')",
-        'flag-fr': "url('../images/flags/FR.png')",
-        'flag-nl': "url('../images/flags/NL.png')",
       }
     }
   },
