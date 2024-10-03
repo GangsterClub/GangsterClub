@@ -6,10 +6,6 @@
     <title>Login - GangsterClub.com</title>
 {% endblock %}
 
-{% block css %}
-    <link rel="stylesheet" href="css/login.css" />
-{% endblock %}
-
 {% block content %}
     {% if (uUID or UID) %}
         <a class="logout" href="{{ docRoot }}logout">Logout</a>
@@ -54,4 +50,8 @@
             </div>
         </div>
     </section>
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript" src="js/otp-input.js"></script>
 {% endblock %}

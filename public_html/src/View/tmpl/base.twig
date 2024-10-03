@@ -12,6 +12,7 @@
             <meta name="author" content="John Doe" />
         {% endblock %}
         <link rel="stylesheet" href="cache/tailwind.css" />
+        <link rel="stylesheet" href="css/style.css" />
         {% block css %}{% endblock %}
     </head>
     <body class="bg-background bg-no-repeat bg-cover bg-center backdrop-blur-[2px] dark:backdrop-brightness-75">
@@ -36,7 +37,6 @@
             </ul>
         </div>
         {% block content %}Hello World!{% endblock %}
-        <script type="text/javascript" src="js/main.js"></script>
         {% block js %}{% endblock %}
     </body>
 </html>
