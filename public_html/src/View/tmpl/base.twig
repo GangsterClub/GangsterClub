@@ -1,6 +1,8 @@
 {% apply spaceless %}
 <!DOCTYPE html>
-<html>
+{% set locale = translation.getLocale %}
+{% set langs = translation.getSupportedLanguages %}
+<html lang="{{ locale }}">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -13,20 +15,25 @@
         {% endblock %}
         <link rel="stylesheet" href="cache/tailwind.css" />
         <link rel="stylesheet" href="css/style.css" />
+        <style type="text/css">
+            {% for key in langs|keys %}
+                .flag-{{ key|lower }} {
+                    background-image: url(../images/flags/{{ key|lower }}.png);
+                }
+            {% endfor %}
+        </style>
         {% block css %}{% endblock %}
     </head>
     <body class="bg-background bg-no-repeat bg-cover bg-center backdrop-blur-[2px] dark:backdrop-brightness-75">
-        {% set lang = translation.getLocale %}
-        {% set langs = translation.getSupportedLanguages %}
         <div class="dropdown inline-block absolute m-5">
             <button class="bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 font-semibold py-2 px-4 rounded inline-flex items-center">
                 <span class="mr-1">
-                    <i class="inline-block flag-{{ lang }} bg-no-repeat bg-cover bg-center w-6 h-5 ml-auto -mt-1 mr-1 -mb-1"></i>&nbsp;{{ langs[lang]|raw }}
+                    <i class="inline-block flag-{{ locale }} bg-no-repeat bg-cover bg-center w-6 h-5 ml-auto -mt-1 mr-1 -mb-1"></i>&nbsp;{{ langs[locale]|raw }}
                 </span>
                 <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
             </button>
             <ul class="dropdown-menu relative hidden text-gray-200 dark:text-gray-700 pt-1">
-                {% set langs = langs|filter((val, key) => key != lang) %}
+                {% set langs = langs|filter((val, key) => key != locale) %}
                 {% for key, value in langs %}
                     <li>
                         <a class="{% if loop.first %}rounded-t {% elseif loop.last %}rounded-b {% endif %}bg-slate-800 dark:bg-gray-100 hover:bg-slate-700 dark:hover:bg-gray-200 py-2 px-4 block whitespace-no-wrap" href="{{ docRoot }}set/locale/{{ key }}">

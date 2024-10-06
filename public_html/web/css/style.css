@@ -1,26 +1,9 @@
 html, body {
     margin: 0;
-    font-family:"Calibri", sans-serif;
 }
 
 body {
     padding: 0;
-}
-
-.flag-de {
-    background-image: url(../images/flags/DE.png);
-}
-
-.flag-en {
-    background-image: url(../images/flags/EN.png);
-}
-
-.flag-fr {
-    background-image: url(../images/flags/FR.png);
-}
-
-.flag-nl {
-    background-image: url(../images/flags/NL.png);
 }
 
 .error {

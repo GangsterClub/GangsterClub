@@ -26,7 +26,7 @@ class Connection
             $this->connection = new \PDO(DB_CONN_STRING, DB_USER, DB_PASS, $options);
         } catch (\PDOException $exc) {
             $error = "Unable to establish a database connection.";
-            if (strtolower(string: ENVIRONMENT) !== "production" && DEVELOPMENT === true) {
+            if (strtolower(ENVIRONMENT) !== "production" && DEVELOPMENT === true) {
                 $error = "PDOException caught: " . print_r($exc->getMessage(), true);
                 $error = new \PDOException($error);
             }
