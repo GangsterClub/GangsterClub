@@ -1,6 +1,7 @@
 {% extends "tmpl/base.twig" %}
 
 {% import "macro/forms.twig" as forms %}
+{% import "macro/alerts.twig" as alerts %}
 
 {% block md %}
     <title>Login - GangsterClub.com</title>
@@ -20,10 +21,10 @@
             <div class="w-full h-100">
                 <form class="mt-6" method="POST" autocomplete="off">
                     {% for error in login.errors %}
-                        <div class="error">{{ error }}</div>
+                        {{ alerts.error(error) }}
                     {% endfor %}
                     {% for success in login.success %}
-                        <div class="success">{{ success }}</div>
+                        {{ alerts.success(success) }}
                     {% endfor %}
                     {% if (uUID or UID) %}
                         {% set name, value, type, submitName = 'totp', totp, 'text', 'submit_totp' %}
@@ -53,7 +54,5 @@
 {% endblock %}
 
 {% block js %}
-    {% if (uUID or UID) %}
-        <script type="text/javascript" src="js/otp-input.js"></script>
-    {% endif %}
+    <script type="text/javascript" src="js/otp-input.js"></script>
 {% endblock %}

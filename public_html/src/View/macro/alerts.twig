@@ -1,0 +1,24 @@
+{% macro alert(color, role, svgPath, message) %}
+    <div class="flex items-center {{ color }} text-white text-sm font-bold px-4 py-3" role="{{ role }}">
+        <svg class="fill-current w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="{{ svgPath }}"/></svg>
+        <p>{{ message }}</p>
+    </div>
+{% endmacro %}
+
+{% macro error(message) %}
+    {{ _self.alert(
+        'bg-red-500',
+        'alert',
+        'M16.406 10.283a7.917 7.917 0 1 1-7.917-7.917 7.916 7.916 0 0 1 7.917 7.917zM9.48 14.367a1.003 1.003 0 1 0-1.004 1.003 1.003 1.003 0 0 0 1.004-1.003zM7.697 11.53a.792.792 0 0 0 1.583 0V5.262a.792.792 0 0 0-1.583 0z',
+        message
+    ) }}
+{% endmacro %}
+
+{% macro success(message) %}
+    {{ _self.alert(
+        'bg-green-500',
+        'alert',
+        'M12,2A10,10,0,1,0,22,12,10,10,0,0,0,12,2Zm5.676,8.237-6,5.5a1,1,0,0,1-1.383-.03l-3-3a1,1,0,1,1,1.414-1.414l2.323,2.323,5.294-4.853a1,1,0,1,1,1.352,1.474Z',
+        message
+    ) }}
+{% endmacro %}

@@ -72,9 +72,9 @@ class TOTPEmailService
         $isValid = $this->totp->verifyTOTP($totpRecord->totp_secret, $totp, TOTP_DIGITS, TOTP_PERIOD);
         if ((bool) $isValid === true) {
             $this->totpEmailRepository->deleteTOTP($totpRecord->id);
+            $this->authenticateUser($userId);
         }
 
-        $this->authenticateUser($userId);
         return $isValid;
     }
 
