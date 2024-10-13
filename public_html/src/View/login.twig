@@ -54,5 +54,7 @@
 {% endblock %}
 
 {% block js %}
-    <script type="text/javascript" src="js/otp-input.js"></script>
+    {% if (uUID or UID) %}
+        <script type="text/javascript" src="js/otp-input.js"></script>
+    {% endif %}
 {% endblock %}
