@@ -6,22 +6,6 @@ body {
     padding: 0;
 }
 
-.error {
-    display: block;
-    width: 100%;
-    height: auto;
-    background: orangered;
-    color:darkred
-}
-
-.success {
-    display: block;
-    width: 100%;
-    height: auto;
-    background: limegreen;
-    color: darkgreen
-}
-
 .logout {
     position: absolute;
     right: .6rem;
