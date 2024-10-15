@@ -13,7 +13,7 @@ window.onload = () => {
 
   /* Handle scheme-toggle buttons logic.. */
   let btns = document.querySelectorAll("input.scheme-toggle");
-  btns.forEach((btn, i) => {
+  btns.forEach(btn => {
     btn.addEventListener("click", () => {
       currentScheme = localStorage.getItem("theme-" + themeVersion);
       if (currentScheme == null) {
