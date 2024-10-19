@@ -15,22 +15,34 @@ document.addEventListener("DOMContentLoaded", (event) => {
     }
 
     // Handling pasted OTP of 6 digits
-    const handlePaste = (evt) => {
+    function handlePaste(evt, inputs) {
         evt.preventDefault();
         const pastedText = evt.clipboardData.getData('text').trim();
-        if (!/^[0-9]{6}$/.test(pastedText)) { // Change {6} if needed.
+        if (!/^\d{6}$/.test(pastedText)) { // Change {6} if needed.
             return;
         }
+
         const digits = pastedText.split('');
-        let inputs = document.querySelectorAll('[data-focus-input-init]');
-        inputs.forEach((input, index) => input.value = digits[index]);
+        inputs = Array.from(inputs).filter(input => input.tagName.toLowerCase() === 'input');
+        if (inputs.length < digits.length) {
+            return;
+        }
+
+        inputs.forEach((input, index) => {
+            if (input && typeof input.value !== 'undefined') {
+                input.value = digits[index] || '';
+            }
+        });
+
         inputs[inputs.length - 1].focus();
     };
 
     // Apply listeners and "hack" value afterwards
-    document.querySelectorAll('[data-focus-input-init]').forEach(function(element) {
-        element.addEventListener('paste', handlePaste);
-        element.addEventListener('keyup', function() {
+    document.querySelectorAll('[data-focus-input-init]').forEach(function (element) {
+        element.addEventListener('paste', function (evt) {
+            handlePaste(evt, document.querySelectorAll('[data-focus-input-init]'));
+        });
+        element.addEventListener('keyup', function () {
             const prevId = this.getAttribute('data-focus-input-prev');
             const nextId = this.getAttribute('data-focus-input-next');
             focusNextInput(this, prevId, nextId);
