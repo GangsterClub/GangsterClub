@@ -29,8 +29,9 @@ document.addEventListener("DOMContentLoaded", (event) => {
         }
 
         inputs.forEach((input, index) => {
-            if (input && typeof input.value !== 'undefined' && /^\d{1}$/.test(digits[index])) {
-                input.value = digits[index] || '';
+            let digit = String(digits[index]);
+            if (input && typeof input.value !== 'undefined' && /^\d$/.test(digit)) {
+                input.value = digit || '';
             }
         });
 
