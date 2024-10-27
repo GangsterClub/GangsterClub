@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", (event) => {
+window.onload = () => {
     // use this simple function to automatically focus on the next input
     function focusNextInput(el, prevId, nextId) {
         if (el.value.length === 0) {
@@ -52,4 +52,4 @@ document.addEventListener("DOMContentLoaded", (event) => {
         // Hacking the values after applying the listeners makes focusNextInput() work as intended.
         element.value = element.getAttribute('placeholder');
     });
-});
+};
