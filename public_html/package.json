@@ -1,0 +1,14 @@
+{
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "gco build",
+        "dev": "gco"
+    },
+    "devDependencies": {
+        "twig/twig": "^3.7.1",
+        "voku/anti-xss": "^4.1.42",
+        "phpmailer/phpmailer": "^6.8.1",
+        "spomky-labs/otphp": "^11.3.0"
+    }
+}
