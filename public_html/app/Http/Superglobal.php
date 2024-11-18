@@ -38,13 +38,13 @@ class Superglobal
     protected array $cookie;
 
     /**
-     * Summary of put, idempotent, safe method
+     * Summary of put, idempotent, unsafe method
      * @var array
      */
     protected array $put;
 
     /**
-     * Summary of delete, idempotent, safe method
+     * Summary of delete, idempotent, unsafe method
      * @var array
      */
     protected array $delete;
@@ -62,7 +62,7 @@ class Superglobal
     protected array $options;
 
     /**
-     * Summary of patch, unsafe method
+     * Summary of patch, unsafe method, To be treated idempotent avoids collision baddies
      * @var array
      */
     protected array $patch;
