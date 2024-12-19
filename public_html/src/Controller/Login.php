@@ -6,6 +6,7 @@ namespace src\Controller;
 
 use app\Http\Request;
 use app\Service\SessionService;
+use app\Service\JWTService;
 use src\Business\UserService;
 use src\Business\TOTPEmailService;
 use src\Business\EmailService;
@@ -103,10 +104,18 @@ class Login extends Controller
 
             if ((bool) $isValid === true) {
                 $this->twigVariables['login']['success'][] = __('success-authenticated');
-                // Proceed with user authentication
-                //..
+                // Grant valid JWT token bearing username 'login.email' to client for 360 seconds
+                $jwtService = new JWTService($this->application);
+                $jwtToken = $jwtService->authenticate($session->get('login.email'), $isValid);
+                $session->set('jwt_token', $jwtToken);
+                // The following comments asume the login page is not a protected resource
+                // Auth ok resource example:
+                //header('Authorization: Bearer ' . $jwtToken);
                 return;
             }
+            // Auth nok resource example:
+            //header('HTTP/1.1 401 Unauthorized');
+            //header('WWW-Authenticate: Bearer realm="User Visible Realm", charset="UTF-8", error="invalid_token", error_description="Invalid access token"');
 
             $this->twigVariables['login']['errors'][] = __('error-invalid-otp');
         } //end if
