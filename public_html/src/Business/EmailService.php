@@ -37,7 +37,7 @@ class EmailService
             $mailPort = 587;
             if ((bool) is_numeric(MAIL_PORT) === true) {
                 $mailPort = (int) MAIL_PORT;
-                if($mailPort === 465) {
+                if ($mailPort === 465) {
                     $this->mailer->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
                 }
             }
