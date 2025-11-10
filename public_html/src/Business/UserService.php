@@ -73,7 +73,7 @@ class UserService
     private function entity(\stdClass $object): User
     {
         return new User(
-            $object->id,
+            (int) $object->id,
             $object->username,
             $object->email,
             $object->ip_address,
