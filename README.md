@@ -16,6 +16,7 @@ Execute command "composer install" from public_html, requires [composer installa
 - voku/anti-xss ^4.1.42
 - phpmailer/phpmailer ^6.8.1
 - spomky-labs/otphp ^11.3.0
+- firebase/php-jwt ^6.11
 
 Optional depencency as defined by suggest:
 
