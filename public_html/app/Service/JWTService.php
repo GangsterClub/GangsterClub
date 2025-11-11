@@ -6,9 +6,11 @@ namespace app\Service;
 
 use app\Container\Application;
 use app\Http\Response;
+use app\Service\SessionService;
 use Firebase\JWT\BeforeValidException;
 use Firebase\JWT\ExpiredException;
 use Firebase\JWT\SignatureInvalidException;
+use src\Business\UserService;
 use UnexpectedValueException;
 
 class JWTService
@@ -43,7 +45,13 @@ class JWTService
             $payload = $this->jwt->decode($jwtToken);
             $this->jwt->validateClaims($payload);
         } catch (ExpiredException $e) {
-            return $this->unauthorizedResponse('Expired access token');
+            $replacement = $this->authorizeExpiredToken();
+            if ($replacement instanceof Response) {
+                return $replacement;
+            }
+
+            $jwtToken = $replacement['token'];
+            $payload = $replacement['payload'];
         } catch (SignatureInvalidException $e) {
             return $this->unauthorizedResponse('Signature verification failed');
         } catch (BeforeValidException $e) {
@@ -96,6 +104,48 @@ class JWTService
         }
 
         return $matches[1];
+    }
+
+    /**
+     * Attempt to re-authorize an expired JWT using the currently authenticated session.
+     *
+     * @return Response|array{token: string, payload: object}
+     */
+    private function authorizeExpiredToken(): Response|array
+    {
+        $session = $this->application->get('sessionService');
+        if (!$session instanceof SessionService) {
+            return $this->unauthorizedResponse('Expired access token');
+        }
+
+        $userId = $session->get('UID');
+        if ($userId === null || $userId === '') {
+            return $this->unauthorizedResponse('Expired access token');
+        }
+
+        $userId = (int) $userId;
+        if ($userId <= 0) {
+            return $this->unauthorizedResponse('Expired access token');
+        }
+
+        $userService = new UserService($this->application);
+        $user = $userService->getUserById($userId);
+        if ($user === null) {
+            return $this->unauthorizedResponse('Expired access token');
+        }
+
+        try {
+            $token = $this->jwt->issue($user->getEmail());
+            $payload = $this->jwt->decode($token);
+            $this->jwt->validateClaims($payload);
+        } catch (ExpiredException | SignatureInvalidException | BeforeValidException | UnexpectedValueException) {
+            return $this->unauthorizedResponse('Invalid access token');
+        }
+
+        return [
+            'token' => $token,
+            'payload' => $payload,
+        ];
     }
 
     private function tokenNotFoundResponse(): Response
