@@ -3,18 +3,24 @@
     "type": "project",
     "description": "GangsterClub is a free text based online role playing game. Can you manage becoming the best gangster?",
     "keywords": [
-        "php", "mysql", "twig"
+        "php",
+        "mysql",
+        "twig"
     ],
     "homepage": "https://gcov1.gangsterclub.nl",
     "license": "proprietary",
     "authors": [
-        {"name": "Michael Carrein", "email": "michael.carrein@hotmail.com"}
+        {
+            "name": "Michael Carrein",
+            "email": "michael.carrein@hotmail.com"
+        }
     ],
     "require": {
-        "twig/twig": "^3.7.1",
-        "voku/anti-xss": "^4.1.42",
+        "firebase/php-jwt": "^6.11",
         "phpmailer/phpmailer": "^6.8.1",
-        "spomky-labs/otphp": "^11.3.0"
+        "spomky-labs/otphp": "^11.3.0",
+        "twig/twig": "^3.7.1",
+        "voku/anti-xss": "^4.1.42"
     },
     "suggest": {
         "symfony/yaml": "PHP's yaml_parse_file() fallback package"

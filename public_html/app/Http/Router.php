@@ -56,7 +56,7 @@ class Router
             $routes = @Yaml::parseFile($yaml) ?: $parsed;
         }
 
-        return $routes ?: $parsed;
+        return $routes ?? $parsed;
     }
 
     /**

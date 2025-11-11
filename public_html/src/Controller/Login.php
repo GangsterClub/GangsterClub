@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace src\Controller;
 
 use app\Http\Request;
+use app\Http\Response;
 use app\Service\SessionService;
+use app\Service\JWTService;
 use src\Business\UserService;
 use src\Business\TOTPEmailService;
 use src\Business\EmailService;
@@ -89,6 +91,7 @@ class Login extends Controller
     {
         $submit = $request->post('submit_totp');
         $otp = $request->post('totp');
+        $jwtService = new JWTService($this->application);
         if ((bool) $submit === true && (bool) $otp === true) {
             $otp = is_array($otp) ? implode('', $otp) : (string) $otp;
             $session->set('login.totp', $otp);
@@ -103,9 +106,25 @@ class Login extends Controller
 
             if ((bool) $isValid === true) {
                 $this->twigVariables['login']['success'][] = __('success-authenticated');
-                // Proceed with user authentication
-                //..
+                $jwtToken = $jwtService->authenticate($session->get('login.email'), $isValid);
+                if ($jwtToken !== false) {
+                    $session->set('jwt_token', $jwtToken);
+                    header('Authorization: Bearer ' . $jwtToken);
+                }
                 return;
+            }
+
+            $storedToken = $session->get('jwt_token');
+            if (is_string($storedToken) && $storedToken !== '') {
+                $authorizationResult = $jwtService->authorize('Bearer ' . $storedToken);
+                if ($authorizationResult instanceof Response) {
+                    $authorizationResult->send();
+                    return;
+                }
+
+                if (is_array($authorizationResult) && isset($authorizationResult['token'])) {
+                    $session->set('jwt_token', $authorizationResult['token']);
+                }
             }
 
             $this->twigVariables['login']['errors'][] = __('error-invalid-otp');
