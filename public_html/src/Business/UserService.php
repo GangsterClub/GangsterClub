@@ -41,6 +41,21 @@ class UserService
     }
 
     /**
+     * Summary of getUserById
+     * @param int $userId
+     * @return \src\Entity\User|null
+     */
+    public function getUserById(int $userId): User|null
+    {
+        $data = $this->userRepository->findById($userId);
+        if ($data === false) {
+            return null;
+        }
+
+        return $this->entity($data);
+    }
+
+    /**
      * Summary of createUserByEmail
      * @param string $email
      * @param string $ipAddress
