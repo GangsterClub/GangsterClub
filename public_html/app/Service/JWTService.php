@@ -1,4 +1,4 @@
-<?PHP
+<?php
 
 declare(strict_types=1);
 
@@ -6,91 +6,114 @@ namespace app\Service;
 
 use app\Container\Application;
 use app\Http\Response;
-use Firebase\JWT\JWT;
+use Firebase\JWT\BeforeValidException;
+use Firebase\JWT\ExpiredException;
+use Firebase\JWT\SignatureInvalidException;
+use UnexpectedValueException;
 
 class JWTService
 {
-    /**
-     * Summary of application
-     * @var Application
-     */
     private Application $application;
 
-    /**
-     * Summary of __construct
-     * @param \app\Container\Application $application
-     */
-    public function __construct(Application $application)
+    private JWT $jwt;
+
+    public function __construct(Application $application, ?JWT $jwt = null)
     {
         $this->application = $application;
+        $this->jwt = $jwt ?? new JWT();
     }
 
-    /**
-     * Summary of authenticate
-     * @param string $username
-     * @param bool $hasValidCredentials
-     * @return string|false
-     */
-    public function authenticate(string $username, bool $hasValidCredentials = false) : string|false
+    public function authenticate(string $username, bool $hasValidCredentials = false): string|false
     {
-        if ($hasValidCredentials === true)
-        {
-            $secretKey  = JWT_SECRET;
-            $issuedAt   = new \DateTimeImmutable();
-            $expire     = $issuedAt->modify('+6 minutes')->getTimestamp();      // Add 360 seconds
-            $serverName = APP_DOMAIN;
-
-            $data = [
-                'iat'  => $issuedAt->getTimestamp(),         // Issued at: time when the token was generated
-                'iss'  => $serverName,                       // Issuer
-                'nbf'  => $issuedAt->getTimestamp(),         // Not before
-                'exp'  => $expire,                           // Expire
-                'userName' => $username,                     // User name = user.email not user.username
-            ];
-
-            // Encode the array to a JWT string.
-            return JWT::encode(
-                $data,
-                $secretKey,
-                'HS512'
-            );
+        if ($hasValidCredentials === false) {
+            return false;
         }
-        return false;
+
+        return $this->jwt->issue($username);
     }
 
-    /**
-     * Summary of authorize
-     * @param string $authorization
-     * @return \app\Http\Response|true
-     */
-    public function authorize(string $authorization) : Response|true
+    public function authorize(?string $authorization): Response|array
     {
-        if (! preg_match('/Bearer\s(\S+)/', $authorization, $matches)) {
-            header('HTTP/1.0 400 Bad Request');
-            return new Response('Token not found in request', 400);
+        $jwtToken = $this->extractBearerToken($authorization);
+        if ($jwtToken instanceof Response) {
+            return $jwtToken;
         }
 
-        $jwtToken = $matches[1];
-        if (! $jwtToken) {
-            // No token was able to be extracted from the authorization header
-            header('HTTP/1.0 400 Bad Request');
-            return new Response('Token not found in request', 400);
+        try {
+            $payload = $this->jwt->decode($jwtToken);
+            $this->jwt->validateClaims($payload);
+        } catch (ExpiredException $e) {
+            return $this->unauthorizedResponse('Expired access token');
+        } catch (SignatureInvalidException $e) {
+            return $this->unauthorizedResponse('Signature verification failed');
+        } catch (BeforeValidException $e) {
+            return $this->unauthorizedResponse('Token cannot yet be used');
+        } catch (UnexpectedValueException $e) {
+            return $this->unauthorizedResponse('Invalid access token');
         }
 
-        $secretKey  = JWT_SECRET;
-        $token = JWT::decode($jwtToken, $secretKey, ['HS512']);
-        $now = new \DateTimeImmutable();
-        $serverName = APP_DOMAIN;
-
-        if ($token->iss !== $serverName ||
-            $token->nbf > $now->getTimestamp() ||
-            $token->exp < $now->getTimestamp())
-        {
-            header('HTTP/1.1 401 Unauthorized');
-            header('WWW-Authenticate: Bearer realm="User Visible Realm", charset="UTF-8", error="invalid_token", error_description="Invalid access token"');
-            return new Response('401 Unauthorized: Invalid access token', 401);
+        try {
+            $refreshedToken = $this->jwt->shouldRefresh($payload)
+                ? $this->jwt->refresh($payload)
+                : $jwtToken;
+        } catch (UnexpectedValueException $e) {
+            return $this->unauthorizedResponse('Invalid access token');
         }
-        header('Authorization: Bearer ' . $jwtToken);
-        return true;
+
+        header('Authorization: Bearer ' . $refreshedToken);
+
+        return [
+            'token' => $refreshedToken,
+            'payload' => $payload,
+        ];
+    }
+
+    public function refresh(string $jwtToken): Response|string
+    {
+        try {
+            $payload = $this->jwt->decode($jwtToken, JWT::REFRESH_THRESHOLD);
+            $this->jwt->validateClaims($payload);
+            return $this->jwt->refresh($payload);
+        } catch (ExpiredException) {
+            return $this->unauthorizedResponse('Expired access token');
+        } catch (SignatureInvalidException) {
+            return $this->unauthorizedResponse('Signature verification failed');
+        } catch (BeforeValidException) {
+            return $this->unauthorizedResponse('Token cannot yet be used');
+        } catch (UnexpectedValueException) {
+            return $this->unauthorizedResponse('Invalid access token');
+        }
+    }
+
+    private function extractBearerToken(?string $authorization): Response|string
+    {
+        if ($authorization === null || trim($authorization) === '') {
+            return $this->tokenNotFoundResponse();
+        }
+
+        if (!preg_match('/Bearer\s+(\S+)/', $authorization, $matches)) {
+            return $this->tokenNotFoundResponse();
+        }
+
+        return $matches[1];
+    }
+
+    private function tokenNotFoundResponse(): Response
+    {
+        return new Response('Token not found in request', 400);
+    }
+
+    private function unauthorizedResponse(string $description): Response
+    {
+        $header = sprintf(
+            'WWW-Authenticate: Bearer realm="User Visible Realm", charset="UTF-8", error="invalid_token", error_description="%s"',
+            $description
+        );
+
+        return new Response(
+            sprintf('401 Unauthorized: %s', $description),
+            401,
+            [$header]
+        );
     }
 }

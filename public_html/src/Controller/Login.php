@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace src\Controller;
 
 use app\Http\Request;
+use app\Http\Response;
 use app\Service\SessionService;
 use app\Service\JWTService;
 use src\Business\UserService;
@@ -90,6 +91,7 @@ class Login extends Controller
     {
         $submit = $request->post('submit_totp');
         $otp = $request->post('totp');
+        $jwtService = new JWTService($this->application);
         if ((bool) $submit === true && (bool) $otp === true) {
             $otp = is_array($otp) ? implode('', $otp) : (string) $otp;
             $session->set('login.totp', $otp);
@@ -104,18 +106,26 @@ class Login extends Controller
 
             if ((bool) $isValid === true) {
                 $this->twigVariables['login']['success'][] = __('success-authenticated');
-                // Grant valid JWT token bearing username 'login.email' to client for 360 seconds
-                $jwtService = new JWTService($this->application);
                 $jwtToken = $jwtService->authenticate($session->get('login.email'), $isValid);
-                $session->set('jwt_token', $jwtToken);
-                // The following comments asume the login page is not a protected resource
-                // Auth ok resource example:
-                //header('Authorization: Bearer ' . $jwtToken);
+                if ($jwtToken !== false) {
+                    $session->set('jwt_token', $jwtToken);
+                    header('Authorization: Bearer ' . $jwtToken);
+                }
                 return;
             }
-            // Auth nok resource example:
-            //header('HTTP/1.1 401 Unauthorized');
-            //header('WWW-Authenticate: Bearer realm="User Visible Realm", charset="UTF-8", error="invalid_token", error_description="Invalid access token"');
+
+            $storedToken = $session->get('jwt_token');
+            if (is_string($storedToken) && $storedToken !== '') {
+                $authorizationResult = $jwtService->authorize('Bearer ' . $storedToken);
+                if ($authorizationResult instanceof Response) {
+                    $authorizationResult->send();
+                    return;
+                }
+
+                if (is_array($authorizationResult) && isset($authorizationResult['token'])) {
+                    $session->set('jwt_token', $authorizationResult['token']);
+                }
+            }
 
             $this->twigVariables['login']['errors'][] = __('error-invalid-otp');
         } //end if

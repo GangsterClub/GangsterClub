@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace src\Controller;
 
 use app\Http\Request;
+use app\Http\Response;
 use app\Service\JWTService;
 
 class Logout extends Controller
@@ -17,11 +18,21 @@ class Logout extends Controller
     public function __invoke(Request $request): ?string
     {
         $session = $this->application->get('sessionService');
-    
-        // The logout page on the other hand is partially a protected resource!
+
         $jwtService = new JWTService($this->application);
-        if ($session->get('UID') !== null)
-            $jwtService->authorize($request->server('HTTP_AUTHORIZATION'));
+        if ($session->get('UID') !== null) {
+            $authorizationHeader = $request->server('HTTP_AUTHORIZATION') ?? '';
+            $authorizationResult = $jwtService->authorize($authorizationHeader);
+
+            if ($authorizationResult instanceof Response) {
+                $authorizationResult->send();
+                return null;
+            }
+
+            if (is_array($authorizationResult) && isset($authorizationResult['token'])) {
+                $session->set('jwt_token', $authorizationResult['token']);
+            }
+        }
 
         $session->remove('UID');
         $session->remove('UNAUTHENTICATED_UID');
@@ -30,5 +41,6 @@ class Logout extends Controller
         $session->remove('jwt_token');
         $session->regenerate();
         $this->application->header('/login');
+        return null;
     }
 }
