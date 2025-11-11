@@ -24,7 +24,7 @@ class Logout extends Controller
 
             if ($authorizationHeader === '') {
                 $storedToken = $session->get('jwt_token');
-                if (is_string($storedToken) && $storedToken !== '') {
+                if (is_string($storedToken) === true && $storedToken !== '') {
                     $authorizationHeader = 'Bearer ' . $storedToken;
                 }
             }
@@ -32,7 +32,7 @@ class Logout extends Controller
             if ($authorizationHeader !== '') {
                 $authorizationResult = $jwtService->authorize($authorizationHeader);
 
-                if (is_array($authorizationResult) && isset($authorizationResult['token'])) {
+                if (is_array($authorizationResult) === true && isset($authorizationResult['token'])) {
                     $session->set('jwt_token', $authorizationResult['token']);
                 }
             }

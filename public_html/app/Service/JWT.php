@@ -103,15 +103,15 @@ class JWT
     {
         $now ??= new DateTimeImmutable();
 
-        if (!isset($payload->iss) || $payload->iss !== $this->issuer) {
+        if (isset($payload->iss) === false || $payload->iss !== $this->issuer) {
             throw new UnexpectedValueException('Invalid token issuer.');
         }
 
-        if (isset($payload->nbf) && $payload->nbf > $now->getTimestamp()) {
+        if (isset($payload->nbf) === true && $payload->nbf > $now->getTimestamp()) {
             throw new BeforeValidException('Token cannot yet be used.');
         }
 
-        if (!isset($payload->exp) || $payload->exp < $now->getTimestamp()) {
+        if (isset($payload->exp) === false || $payload->exp < $now->getTimestamp()) {
             throw new ExpiredException('Token has expired.');
         }
     }
@@ -121,7 +121,7 @@ class JWT
      */
     public function shouldRefresh(object $payload, ?DateTimeImmutable $now = null, int $threshold = self::REFRESH_THRESHOLD): bool
     {
-        if (!isset($payload->exp)) {
+        if (isset($payload->exp) === false) {
             return false;
         }
 

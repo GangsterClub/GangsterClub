@@ -83,7 +83,7 @@ class QueryBuilder
         $query = "SELECT * FROM {$this->table}";
         $bindings = [];
 
-        if ($this->wheres) {
+        if ((bool) $this->wheres === true) {
             $query .= " WHERE " . implode(' AND ', array_map(function ($where) use (&$bindings) {
                 $bindings[] = $where[2];
                 return "{$where[0]} {$where[1]} ?";
@@ -125,7 +125,7 @@ class QueryBuilder
         }, array_keys($data)));
 
         $bindings = array_values($data);
-        if ($this->wheres) {
+        if ((bool) $this->wheres === true) {
             $query .= " WHERE " . implode(' AND ', array_map(function ($where) use (&$bindings) {
                 $bindings[] = $where[2];
                 return "{$where[0]} {$where[1]} ?";
@@ -145,7 +145,7 @@ class QueryBuilder
     {
         $query = "DELETE FROM {$this->table}";
         $bindings = [];
-        if ($this->wheres) {
+        if ((bool) $this->wheres === true) {
             $query .= " WHERE " . implode(' AND ', array_map(function ($where) use (&$bindings) {
                 $bindings[] = $where[2];
                 return "{$where[0]} {$where[1]} ?";

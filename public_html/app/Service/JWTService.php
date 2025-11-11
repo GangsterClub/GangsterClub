@@ -99,7 +99,7 @@ class JWTService
             return $this->tokenNotFoundResponse();
         }
 
-        if (!preg_match('/Bearer\s+(\S+)/', $authorization, $matches)) {
+        if (preg_match('/Bearer\s+(\S+)/', $authorization, $matches) === false || count($matches) < 2) {
             return $this->tokenNotFoundResponse();
         }
 
@@ -114,7 +114,7 @@ class JWTService
     private function authorizeExpiredToken(): Response|array
     {
         $session = $this->application->get('sessionService');
-        if (!$session instanceof SessionService) {
+        if ($session instanceof SessionService === false) {
             return $this->unauthorizedResponse('Expired access token');
         }
 

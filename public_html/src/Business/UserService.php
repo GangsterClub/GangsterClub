@@ -73,7 +73,7 @@ class UserService
             $data = $this->userRepository->findByEmail($email);
         }
 
-        if (is_object($data)) {
+        if (is_object($data) === true) {
             $user = $this->entity($data);
         }
 

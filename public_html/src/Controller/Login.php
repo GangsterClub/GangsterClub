@@ -72,7 +72,7 @@ class Login extends Controller
             $emailService = new EmailService();
             $emailSent = $emailService->sendTOTPEmail($email, $otp);
 
-            if ($emailSent) {
+            if ((bool) $emailSent === true) {
                 $this->redirectPrevRoute($request);
                 return;
             }
@@ -93,7 +93,7 @@ class Login extends Controller
         $otp = $request->post('totp');
         $jwtService = new JWTService($this->application);
         if ((bool) $submit === true && (bool) $otp === true) {
-            $otp = is_array($otp) ? implode('', $otp) : (string) $otp;
+            $otp = is_array($otp) === true ? implode('', $otp) : (string) $otp;
             $session->set('login.totp', $otp);
             $userId = (int) $session->get('UNAUTHENTICATED_UID');
 
@@ -115,14 +115,14 @@ class Login extends Controller
             }
 
             $storedToken = $session->get('jwt_token');
-            if (is_string($storedToken) && $storedToken !== '') {
+            if (is_string($storedToken) === true && $storedToken !== '') {
                 $authorizationResult = $jwtService->authorize('Bearer ' . $storedToken);
                 if ($authorizationResult instanceof Response) {
                     $authorizationResult->send();
                     return;
                 }
 
-                if (is_array($authorizationResult) && isset($authorizationResult['token'])) {
+                if (is_array($authorizationResult) === true && isset($authorizationResult['token'])) {
                     $session->set('jwt_token', $authorizationResult['token']);
                 }
             }
