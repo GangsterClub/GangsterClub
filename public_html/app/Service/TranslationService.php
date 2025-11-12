@@ -141,13 +141,8 @@ class TranslationService
             return $this->translations[$this->fallbackLocale][$file][$messageKey];
         }
 
-        $errorMessage = sprintf(
-            'Missing translation key "%s" for file "%s".',
-            htmlspecialchars($messageKey, ENT_QUOTES, 'UTF-8'),
-            htmlspecialchars($file, ENT_QUOTES, 'UTF-8')
-        );
-
-        throw new \Exception($errorMessage);
+        $errorMessage = sprintf('Missing translation key "%s" for file "%s".', $messageKey, $file);
+        throw new \Exception(htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8'));
     }
 
     /**

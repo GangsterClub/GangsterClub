@@ -36,7 +36,7 @@ window.onload = () => {
         });
 
         inputs[inputs.length - 1].focus();
-    };
+    }
 
     // Apply listeners and "hack" value afterwards
     document.querySelectorAll('[data-focus-input-init]').forEach(function (element) {

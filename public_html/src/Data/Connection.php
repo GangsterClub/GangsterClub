@@ -31,7 +31,7 @@ class Connection
                 $error = new \PDOException($error);
             }
 
-            die($error);
+            die(htmlspecialchars($error, ENT_QUOTES, 'UTF-8'));
         }
     }
 

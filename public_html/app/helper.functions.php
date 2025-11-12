@@ -38,7 +38,7 @@ function translate(string $key, array $replacements = []): string
 function loadEnv(string $envFilePath): void
 {
     if ((bool) file_exists($envFilePath) === false) {
-        throw new \RuntimeException("Env file not found: " . htmlspecialchars($envFilePath));
+        throw new \RuntimeException("Env file not found: " . htmlspecialchars($envFilePath, ENT_QUOTES, 'UTF-8'));
     }
 
     $envContent = file($envFilePath, (FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES));

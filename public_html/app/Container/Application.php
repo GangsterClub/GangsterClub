@@ -120,6 +120,6 @@ class Application extends Container
      */
     public function exit(?int $code = 0): never
     {
-        exit($code);
+        exit(is_int($code) === true ? $code : null);
     }
 }

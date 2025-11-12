@@ -34,7 +34,7 @@ class Container
         }
 
         if ((bool) class_exists($className) === false) {
-            throw new \Exception("Class " . htmlspecialchars($className) . " not found.");
+            throw new \Exception("Class " . htmlspecialchars($className, ENT_QUOTES, 'UTF-8') . " not found.");
         }
         return null;
     }
