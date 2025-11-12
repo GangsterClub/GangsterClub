@@ -25,14 +25,14 @@ class TOTPService
     /**
      * Generate the 6-digit TOTP from the secret.
      *
-     * @param string|null $secret The optional secret to use (generated if null).
-     * @param int|null $digits The number of digits for the TOTP (default 6).
-     * @param int|null $period The time period for the TOTP (default 30 seconds).
+     * @param ?string $secret The optional secret to use (generated if null).
+     * @param ?int $digits The number of digits for the TOTP (default 6).
+     * @param ?int $period The time period for the TOTP (default 30 seconds).
      * @return string The 6-digit TOTP code.
      */
-    public function generateTOTP(string $secret = null, int $digits = MFA_TOTP_DIGITS, int $period = MFA_TOTP_PERIOD): string
+    public function generateTOTP(?string $secret = null, ?int $digits = MFA_TOTP_DIGITS, ?int $period = MFA_TOTP_PERIOD): string
     {
-        $totp = TOTP::create($secret ?? TOTP::generateSecret(), $period);
+        $totp = TOTP::create($secret ?? $this->generateSecret(), $period);
         $totp->setDigits($digits);
         return $totp->now();
     }

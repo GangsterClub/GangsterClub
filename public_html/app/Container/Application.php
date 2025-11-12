@@ -115,10 +115,10 @@ class Application extends Container
 
     /**
      * Summary of exit
-     * @param int|null $code
+     * @param ?int $code
      * @return never
      */
-    public function exit(int|null $code = 0): never
+    public function exit(?int $code = 0): never
     {
         exit($code);
     }

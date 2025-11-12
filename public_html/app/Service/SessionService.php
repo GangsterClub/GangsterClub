@@ -10,7 +10,7 @@ class SessionService extends \SessionHandler
 {
     /**
      * Summary of ipAddress
-     * @var string|null
+     * @var ?string
      */
     private ?string $ipAddress;
 

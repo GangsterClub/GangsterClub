@@ -49,7 +49,7 @@ class JWT
      *
      * @param string $userName Subject of the token (login email in this app).
      * @param array<string, mixed> $extraClaims Additional claims to embed.
-     * @param int|null $ttl Token lifetime in seconds.
+     * @param ?int $ttl Token lifetime in seconds.
      */
     public function issue(string $userName, array $extraClaims = [], ?int $ttl = null): string
     {

@@ -8,9 +8,9 @@ class Connection
 {
     /**
      * Summary of connection
-     * @var \PDO|null
+     * @var ?\PDO
      */
-    private \PDO|null $connection = null;
+    private ?\PDO $connection = null;
     //private static $instanceCount = 0; // Testing purposes
 
     public function __construct()
