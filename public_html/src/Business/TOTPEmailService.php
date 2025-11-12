@@ -63,19 +63,34 @@ class TOTPEmailService
      */
     public function verifyEmailTOTP(int $userId, string $totp): bool
     {
+        $candidates = [];
         $secret = $this->sessionService->get('TOTP_SECRET');
-        $totpRecord = $this->totpEmailRepository->findValidTOTP($userId, $secret);
-        if ((bool) $totpRecord === false || strtotime($totpRecord->expires_at) < time()) {
-            return false;
+        if (is_string($secret) === true && $secret !== '') {
+            $totpRecord = $this->totpEmailRepository->findValidTOTP($userId, $secret);
+            if ($totpRecord !== false) {
+                $candidates[] = $totpRecord;
+            }
         }
 
-        $isValid = $this->totp->verifyTOTP($totpRecord->totp_secret, $totp, TOTP_DIGITS, TOTP_PERIOD);
-        if ((bool) $isValid === true) {
-            $this->totpEmailRepository->deleteTOTP((int) $totpRecord->id);
-            $this->authenticateUser($userId);
+        if ($candidates === []) {
+            $candidates = $this->totpEmailRepository->findAllValidTOTPs($userId);
         }
 
-        return $isValid;
+        foreach ($candidates as $totpRecord) {
+            if (strtotime($totpRecord->expires_at) < time()) {
+                continue;
+            }
+
+            $isValid = $this->totp->verifyTOTP($totpRecord->totp_secret, $totp, TOTP_DIGITS, TOTP_PERIOD);
+            if ((bool) $isValid === true) {
+                $this->totpEmailRepository->deleteTOTP((int) $totpRecord->id);
+                $this->sessionService->remove('TOTP_SECRET');
+                $this->authenticateUser($userId);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

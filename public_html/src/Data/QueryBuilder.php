@@ -27,6 +27,11 @@ class QueryBuilder
     protected ?int $limit = null;
 
     /**
+     * @var array
+     */
+    protected array $orderBys = [];
+
+    /**
      * @var ?array
      */
     protected ?array $updates = null;
@@ -74,6 +79,20 @@ class QueryBuilder
     }
 
     /**
+     * Add an order by clause
+     *
+     * @param string $column
+     * @param string $direction
+     * @return self
+     */
+    public function orderBy(string $column, string $direction = 'ASC'): self
+    {
+        $direction = strtoupper($direction) === 'DESC' ? 'DESC' : 'ASC';
+        $this->orderBys[] = [$column, $direction];
+        return $this;
+    }
+
+    /**
      * Fetch the first record
      *
      * @return mixed
@@ -90,11 +109,49 @@ class QueryBuilder
             }, $this->wheres));
         }
 
+        if ((bool) $this->orderBys === true) {
+            $query .= " ORDER BY " . implode(', ', array_map(function ($orderBy) {
+                return "{$orderBy[0]} {$orderBy[1]}";
+            }, $this->orderBys));
+        }
+
         $query .= " LIMIT 1";
 
         $stmt = $this->connection->prepare($query);
         $stmt->execute($bindings);
         return $stmt->fetch();
+    }
+
+    /**
+     * Fetch all matching records
+     *
+     * @return array
+     */
+    public function get(): array
+    {
+        $query = "SELECT * FROM {$this->table}";
+        $bindings = [];
+
+        if ((bool) $this->wheres === true) {
+            $query .= " WHERE " . implode(' AND ', array_map(function ($where) use (&$bindings) {
+                $bindings[] = $where[2];
+                return "{$where[0]} {$where[1]} ?";
+            }, $this->wheres));
+        }
+
+        if ((bool) $this->orderBys === true) {
+            $query .= " ORDER BY " . implode(', ', array_map(function ($orderBy) {
+                return "{$orderBy[0]} {$orderBy[1]}";
+            }, $this->orderBys));
+        }
+
+        if ($this->limit !== null) {
+            $query .= " LIMIT {$this->limit}";
+        }
+
+        $stmt = $this->connection->prepare($query);
+        $stmt->execute($bindings);
+        return $stmt->fetchAll();
     }
 
     /**
