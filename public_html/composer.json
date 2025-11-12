@@ -19,8 +19,7 @@
         "firebase/php-jwt": "^6.11",
         "phpmailer/phpmailer": "^7.0.0",
         "spomky-labs/otphp": "^11.3.0",
-        "twig/twig": "^3.22.0",
-        "voku/anti-xss": "^4.1.42"
+        "twig/twig": "^3.22.0"
     },
     "suggest": {
         "symfony/yaml": "PHP's yaml_parse_file() fallback package"
