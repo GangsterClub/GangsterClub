@@ -63,17 +63,21 @@ class TOTPEmailService
      */
     public function verifyEmailTOTP(int $userId, string $totp): bool
     {
-        $candidates = [];
+        $candidates = $this->totpEmailRepository->findAllValidTOTPs($userId);
+
         $secret = $this->sessionService->get('TOTP_SECRET');
         if (is_string($secret) === true && $secret !== '') {
             $totpRecord = $this->totpEmailRepository->findValidTOTP($userId, $secret);
-            if ($totpRecord !== false) {
-                $candidates[] = $totpRecord;
-            }
-        }
 
-        if ($candidates === []) {
-            $candidates = $this->totpEmailRepository->findAllValidTOTPs($userId);
+            if ($totpRecord !== false) {
+                $candidates = array_merge(
+                    [$totpRecord],
+                    array_filter(
+                        $candidates,
+                        static fn ($candidate) => (int) $candidate->id !== (int) $totpRecord->id
+                    )
+                );
+            }
         }
 
         foreach ($candidates as $totpRecord) {
