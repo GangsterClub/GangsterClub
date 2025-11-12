@@ -19,3 +19,4 @@
 # Root files
 /.ftpquota
 /composer.phar
+/.env
