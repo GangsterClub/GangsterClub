@@ -13,11 +13,11 @@ $migrationManager->addMigration(new \src\Migration\CreateTOTPEmail($dbh));
 $migrationManager->addMigration(new \src\Migration\CreateUser($dbh));
 
 $allowedArgs = ['--migrate', '--rollback', '-m', '-r'];
-if ((bool) isset($argv[1]) === false || in_array($argv[1], $allowedArgs) === false) {
+if (isset($argv[1]) === false || in_array($argv[1], $allowedArgs) === false) {
     print_r("Invalid command. Use '-m = --migrate' or '-r = --rollback'." . PHP_EOL);
 }
 
-if ((bool) isset($argv[1]) === true) {
+if (isset($argv[1]) === true) {
     $mArgs = [$allowedArgs[0], $allowedArgs[2]];
     if (in_array($argv[1], $mArgs) === true) {
         $migrationManager->migrate();

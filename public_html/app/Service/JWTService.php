@@ -61,7 +61,7 @@ class JWTService
         }
 
         try {
-            $refreshedToken = $this->jwt->shouldRefresh($payload)
+            $refreshedToken = (bool) $this->jwt->shouldRefresh($payload) === true
                 ? $this->jwt->refresh($payload)
                 : $jwtToken;
         } catch (UnexpectedValueException $e) {

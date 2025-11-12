@@ -122,7 +122,7 @@ class Login extends Controller
                     return;
                 }
 
-                if (is_array($authorizationResult) === true && isset($authorizationResult['token'])) {
+                if (is_array($authorizationResult) === true && isset($authorizationResult['token']) === true) {
                     $session->set('jwt_token', $authorizationResult['token']);
                 }
             }

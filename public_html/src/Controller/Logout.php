@@ -32,7 +32,7 @@ class Logout extends Controller
             if ($authorizationHeader !== '') {
                 $authorizationResult = $jwtService->authorize($authorizationHeader);
 
-                if (is_array($authorizationResult) === true && isset($authorizationResult['token'])) {
+                if (is_array($authorizationResult) === true && isset($authorizationResult['token']) === true) {
                     $session->set('jwt_token', $authorizationResult['token']);
                 }
             }
