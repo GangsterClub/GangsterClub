@@ -47,7 +47,7 @@ class TOTPEmailRepository
      *
      * @param int $userId
      * @param string $secret
-     * @return object|false The TOTP record if valid, null otherwise.
+     * @return object|false The TOTP record if valid, false otherwise.
      */
     public function findValidTOTP(int $userId, string $secret): object|false
     {
@@ -56,6 +56,21 @@ class TOTPEmailRepository
             ->where('totp_secret', $secret)
             ->where('expires_at', '>=', date('Y-m-d H:i:s'))
             ->first();
+    }
+
+    /**
+     * Find all valid TOTP secrets for the user that haven't expired.
+     *
+     * @param int $userId
+     * @return array
+     */
+    public function findAllValidTOTPs(int $userId): array
+    {
+        return $this->dbh->table('totp_email')
+            ->where('user_id', $userId)
+            ->where('expires_at', '>=', date('Y-m-d H:i:s'))
+            ->orderBy('created_at', 'DESC')
+            ->get();
     }
 
     /**
