@@ -6,7 +6,7 @@ use src\Data\Connection;
 use app\Middleware\MigrationPipeline;
 
 $dbh = new Connection();
-$migrationManager = new MigrationPipeline();
+$migrationManager = new MigrationPipeline($dbh);
 
 // Add migrations here
 $migrationManager->addMigration(new \src\Migration\CreateTOTPEmail($dbh));

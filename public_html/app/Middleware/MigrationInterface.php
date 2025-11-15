@@ -24,4 +24,10 @@ interface MigrationInterface
      * @return void
      */
     public function log(string $message): void;
+
+    /**
+     * Summary of getTables
+     * @return array<int, string>
+     */
+    public function getTables(): array;
 }

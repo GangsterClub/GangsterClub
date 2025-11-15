@@ -4,6 +4,8 @@ namespace src\Migration;
 
 class CreateUser extends \app\Middleware\Migration
 {
+    protected array $tables = ['user'];
+
     /**
      * Summary of up
      * @return void
