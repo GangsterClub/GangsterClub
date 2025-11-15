@@ -13,6 +13,11 @@ class Migration implements MigrationInterface
     protected $dbh;
 
     /**
+     * @var array<int, string>
+     */
+    protected array $tables = [];
+
+    /**
      * Summary of __construct
      * @param \src\Data\Connection $dbh
      */
@@ -57,5 +62,14 @@ class Migration implements MigrationInterface
     protected function execute(string $sql): void
     {
         $this->dbh->query($sql);
+    }
+
+    /**
+     * Summary of getTables
+     * @return array<int, string>
+     */
+    public function getTables(): array
+    {
+        return $this->tables;
     }
 }

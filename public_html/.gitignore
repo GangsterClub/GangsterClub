@@ -16,6 +16,9 @@
 /web/composer.json_
 /web/composer.lock
 
+# Runtime storage
+/app/storage/tmp/migrations/*.json
+
 # Root files
 /.ftpquota
 /composer.phar

@@ -4,6 +4,8 @@ namespace src\Migration;
 
 class CreateTOTPEmail extends \app\Middleware\Migration
 {
+    protected array $tables = ['totp_email'];
+
     /**
      * Summary of up
      * @return void
