@@ -1,0 +1,126 @@
+{% extends "tmpl/base.twig" %}
+{% import "macro/alerts.twig" as alerts %}
+
+{% block md %}
+    <title>{{ __('account.page-title') }}</title>
+{% endblock %}
+
+{% block content %}
+    <section class="max-w-5xl mx-auto py-16 px-6 text-gray-700 dark:text-gray-200">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold">{{ __('account.headline') }}</h1>
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('account.mfa-instructions', { 'digits': mfa.digits, 'period': mfa.period }) }}</p>
+            </div>
+            <a class="text-sm font-semibold underline" href="{{ docRoot }}logout">{{ __('account.logout') }}</a>
+        </div>
+
+        <div class="space-y-4 mb-6">
+            {% for error in account.errors %}
+                {{ alerts.error(error) }}
+            {% endfor %}
+            {% for success in account.success %}
+                {{ alerts.success(success) }}
+            {% endfor %}
+        </div>
+
+        <div class="grid gap-8 md:grid-cols-2">
+            <div class="bg-white dark:bg-slate-900 shadow rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">{{ __('account.change-username-title') }}</h2>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ __('account.current-username', { 'username': user.username }) }}</p>
+                <form method="POST" autocomplete="off" class="space-y-4">
+                    <div>
+                        <label for="username" class="block text-sm font-medium">{{ __('account.new-username-label') }}</label>
+                        <input type="text" name="username" id="username" value="{{ user.username }}" minlength="3" maxlength="32" pattern="[A-Za-z0-9._-]+"
+                            class="mt-1 w-full px-4 py-2 rounded border border-gray-400 dark:border-gray-600 bg-gray-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                            required />
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('account.username-helper') }}</p>
+                    </div>
+                    <button type="submit" name="submit_username" value="1"
+                        class="inline-flex justify-center items-center px-4 py-2 rounded bg-black text-white dark:bg-gray-200 dark:text-black font-semibold">
+                        {{ __('account.save-username') }}
+                    </button>
+                </form>
+            </div>
+
+            <div class="bg-white dark:bg-slate-900 shadow rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">{{ __('account.change-email-title') }}</h2>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ __('account.current-email', { 'email': user.email }) }}</p>
+                <form method="POST" autocomplete="off" class="space-y-4">
+                    <div>
+                        <label for="new_email" class="block text-sm font-medium">{{ __('account.new-email-label') }}</label>
+                        <input type="email" name="new_email" id="new_email" value="" class="mt-1 w-full px-4 py-2 rounded border border-gray-400 dark:border-gray-600 bg-gray-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white" required />
+                    </div>
+                    <button type="submit" name="submit_email" value="1"
+                        class="inline-flex justify-center items-center px-4 py-2 rounded bg-black text-white dark:bg-gray-200 dark:text-black font-semibold">
+                        {{ __('account.save-email') }}
+                    </button>
+                </form>
+                {% if pendingEmailChange %}
+                    <p class="text-xs text-amber-500 mt-4">{{ __('account.email-change-pending', {
+                        'email': pendingEmailChange.newEmail,
+                        'time': pendingEmailChange.expiresAt ? pendingEmailChange.expiresAt|date('H:i') : '?' }) }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 shadow rounded-lg p-6 mt-8">
+            <div class="flex justify-between items-start flex-col gap-2 md:flex-row md:items-center">
+                <div>
+                    <h2 class="text-xl font-semibold">{{ __('account.mfa-title') }}</h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                        {{ mfa.enabled ? __('account.mfa-description-enabled') : __('account.mfa-description-disabled', { 'digits': mfa.digits, 'period': mfa.period }) }}
+                    </p>
+                </div>
+                <span class="text-sm font-semibold">
+                    {{ mfa.enabled ? __('account.mfa-status-enabled') : __('account.mfa-status-disabled') }}
+                </span>
+            </div>
+
+            <div class="mt-4 space-y-4">
+                <form method="POST">
+                    <button type="submit" name="submit_mfa_setup" value="1"
+                        class="inline-flex justify-center items-center px-4 py-2 rounded border border-gray-400 dark:border-gray-600 font-semibold">
+                        {{ __('account.mfa-start') }}
+                    </button>
+                </form>
+
+                {% if mfa.pendingSecret %}
+                    <div class="border border-dashed border-gray-400 dark:border-gray-600 rounded p-4 space-y-3">
+                        <p class="text-sm">{{ __('account.mfa-secret-label') }}:<br><code class="text-lg font-mono">{{ mfa.pendingSecret }}</code></p>
+                        {% if mfa.otpauth %}
+                            <p class="text-sm break-all">{{ __('account.mfa-otpauth-label') }}:<br><code class="font-mono">{{ mfa.otpauth }}</code></p>
+                        {% endif %}
+                        <form method="POST" class="grid gap-4 md:grid-cols-2">
+                            <div>
+                                <label for="mfa_code" class="block text-sm font-medium">{{ __('account.mfa-code-label') }}</label>
+                                <input type="text" name="mfa_code" id="mfa_code" inputmode="numeric" pattern="\d*" maxlength="{{ mfa.digits }}"
+                                    class="mt-1 w-full px-4 py-2 rounded border border-gray-400 dark:border-gray-600 bg-gray-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                                    autocomplete="off" required />
+                            </div>
+                            <div class="flex items-end gap-2">
+                                <button type="submit" name="submit_mfa_confirm" value="1"
+                                    class="flex-1 inline-flex justify-center items-center px-4 py-2 rounded bg-black text-white dark:bg-gray-200 dark:text-black font-semibold">
+                                    {{ __('account.mfa-verify') }}
+                                </button>
+                                <button type="submit" name="submit_mfa_cancel" value="1"
+                                    class="inline-flex justify-center items-center px-4 py-2 rounded border border-gray-400 dark:border-gray-600 font-semibold">
+                                    {{ __('account.mfa-cancel') }}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                {% endif %}
+
+                {% if mfa.enabled %}
+                    <form method="POST">
+                        <button type="submit" name="submit_mfa_disable" value="1"
+                            class="inline-flex justify-center items-center px-4 py-2 rounded border border-red-500 text-red-600 font-semibold">
+                            {{ __('account.mfa-disable') }}
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+{% endblock %}

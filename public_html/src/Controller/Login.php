@@ -11,6 +11,7 @@ use app\Service\JWTService;
 use src\Business\UserService;
 use src\Business\TOTPEmailService;
 use src\Business\EmailService;
+use src\Business\MFATOTPService;
 
 class Login extends Controller
 {
@@ -65,6 +66,18 @@ class Login extends Controller
 
             $userId = (int) $user->getId();
             $session->set('UNAUTHENTICATED_UID', $userId);
+            $session->set('login.mfa_required', false);
+
+            $mfaService = new MFATOTPService($this->application);
+            $mfaEnabled = $mfaService->hasEnabledMfa($userId);
+            if ($mfaEnabled === true) {
+                $session->set('login.mfa_required', true);
+                $this->twigVariables['login']['success'][] = __('login.mfa-app-instructions', [
+                    'digits' => (string) MFA_TOTP_DIGITS,
+                    'period' => (string) MFA_TOTP_PERIOD,
+                ]);
+                return;
+            }
 
             $totpEmailService = new TOTPEmailService($this->application);
             $otp = $totpEmailService->generateEmailTOTP($userId);
@@ -101,8 +114,14 @@ class Login extends Controller
                 $this->redirectPrevRoute($request);
             }
 
-            $totpEmailService = new TOTPEmailService($this->application);
-            $isValid = $totpEmailService->verifyEmailTOTP($userId, $otp);
+            $mfaRequired = (bool) $session->get('login.mfa_required');
+            if ($mfaRequired === true) {
+                $mfaService = new MFATOTPService($this->application);
+                $isValid = $mfaService->verifyCode($userId, $otp);
+            } else {
+                $totpEmailService = new TOTPEmailService($this->application);
+                $isValid = $totpEmailService->verifyEmailTOTP($userId, $otp);
+            }
 
             if ((bool) $isValid === true) {
                 $this->twigVariables['login']['success'][] = __('success-authenticated');
