@@ -9,8 +9,10 @@ $dbh = new Connection();
 $migrationManager = new MigrationPipeline($dbh);
 
 // Add migrations here
-$migrationManager->addMigration(new \src\Migration\CreateTOTPEmail($dbh));
 $migrationManager->addMigration(new \src\Migration\CreateUser($dbh));
+$migrationManager->addMigration(new \src\Migration\CreateTOTPEmail($dbh));
+$migrationManager->addMigration(new \src\Migration\CreateUserMFATOTP($dbh));
+$migrationManager->addMigration(new \src\Migration\CreateUserEmailChange($dbh));
 
 $allowedArgs = ['--migrate', '--rollback', '-m', '-r'];
 if (isset($argv[1]) === false || in_array($argv[1], $allowedArgs) === false) {

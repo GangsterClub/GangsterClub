@@ -1,0 +1,20 @@
+{% extends "tmpl/base.twig" %}
+{% import "macro/alerts.twig" as alerts %}
+
+{% block md %}
+    <title>{{ __('account.email-verify-title') }}</title>
+{% endblock %}
+
+{% block content %}
+    <section class="max-w-xl mx-auto py-24 px-6 text-gray-700 dark:text-gray-200">
+        <div class="space-y-4">
+            <h1 class="text-3xl font-bold">{{ __('account.email-verify-title') }}</h1>
+            {% if verification.success %}
+                {{ alerts.success(verification.message) }}
+            {% else %}
+                {{ alerts.error(verification.message) }}
+            {% endif %}
+            <a class="inline-flex items-center underline font-semibold" href="{{ docRoot }}login">{{ __('account.email-verify-back-to-login') }}</a>
+        </div>
+    </section>
+{% endblock %}

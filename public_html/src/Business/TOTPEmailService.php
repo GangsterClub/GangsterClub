@@ -107,6 +107,7 @@ class TOTPEmailService
     {
         $session = $this->sessionService;
         $session->remove('UNAUTHENTICATED_UID');
+        $session->remove('login.mfa_required');
         $session->set('UID', $userId);
         $session->regenerate();
     }

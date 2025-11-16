@@ -75,4 +75,24 @@ class UserRepository
 
         return $this->dbh->table('user')->insert($userRecord);
     }
+
+    public function updateUsername(int $userId, string $username): bool
+    {
+        return $this->dbh->table('user')
+            ->where('id', $userId)
+            ->update([
+                'username' => $username,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+    }
+
+    public function updateEmail(int $userId, string $email): bool
+    {
+        return $this->dbh->table('user')
+            ->where('id', $userId)
+            ->update([
+                'email' => $email,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+    }
 }

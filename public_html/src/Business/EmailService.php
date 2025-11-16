@@ -74,4 +74,27 @@ class EmailService
             return false;
         }
     }
+
+    public function sendEmailChangeVerification(string $toEmail, string $newEmail, string $verificationUrl): bool
+    {
+        try {
+            $this->mailer->clearAddresses();
+            $this->mailer->addAddress($toEmail);
+            $this->mailer->Subject = APP_NAME . ' - Confirm your email change';
+            $this->mailer->Body = sprintf(
+                "We received a request to update the email on your %s account to %s.\n\n" .
+                "If you initiated this change, confirm it by visiting: %s\n\n" .
+                "If you did not request this change you can safely ignore this email.",
+                APP_NAME,
+                htmlspecialchars($newEmail, ENT_QUOTES, 'UTF-8'),
+                $verificationUrl
+            );
+            $this->mailer->isHTML(false);
+
+            return $this->mailer->send();
+        } catch (Exception $e) {
+            error_log("Mailer Error: {$this->mailer->ErrorInfo}");
+            return false;
+        }
+    }
 }

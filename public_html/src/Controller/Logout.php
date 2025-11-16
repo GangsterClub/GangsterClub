@@ -42,6 +42,9 @@ class Logout extends Controller
         $session->remove('UNAUTHENTICATED_UID');
         $session->remove('login.totp');
         $session->remove('TOTP_SECRET');
+        $session->remove('login.mfa_required');
+        $session->remove('account.mfa.secret');
+        $session->remove('account.mfa.otpauth');
         $session->remove('jwt_token');
         $session->regenerate();
         $this->application->header('/login');

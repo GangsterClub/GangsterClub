@@ -24,6 +24,16 @@ login:
     controller: Login
     methods: ['GET', 'HEAD', 'POST']
 
+account:
+    path: /account
+    controller: Account
+    methods: ['GET', 'HEAD', 'POST']
+
+accountVerifyEmail:
+    path: /account/email/verify/{token}
+    controller: Account::verifyEmailChange
+    methods: ['GET', 'HEAD']
+
 logout:
     path: /logout
     controller: Logout
