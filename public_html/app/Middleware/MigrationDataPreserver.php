@@ -77,7 +77,13 @@ class MigrationDataPreserver
             return;
         }
 
-        foreach ($payload['tables'] as $table => $tablePayload) {
+        $tables = $this->normaliseTables(array_keys($payload['tables']));
+        foreach ($tables as $table) {
+            $tablePayload = $payload['tables'][$table] ?? null;
+            if (is_array($tablePayload) === false) {
+                continue;
+            }
+
             $rows = $tablePayload['rows'] ?? [];
             if ($rows === [] || $this->tableExists($table) === false) {
                 continue;
@@ -177,7 +183,13 @@ class MigrationDataPreserver
     private function normaliseTables(array $tables): array
     {
         $tables = array_filter(array_map('strval', $tables));
+        $tables = array_filter($tables, [$this, 'isValidIdentifier']);
         return array_values(array_unique($tables));
+    }
+
+    private function isValidIdentifier(string $identifier): bool
+    {
+        return preg_match('/^[A-Za-z0-9_]+$/', $identifier) === 1;
     }
 
     private function writeSnapshot(array $payload): void
