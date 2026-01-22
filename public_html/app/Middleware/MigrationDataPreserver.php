@@ -65,7 +65,7 @@ class MigrationDataPreserver
         return true;
     }
 
-    public function restore(): void
+    public function restore(?array $allowedTables = null): void
     {
         if (is_file($this->snapshotFile) === false) {
             return;
@@ -78,6 +78,10 @@ class MigrationDataPreserver
         }
 
         $tables = $this->normaliseTables(array_keys($payload['tables']));
+        if ($allowedTables !== null) {
+            $allowedTables = $this->normaliseTables($allowedTables);
+            $tables = array_values(array_intersect($tables, $allowedTables));
+        }
         foreach ($tables as $table) {
             $tablePayload = $payload['tables'][$table] ?? null;
             if (is_array($tablePayload) === false) {

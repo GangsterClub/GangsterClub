@@ -45,7 +45,7 @@ class MigrationPipeline
             $migration->up();
         }
 
-        $this->dataPreserver->restore();
+        $this->dataPreserver->restore($this->collectTables());
     }
 
     /**
