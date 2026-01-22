@@ -106,6 +106,10 @@ class MigrationDataPreserver
             return;
         }
 
+        if ($this->isValidIdentifier($table) === false) {
+            return;
+        }
+
         $columns = $this->describeTable($table);
         if ($columns === []) {
             return;
@@ -125,6 +129,15 @@ class MigrationDataPreserver
 
     private function insertRow(string $table, array $tableColumns, array $row): void
     {
+        if ($this->isValidIdentifier($table) === false) {
+            return;
+        }
+
+        $tableColumns = array_values(array_filter($tableColumns, [$this, 'isValidIdentifier']));
+        if ($tableColumns === []) {
+            return;
+        }
+
         $insertColumns = array_values(array_intersect($tableColumns, array_keys($row)));
         if ($insertColumns === []) {
             return;
