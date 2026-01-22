@@ -77,10 +77,10 @@ class MigrationDataPreserver
             return;
         }
 
-        $tables = $this->normaliseTables(array_keys($payload['tables']));
         if ($allowedTables !== null) {
-            $allowedTables = $this->normaliseTables($allowedTables);
-            $tables = array_values(array_intersect($tables, $allowedTables));
+            $tables = $this->normaliseTables($allowedTables);
+        } else {
+            $tables = $this->normaliseTables(array_keys($payload['tables']));
         }
         foreach ($tables as $table) {
             $tablePayload = $payload['tables'][$table] ?? null;
