@@ -154,7 +154,21 @@ class TranslationService
     protected function replacePlaceholders(string $message, array $replacements): string
     {
         foreach ($replacements as $placeholder => $value) {
-            $message = str_replace(':' . $placeholder, $value, $message);
+            if (is_array($value) === true) {
+                $value = implode(
+                    ', ',
+                    array_map(
+                        static fn($item) => (is_scalar($item) || $item === null) ? (string) $item : '[complex]',
+                        $value
+                    )
+                );
+            } elseif ($value instanceof \Stringable) {
+                $value = (string) $value;
+            } elseif (is_scalar($value) === false && $value !== null) {
+                $value = '[complex]';
+            }
+
+            $message = str_replace(':' . $placeholder, (string) $value, $message);
         }
 
         return $message;
