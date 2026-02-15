@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace src\Controller;
 
 use app\Http\Request;
-use app\Service\JWTService;
 
 class Logout extends Controller
 {
@@ -17,27 +16,6 @@ class Logout extends Controller
     public function __invoke(Request $request): ?string
     {
         $session = $this->application->get('sessionService');
-
-        $jwtService = new JWTService($this->application);
-        if ($session->get('UID') !== null) {
-            $authorizationHeader = trim((string) ($request->server('HTTP_AUTHORIZATION') ?? ''));
-
-            if ($authorizationHeader === '') {
-                $storedToken = $session->get('jwt_token');
-                if (is_string($storedToken) === true && $storedToken !== '') {
-                    $authorizationHeader = 'Bearer ' . $storedToken;
-                }
-            }
-
-            if ($authorizationHeader !== '') {
-                $authorizationResult = $jwtService->authorize($authorizationHeader);
-
-                if (is_array($authorizationResult) === true && isset($authorizationResult['token']) === true) {
-                    $session->set('jwt_token', $authorizationResult['token']);
-                }
-            }
-        }
-
         $session->remove('UID');
         $session->remove('UNAUTHENTICATED_UID');
         $session->remove('login.totp');

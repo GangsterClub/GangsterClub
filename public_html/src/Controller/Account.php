@@ -6,8 +6,6 @@ namespace src\Controller;
 
 use app\Container\Application;
 use app\Http\Request;
-use app\Http\Response;
-use app\Service\JWTService;
 use app\Service\SessionService;
 use src\Business\AccountService;
 use src\Business\EmailService;
@@ -44,7 +42,7 @@ class Account extends Controller
         $this->application->get('translationService')->setFile('account');
         $session = $this->application->get('sessionService');
 
-        $this->enforceAuthentication($request, $session);
+        $this->enforceAuthentication($session);
 
         $userId = (int) $session->get('UID');
         $user = $this->userService->getUserById($userId);
@@ -104,32 +102,10 @@ class Account extends Controller
         );
     }
 
-    private function enforceAuthentication(Request $request, SessionService $session): void
+    private function enforceAuthentication(SessionService $session): void
     {
         if ($session->get('UID') === null) {
             $this->application->header('/login');
-        }
-
-        $authorizationHeader = $request->getHeader('Authorization')
-            ?? $request->getHeader('authorization')
-            ?? $request->server('HTTP_AUTHORIZATION');
-
-        if ($authorizationHeader === null || trim((string) $authorizationHeader) === '') {
-            $storedToken = $session->get('jwt_token');
-            if (is_string($storedToken) === true && $storedToken !== '') {
-                $authorizationHeader = 'Bearer ' . $storedToken;
-            }
-        }
-
-        $jwtService = new JWTService($this->application);
-        $authorizationResult = $jwtService->authorize($authorizationHeader);
-        if ($authorizationResult instanceof Response) {
-            $authorizationResult->send();
-            $this->application->exit();
-        }
-
-        if (is_array($authorizationResult) === true && isset($authorizationResult['token']) === true) {
-            $session->set('jwt_token', $authorizationResult['token']);
         }
     }
 

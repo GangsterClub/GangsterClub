@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace app\Service;
 
 use app\Container\Application;
+use app\Http\Request;
 use app\Http\Response;
 use app\Service\SessionService;
 use Firebase\JWT\BeforeValidException;
@@ -91,6 +92,34 @@ class JWTService
         } catch (UnexpectedValueException) {
             return $this->unauthorizedResponse('Invalid access token');
         }
+    }
+
+    public function authorizeRequest(Request $request, SessionService $session): Response|array
+    {
+        $authorizationHeader = $this->resolveAuthorizationHeader($request, $session);
+        $authorizationResult = $this->authorize($authorizationHeader);
+
+        if (is_array($authorizationResult) === true && isset($authorizationResult['token']) === true) {
+            $session->set('jwt_token', $authorizationResult['token']);
+        }
+
+        return $authorizationResult;
+    }
+
+    private function resolveAuthorizationHeader(Request $request, SessionService $session): ?string
+    {
+        $authorizationHeader = $request->getHeader('Authorization')
+            ?? $request->getHeader('authorization')
+            ?? $request->server('HTTP_AUTHORIZATION');
+
+        if ($authorizationHeader === null || trim((string) $authorizationHeader) === '') {
+            $storedToken = $session->get('jwt_token');
+            if (is_string($storedToken) === true && $storedToken !== '') {
+                return 'Bearer ' . $storedToken;
+            }
+        }
+
+        return is_string($authorizationHeader) === true ? $authorizationHeader : null;
     }
 
     private function extractBearerToken(?string $authorization): Response|string

@@ -9,6 +9,13 @@ $kernel->addMiddleware(
     }
 );
 
+$kernel->addMiddleware(
+    function ($request, $next) use ($app) {
+        $authSessionJwtMiddleware = $app->make(\app\Middleware\AuthSessionJWT::class);
+        return $authSessionJwtMiddleware->handle($request, $next);
+    }
+);
+
 // Locale depend on $_SESSION for now
 $kernel->addMiddleware(
     function ($request, $next) use ($app) {
