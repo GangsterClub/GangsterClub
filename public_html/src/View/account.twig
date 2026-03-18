@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block content %}
-    <section class="max-w-5xl mx-auto py-16 px-6 text-gray-700 dark:text-gray-200">
+    <section class="max-w-5xl mx-auto min-h-screen py-16 px-6 text-gray-700 dark:text-gray-200">
         <div class="flex justify-between items-center mb-6">
             <div>
                 <h1 class="text-3xl font-bold">{{ __('account.headline') }}</h1>
@@ -87,16 +87,21 @@
 
                 {% if mfa.pendingSecret %}
                     <div class="border border-dashed border-gray-400 dark:border-gray-600 rounded p-4 space-y-3">
+                        {% if mfa.qrCodeUrl %}
+                            <div>
+                                <img src="{{ mfa.qrCodeUrl }}" alt="TOTP QR code" class="w-48 h-48 rounded bg-white p-2" />
+                            </div>
+                        {% endif %}
                         <p class="text-sm">{{ __('account.mfa-secret-label') }}:<br><code class="text-lg font-mono">{{ mfa.pendingSecret }}</code></p>
                         {% if mfa.otpauth %}
-                            <p class="text-sm break-all">{{ __('account.mfa-otpauth-label') }}:<br><code class="font-mono">{{ mfa.otpauth }}</code></p>
+                            <p class="text-sm break-all">{{ __('account.mfa-otpauth-label') }}:<br><code class="font-mono">{{ mfa.otpauth|raw }}</code></p>
                         {% endif %}
                         <form method="POST" class="grid gap-4 md:grid-cols-2">
                             <div>
                                 <label for="mfa_code" class="block text-sm font-medium">{{ __('account.mfa-code-label') }}</label>
                                 <input type="text" name="mfa_code" id="mfa_code" inputmode="numeric" pattern="\d*" maxlength="{{ mfa.digits }}"
                                     class="mt-1 w-full px-4 py-2 rounded border border-gray-400 dark:border-gray-600 bg-gray-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
-                                    autocomplete="off" required />
+                                    autocomplete="off" />
                             </div>
                             <div class="flex items-end gap-2">
                                 <button type="submit" name="submit_mfa_confirm" value="1"

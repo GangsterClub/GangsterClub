@@ -37,6 +37,28 @@ class MFATOTPService
         return $this->totpService->verifyTOTP($secret, $code, $digits, $period);
     }
 
+    public function generateProvisioningUri(
+        string $secret,
+        string $label = APP_NAME,
+        string $issuer = APP_NAME,
+        int $digits = MFA_TOTP_DIGITS,
+        int $period = MFA_TOTP_PERIOD
+    ): string
+    {
+        return $this->totpService->generateProvisioningUri($secret, $label, $issuer, $digits, $period);
+    }
+
+    public function generateQRCode(
+        string $secret,
+        string $label = APP_NAME,
+        string $issuer = APP_NAME,
+        int $digits = MFA_TOTP_DIGITS,
+        int $period = MFA_TOTP_PERIOD
+    ): string
+    {
+        return $this->totpService->generateQRCode($secret, $label, $issuer, $digits, $period);
+    }
+
     public function enableMfa(int $userId, string $secret, int $digits = MFA_TOTP_DIGITS, int $period = MFA_TOTP_PERIOD): bool
     {
         return $this->repository->upsertSecret($userId, $secret, $digits, $period);

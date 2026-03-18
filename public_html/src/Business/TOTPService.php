@@ -37,18 +37,45 @@ class TOTPService
         return $totp->now();
     }
 
+    public function generateProvisioningUri(
+        string $secret,
+        string $label = APP_NAME,
+        string $issuer = APP_NAME,
+        int $digits = MFA_TOTP_DIGITS,
+        int $period = MFA_TOTP_PERIOD
+    ): string
+    {
+        $totp = TOTP::create($secret, $period);
+        $totp->setDigits($digits);
+        $totp->setLabel($this->sanitizeProvisioningLabel($label));
+        $totp->setIssuer($issuer);
+
+        return $totp->getProvisioningUri();
+    }
+
     /**
      * Summary of generateQRCode
      * @param string $secret
      * @return string
      */
-    public function generateQRCode(string $secret): string
+    public function generateQRCode(
+        string $secret,
+        string $label = APP_NAME,
+        string $issuer = APP_NAME,
+        int $digits = MFA_TOTP_DIGITS,
+        int $period = MFA_TOTP_PERIOD
+    ): string
     {
-        $totp = TOTP::create($secret, MFA_TOTP_PERIOD);
-        $totp->setDigits(MFA_TOTP_DIGITS);
-        $totp->setLabel('michael@gangsterclub.com');
-        $qrCodeUrl = $totp->getProvisioningUri();
-        return "https://api.qrserver.com/v1/create-qr-code/?data=" . urlencode($qrCodeUrl);
+        $qrCodeUrl = $this->generateProvisioningUri($secret, $label, $issuer, $digits, $period);
+
+        return 'https://api.qrserver.com/v1/create-qr-code/?data=' . urlencode($qrCodeUrl);
+    }
+
+    private function sanitizeProvisioningLabel(string $label): string
+    {
+        $sanitized = str_replace(':', ' ', trim($label));
+
+        return $sanitized === '' ? APP_NAME : $sanitized;
     }
 
     /**

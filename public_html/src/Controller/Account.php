@@ -55,6 +55,14 @@ class Account extends Controller
         $this->handleMfa($request, $user, $session);
 
         $pendingEmailChange = $this->formatPendingEmailChange($user->getId());
+        $pendingSecret = $session->get('account.mfa.secret');
+        $mfaLabel = APP_NAME . ':' . $user->getEmail();
+        $otpauth = is_string($pendingSecret) && $pendingSecret !== ''
+            ? $this->mfaService->generateProvisioningUri($pendingSecret, $mfaLabel)
+            : null;
+        $qrCodeUrl = is_string($pendingSecret) && $pendingSecret !== ''
+            ? $this->mfaService->generateQRCode($pendingSecret, $mfaLabel)
+            : null;
 
         return $this->twig->render(
             'account.twig',
@@ -66,8 +74,9 @@ class Account extends Controller
                     'pendingEmailChange' => $pendingEmailChange,
                     'mfa' => [
                         'enabled' => $this->mfaService->hasEnabledMfa($user->getId()),
-                        'pendingSecret' => $session->get('account.mfa.secret'),
-                        'otpauth' => $session->get('account.mfa.otpauth'),
+                        'pendingSecret' => $pendingSecret,
+                        'otpauth' => $otpauth,
+                        'qrCodeUrl' => $qrCodeUrl,
                         'digits' => (int) MFA_TOTP_DIGITS,
                         'period' => (int) MFA_TOTP_PERIOD,
                     ],
@@ -201,13 +210,11 @@ class Account extends Controller
         if ($request->post('submit_mfa_setup') !== null) {
             $secret = $this->mfaService->generateSecret();
             $session->set('account.mfa.secret', $secret);
-            $session->set('account.mfa.otpauth', $this->buildOtpAuthUri($user, $secret));
             $this->accountMessages['success'][] = __('account.mfa-secret-generated');
         }
 
         if ($request->post('submit_mfa_cancel') !== null) {
             $session->remove('account.mfa.secret');
-            $session->remove('account.mfa.otpauth');
             $this->accountMessages['success'][] = __('account.mfa-secret-cleared');
         }
 
@@ -233,7 +240,6 @@ class Account extends Controller
             $enabled = $this->mfaService->enableMfa($user->getId(), $secret);
             if ($enabled === true) {
                 $session->remove('account.mfa.secret');
-                $session->remove('account.mfa.otpauth');
                 $this->accountMessages['success'][] = __('account.mfa-enabled');
             } else {
                 $this->accountMessages['errors'][] = __('account.mfa-enable-error');
@@ -244,27 +250,11 @@ class Account extends Controller
             $disabled = $this->mfaService->disableMfa($user->getId());
             if ($disabled === true) {
                 $session->remove('account.mfa.secret');
-                $session->remove('account.mfa.otpauth');
                 $this->accountMessages['success'][] = __('account.mfa-disabled');
             } else {
                 $this->accountMessages['errors'][] = __('account.mfa-disable-error');
             }
         }
-    }
-
-    private function buildOtpAuthUri(User $user, string $secret): string
-    {
-        $label = rawurlencode(APP_NAME . ':' . $user->getEmail());
-        $issuer = rawurlencode(APP_NAME);
-
-        return sprintf(
-            'otpauth://totp/%s?secret=%s&issuer=%s&digits=%d&period=%d',
-            $label,
-            $secret,
-            $issuer,
-            MFA_TOTP_DIGITS,
-            MFA_TOTP_PERIOD
-        );
     }
 
     private function formatPendingEmailChange(int $userId): ?array
