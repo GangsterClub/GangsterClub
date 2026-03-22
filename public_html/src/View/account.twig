@@ -7,10 +7,9 @@
 
 {% block content %}
     <section class="max-w-5xl mx-auto min-h-screen py-16 px-6 text-gray-700 dark:text-gray-200">
-        <div class="flex justify-between items-center mb-6">
+        <div class="bg-white dark:bg-slate-900 shadow rounded-lg flex justify-between items-center mb-6 p-3">
             <div>
                 <h1 class="text-3xl font-bold">{{ __('account.headline') }}</h1>
-                <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('account.mfa-instructions', { 'digits': mfa.digits, 'period': mfa.period }) }}</p>
             </div>
             <a class="text-sm font-semibold underline" href="{{ docRoot }}logout">{{ __('account.logout') }}</a>
         </div>
@@ -68,6 +67,7 @@
             <div class="flex justify-between items-start flex-col gap-2 md:flex-row md:items-center">
                 <div>
                     <h2 class="text-xl font-semibold">{{ __('account.mfa-title') }}</h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('account.mfa-instructions', { 'digits': mfa.digits, 'period': mfa.period }) }}</p>
                     <p class="text-sm text-gray-500 dark:text-gray-400">
                         {{ mfa.enabled ? __('account.mfa-description-enabled') : __('account.mfa-description-disabled', { 'digits': mfa.digits, 'period': mfa.period }) }}
                     </p>
@@ -147,15 +147,15 @@
                         </button>
                     </div>
 
-                    <dialog id="mfa-disable-modal" class="backdrop:bg-black/60 rounded-xl w-full max-w-lg p-0 bg-transparent">
+                    <dialog id="mfa-disable-modal" class="backdrop:bg-black/60 rounded-xl w-full max-w-lg p-0 bg-transparent text-gray-500 dark:text-gray-400">
                         <div class="bg-white dark:bg-slate-900 shadow-2xl rounded-xl p-6 border border-gray-200 dark:border-slate-700">
                             <div class="flex items-start justify-between gap-4 mb-4">
                                 <div>
-                                    <h3 class="text-lg font-semibold">{{ __('account.mfa-disable-modal-title') }}</h3>
-                                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ __('account.mfa-disable-modal-body', { 'digits': mfa.digits }) }}</p>
+                                    <h3 class="text-gray-700 dark:text-gray-200 text-lg font-semibold">{{ __('account.mfa-disable-modal-title') }}</h3>
+                                    <p class="text-sm mt-1">{{ __('account.mfa-disable-modal-body', { 'digits': mfa.digits }) }}</p>
                                 </div>
                                 <form method="dialog">
-                                    <button type="submit" class="text-sm font-semibold underline">{{ __('account.mfa-modal-close') }}</button>
+                                    <button type="submit" class="text-gray-700 dark:text-gray-200 text-sm font-semibold underline">{{ __('account.mfa-modal-close') }}</button>
                                 </form>
                             </div>
 
@@ -165,11 +165,11 @@
                                     <input type="text" name="mfa_disable_code" id="mfa_disable_code" inputmode="numeric" pattern="\d*" maxlength="{{ mfa.digits }}"
                                         class="mt-1 w-full px-4 py-2 rounded border border-gray-400 dark:border-gray-600 bg-gray-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-red-500"
                                         autocomplete="one-time-code" required />
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('account.mfa-disable-code-help') }}</p>
+                                    <p class="text-xs mt-1">{{ __('account.mfa-disable-code-help') }}</p>
                                 </div>
 
                                 <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                                    <button type="button" onclick="document.getElementById('mfa-disable-modal').close()" class="inline-flex justify-center items-center px-4 py-2 rounded border border-gray-400 dark:border-gray-600 font-semibold w-full sm:w-auto">
+                                    <button type="button" onclick="document.getElementById('mfa-disable-modal').close()" class="inline-flex justify-center items-center px-4 py-2 rounded border border-gray-400 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-semibold w-full sm:w-auto">
                                         {{ __('account.mfa-cancel') }}
                                     </button>
                                     <button type="submit" name="submit_mfa_disable" value="1"
