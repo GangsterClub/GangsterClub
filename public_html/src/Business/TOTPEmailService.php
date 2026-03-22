@@ -9,6 +9,8 @@ use app\Service\SessionService;
 
 class TOTPEmailService
 {
+    private const DEFAULT_SESSION_KEY = 'TOTP_SECRET';
+
     /**
      * @var TOTPService
      */
@@ -44,13 +46,19 @@ class TOTPEmailService
      */
     public function generateEmailTOTP(int $userId): string
     {
+        return $this->generateEmailTOTPForSession($userId, self::DEFAULT_SESSION_KEY);
+    }
+
+    public function generateEmailTOTPForSession(int $userId, string $sessionKey): string
+    {
         $secret = $this->totp->generateSecret(TOTP_DIGITS, TOTP_PERIOD);
-        $this->sessionService->set('TOTP_SECRET', $secret);
+        $this->sessionService->set($sessionKey, $secret);
         $this->totpEmailRepository->storeTOTP(
             $userId,
             $secret,
             date('Y-m-d H:i:s', (time() + TOTP_PERIOD))
         );
+
         return $this->totp->generateTOTP($secret, TOTP_DIGITS, TOTP_PERIOD);
     }
 
@@ -63,9 +71,18 @@ class TOTPEmailService
      */
     public function verifyEmailTOTP(int $userId, string $totp): bool
     {
+        return $this->verifyEmailTOTPForSession($userId, $totp, self::DEFAULT_SESSION_KEY, true);
+    }
+
+    public function verifyEmailTOTPForSession(
+        int $userId,
+        string $totp,
+        string $sessionKey,
+        bool $authenticateUser = false
+    ): bool {
         $candidates = $this->totpEmailRepository->findAllValidTOTPs($userId);
 
-        $secret = $this->sessionService->get('TOTP_SECRET');
+        $secret = $this->sessionService->get($sessionKey);
         if (is_string($secret) === true && $secret !== '') {
             $totpRecord = $this->totpEmailRepository->findValidTOTP($userId, $secret);
 
@@ -88,8 +105,11 @@ class TOTPEmailService
             $isValid = $this->totp->verifyTOTP($totpRecord->totp_secret, $totp, TOTP_DIGITS, TOTP_PERIOD);
             if ((bool) $isValid === true) {
                 $this->totpEmailRepository->deleteTOTP((int) $totpRecord->id);
-                $this->sessionService->remove('TOTP_SECRET');
-                $this->authenticateUser($userId);
+                $this->sessionService->remove($sessionKey);
+                if ($authenticateUser === true) {
+                    $this->authenticateUser($userId);
+                }
+
                 return true;
             }
         }

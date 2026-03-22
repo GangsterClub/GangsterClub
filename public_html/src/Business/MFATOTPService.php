@@ -69,6 +69,19 @@ class MFATOTPService
         return $this->repository->deleteByUserId($userId);
     }
 
+    public function verifyEnabledSecret(int $userId, string $code): bool
+    {
+        $record = $this->repository->findByUserId($userId);
+        if ($record === false) {
+            return false;
+        }
+
+        $digits = (int) ($record->digits ?? MFA_TOTP_DIGITS);
+        $period = (int) ($record->period ?? MFA_TOTP_PERIOD);
+
+        return $this->totpService->verifyTOTP($record->secret, $code, $digits, $period);
+    }
+
     public function verifyCode(int $userId, string $code): bool
     {
         $record = $this->repository->findByUserId($userId);

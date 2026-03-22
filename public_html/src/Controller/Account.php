@@ -10,6 +10,7 @@ use app\Service\SessionService;
 use src\Business\AccountService;
 use src\Business\EmailService;
 use src\Business\MFATOTPService;
+use src\Business\TOTPEmailService;
 use src\Business\UserService;
 use src\Entity\User;
 
@@ -17,6 +18,7 @@ class Account extends Controller
 {
     private const USERNAME_PATTERN = '/^[A-Za-z0-9._-]{3,32}$/';
     private const EMAIL_CHANGE_TTL = 3600;
+    private const MFA_SETUP_EMAIL_SESSION_KEY = 'account.mfa.email_totp_secret';
 
     private AccountService $accountService;
 
@@ -56,6 +58,7 @@ class Account extends Controller
 
         $pendingEmailChange = $this->formatPendingEmailChange($user->getId());
         $pendingSecret = $session->get('account.mfa.secret');
+        $mfaEnabled = $this->mfaService->hasEnabledMfa($user->getId());
         $mfaLabel = APP_NAME . ':' . $user->getEmail();
         $otpauth = is_string($pendingSecret) && $pendingSecret !== ''
             ? $this->mfaService->generateProvisioningUri($pendingSecret, $mfaLabel)
@@ -73,12 +76,14 @@ class Account extends Controller
                     'account' => $this->accountMessages,
                     'pendingEmailChange' => $pendingEmailChange,
                     'mfa' => [
-                        'enabled' => $this->mfaService->hasEnabledMfa($user->getId()),
+                        'enabled' => $mfaEnabled,
                         'pendingSecret' => $pendingSecret,
                         'otpauth' => $otpauth,
                         'qrCodeUrl' => $qrCodeUrl,
                         'digits' => (int) MFA_TOTP_DIGITS,
                         'period' => (int) MFA_TOTP_PERIOD,
+                        'emailDigits' => (int) TOTP_DIGITS,
+                        'emailPeriod' => (int) TOTP_PERIOD,
                     ],
                 ]
             )
@@ -207,47 +212,124 @@ class Account extends Controller
 
     private function handleMfa(Request $request, User $user, SessionService $session): void
     {
+        $userId = $user->getId();
+        $isEnabled = $this->mfaService->hasEnabledMfa($userId);
+        $pendingSecret = $session->get('account.mfa.secret');
+        $hasPendingSetup = is_string($pendingSecret) && $pendingSecret !== '';
+
         if ($request->post('submit_mfa_setup') !== null) {
-            $secret = $this->mfaService->generateSecret();
-            $session->set('account.mfa.secret', $secret);
+            if ($isEnabled === true) {
+                $this->accountMessages['errors'][] = __('account.mfa-setup-already-enabled');
+                return;
+            }
+
+            if ($hasPendingSetup === false) {
+                $session->set('account.mfa.secret', $this->mfaService->generateSecret());
+            }
+
+            $totpEmailService = new TOTPEmailService($this->application);
+            $emailCode = $totpEmailService->generateEmailTOTPForSession($userId, self::MFA_SETUP_EMAIL_SESSION_KEY);
+
+            $emailService = new EmailService();
+            $emailSent = $emailService->sendTOTPEmail($user->getEmail(), $emailCode);
+            if ($emailSent === false) {
+                $this->accountMessages['errors'][] = __('account.mfa-email-code-send-error');
+                return;
+            }
+
             $this->accountMessages['success'][] = __('account.mfa-secret-generated');
+            $this->accountMessages['success'][] = __('account.mfa-email-code-sent');
+            return;
         }
 
         if ($request->post('submit_mfa_cancel') !== null) {
-            $session->remove('account.mfa.secret');
-            $this->accountMessages['success'][] = __('account.mfa-secret-cleared');
+            if ($isEnabled === false && $hasPendingSetup === true) {
+                $session->remove('account.mfa.secret');
+                $session->remove(self::MFA_SETUP_EMAIL_SESSION_KEY);
+                $this->accountMessages['success'][] = __('account.mfa-secret-cleared');
+                return;
+            }
+
+            if ($isEnabled === true) {
+                $this->accountMessages['errors'][] = __('account.mfa-disable-requires-verification');
+                return;
+            }
+
+            $this->accountMessages['errors'][] = __('account.mfa-requires-secret');
+            return;
         }
 
         if ($request->post('submit_mfa_confirm') !== null) {
-            $secret = $session->get('account.mfa.secret');
-            if (is_string($secret) === false || $secret === '') {
+            if ($isEnabled === true) {
+                $this->accountMessages['errors'][] = __('account.mfa-setup-already-enabled');
+                return;
+            }
+
+            if ($hasPendingSetup === false) {
                 $this->accountMessages['errors'][] = __('account.mfa-requires-secret');
                 return;
             }
 
-            $code = preg_replace('/\s+/', '', (string) $request->post('mfa_code'));
-            $pattern = '/^\d{' . MFA_TOTP_DIGITS . '}$/';
-            if ((bool) preg_match($pattern, $code) === false) {
+            $code = $this->normalizeOtpCode((string) $request->post('mfa_code'));
+            if ($this->isValidNumericCodeFormat($code, (int) MFA_TOTP_DIGITS) === false) {
                 $this->accountMessages['errors'][] = __('account.mfa-invalid-code');
                 return;
             }
 
-            if ($this->mfaService->verifySecret($secret, $code) === false) {
+            $emailCode = $this->normalizeOtpCode((string) $request->post('mfa_email_code'));
+            if ($this->isValidNumericCodeFormat($emailCode, (int) TOTP_DIGITS) === false) {
+                $this->accountMessages['errors'][] = __('account.mfa-email-code-required');
+                return;
+            }
+
+            if ($this->mfaService->verifySecret($pendingSecret, $code) === false) {
                 $this->accountMessages['errors'][] = __('account.mfa-invalid-code');
                 return;
             }
 
-            $enabled = $this->mfaService->enableMfa($user->getId(), $secret);
+            $totpEmailService = new TOTPEmailService($this->application);
+            if ($totpEmailService->verifyEmailTOTPForSession($userId, $emailCode, self::MFA_SETUP_EMAIL_SESSION_KEY) === false) {
+                $this->accountMessages['errors'][] = __('account.mfa-email-code-invalid');
+                return;
+            }
+
+            $enabled = $this->mfaService->enableMfa($userId, $pendingSecret);
             if ($enabled === true) {
                 $session->remove('account.mfa.secret');
+                $session->remove(self::MFA_SETUP_EMAIL_SESSION_KEY);
                 $this->accountMessages['success'][] = __('account.mfa-enabled');
             } else {
                 $this->accountMessages['errors'][] = __('account.mfa-enable-error');
             }
+
+            return;
         }
 
         if ($request->post('submit_mfa_disable') !== null) {
-            $disabled = $this->mfaService->disableMfa($user->getId());
+            if ($isEnabled === false) {
+                if ($hasPendingSetup === true) {
+                    $session->remove('account.mfa.secret');
+                    $session->remove(self::MFA_SETUP_EMAIL_SESSION_KEY);
+                    $this->accountMessages['success'][] = __('account.mfa-secret-cleared');
+                } else {
+                    $this->accountMessages['errors'][] = __('account.mfa-disable-not-enabled');
+                }
+
+                return;
+            }
+
+            $code = $this->normalizeOtpCode((string) $request->post('mfa_disable_code'));
+            if ($this->isValidNumericCodeFormat($code, (int) MFA_TOTP_DIGITS) === false) {
+                $this->accountMessages['errors'][] = __('account.mfa-disable-code-required');
+                return;
+            }
+
+            if ($this->mfaService->verifyEnabledSecret($userId, $code) === false) {
+                $this->accountMessages['errors'][] = __('account.mfa-disable-invalid-code');
+                return;
+            }
+
+            $disabled = $this->mfaService->disableMfa($userId);
             if ($disabled === true) {
                 $session->remove('account.mfa.secret');
                 $this->accountMessages['success'][] = __('account.mfa-disabled');
@@ -255,6 +337,18 @@ class Account extends Controller
                 $this->accountMessages['errors'][] = __('account.mfa-disable-error');
             }
         }
+    }
+
+    private function normalizeOtpCode(string $code): string
+    {
+        return preg_replace('/\s+/', '', $code) ?? '';
+    }
+
+    private function isValidNumericCodeFormat(string $code, int $digits): bool
+    {
+        $pattern = '/^\d{' . $digits . '}$/';
+
+        return (bool) preg_match($pattern, $code);
     }
 
     private function formatPendingEmailChange(int $userId): ?array
