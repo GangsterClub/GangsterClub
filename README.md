@@ -12,10 +12,10 @@ This is a boilerplate custom MVC framework in progress written in PHP.
 
 Execute command "composer install" from public_html, requires [composer installation](https://getcomposer.org/download/)
 
-- twig/twig ^3.7.1
-- phpmailer/phpmailer ^6.8.1
-- spomky-labs/otphp ^11.3.0
-- firebase/php-jwt ^6.11
+- twig/twig ^3.23.0
+- phpmailer/phpmailer ^7.0.2
+- spomky-labs/otphp ^11.4.2
+- firebase/php-jwt ^7.0
 
 Optional depencency as defined by suggest:
 
