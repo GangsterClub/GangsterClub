@@ -27,6 +27,6 @@ Install fallback package if PHP's yaml extension is unavailable to you with comm
 
 ## Tailwindcss
 
-Execute the following command from public_html, requires [tailwindcss installation](https://tailwindcss.com/docs/installation)
+Execute the following command from public_html, requires [tailwindcss v4.2.2 installation](https://tailwindcss.com/docs/installation)
 
 - tailwindcss -i web/css/tailwind.css -o web/cache/tailwind.css --minify

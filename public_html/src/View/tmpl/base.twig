@@ -13,8 +13,8 @@
             <meta name="keywords" content="Hello, World" />
             <meta name="author" content="John Doe" />
         {% endblock %}
-        <link rel="stylesheet" href="cache/tailwind.css" />
-        <link rel="stylesheet" href="css/style.css" />
+        <link rel="stylesheet" href="cache/tailwind.css?v={{ assetVersion }}" />
+        <link rel="stylesheet" href="css/style.css?v={{ assetVersion }}" />
         <style type="text/css">
             {% for key in langs|keys %}
                 .flag-{{ key|lower }} {
@@ -26,7 +26,7 @@
     </head>
     <body class="bg-background bg-no-repeat bg-cover bg-center bg-fixed backdrop-blur-[2px] dark:backdrop-brightness-75">
         <div class="dropdown inline-block absolute m-5">
-            <button class="bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 font-semibold py-2 px-4 rounded inline-flex items-center">
+            <button class="btn-secondary bg-gray-100 py-2 text-gray-700 hover:bg-gray-200 dark:bg-slate-800 dark:text-gray-200 dark:hover:bg-slate-700">
                 <span class="mr-1">
                     <i class="inline-block flag-{{ locale }} bg-no-repeat bg-cover bg-center w-6 h-5 ml-auto -mt-1 mr-1 -mb-1"></i>&nbsp;{{ langs[locale]|raw }}
                 </span>

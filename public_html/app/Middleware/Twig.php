@@ -34,6 +34,10 @@ class Twig
     public function handle(Request $request, callable $next): ?Response
     {
         $loader = new \Twig\Loader\FilesystemLoader(DOC_ROOT . '/src/View/');
+        $assetVersion = $this->getAssetVersion(
+            DOC_ROOT . '/web/cache/tailwind.css',
+            DOC_ROOT . '/web/css/style.css'
+        );
         $twig = new \Twig\Environment(
             $loader,
             [
@@ -41,9 +45,23 @@ class Twig
             ]
         );
         $twig->addGlobal('docRoot', WEB_ROOT);
+        $twig->addGlobal('assetVersion', $assetVersion);
         $twig->addExtension(new \app\Twig\TranslationExtension());
         $this->application->addService('twig', $twig);
         $response = $next($request);
         return $response;
+    }
+
+    protected function getAssetVersion(string ...$paths): int
+    {
+        $latest = 1;
+
+        foreach ($paths as $path) {
+            if (file_exists($path) === true) {
+                $latest = max($latest, (int) filemtime($path));
+            }
+        }
+
+        return $latest;
     }
 }
