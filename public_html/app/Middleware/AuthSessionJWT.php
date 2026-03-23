@@ -8,7 +8,6 @@ use app\Container\Application;
 use app\Http\Request;
 use app\Http\Response;
 use app\Service\JWTService;
-use app\Service\SessionService;
 
 class AuthSessionJWT
 {
@@ -21,17 +20,13 @@ class AuthSessionJWT
 
     public function handle(Request $request, callable $next): ?Response
     {
-        $session = $this->application->get('sessionService');
-        if ($session instanceof SessionService === false) {
-            return $next($request);
-        }
-
-        if ((int) $session->get('UID') <= 0) {
+        $auth = $this->application->get('authService');
+        if ($auth->getAuthenticatedUserId() === null) {
             return $next($request);
         }
 
         $jwtService = new JWTService($this->application);
-        $authorizationResult = $jwtService->authorizeRequest($request, $session);
+        $authorizationResult = $jwtService->authorizeRequest($request);
         if ($authorizationResult instanceof Response) {
             $authorizationResult->send();
             $this->application->exit();

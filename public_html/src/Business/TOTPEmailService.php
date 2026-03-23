@@ -11,26 +11,12 @@ class TOTPEmailService
 {
     private const DEFAULT_SESSION_KEY = 'TOTP_SECRET';
 
-    /**
-     * @var TOTPService
-     */
     protected TOTPService $totp;
 
-    /**
-     * @var TOTPEmailRepository
-     */
     protected TOTPEmailRepository $totpEmailRepository;
 
-    /**
-     * Summary of sessionService
-     * @var SessionService
-     */
     protected SessionService $sessionService;
 
-    /**
-     * Summary of __construct
-     * @param \app\Container\Application $application
-     */
     public function __construct(\app\Container\Application $application)
     {
         $this->totp = new TOTPService();
@@ -71,14 +57,13 @@ class TOTPEmailService
      */
     public function verifyEmailTOTP(int $userId, string $totp): bool
     {
-        return $this->verifyEmailTOTPForSession($userId, $totp, self::DEFAULT_SESSION_KEY, true);
+        return $this->verifyEmailTOTPForSession($userId, $totp, self::DEFAULT_SESSION_KEY);
     }
 
     public function verifyEmailTOTPForSession(
         int $userId,
         string $totp,
-        string $sessionKey,
-        bool $authenticateUser = false
+        string $sessionKey
     ): bool {
         $candidates = $this->totpEmailRepository->findAllValidTOTPs($userId);
 
@@ -106,29 +91,10 @@ class TOTPEmailService
             if ((bool) $isValid === true) {
                 $this->totpEmailRepository->deleteTOTP((int) $totpRecord->id);
                 $this->sessionService->remove($sessionKey);
-                if ($authenticateUser === true) {
-                    $this->authenticateUser($userId);
-                }
-
                 return true;
             }
         }
 
         return false;
-    }
-
-    /**
-     * Placeholder for user authentication after successful TOTP validation.
-     *
-     * @param int $userId
-     * @return void
-     */
-    private function authenticateUser(int $userId): void
-    {
-        $session = $this->sessionService;
-        $session->remove('UNAUTHENTICATED_UID');
-        $session->remove('login.mfa_required');
-        $session->set('UID', $userId);
-        $session->regenerate();
     }
 }

@@ -6,7 +6,7 @@ namespace src\Controller;
 
 use app\Http\Request;
 use app\Http\Response;
-use app\Service\SessionService;
+use app\Service\AuthService;
 use app\Service\JWTService;
 use src\Business\UserService;
 use src\Business\TOTPEmailService;
@@ -15,22 +15,17 @@ use src\Business\MFATOTPService;
 
 class Login extends Controller
 {
-    /**
-     * Summary of __invoke
-     * @param \app\Http\Request $request
-     * @return string
-     */
     public function __invoke(Request $request): string
     {
         $this->application->get('translationService')->setFile('login');
-        $session = $this->application->get('sessionService');
-        $this->login($request, $session);
-        $this->verify($request, $session);
-        $email = $session->get('login.email');
-        $uUID = $session->get('UNAUTHENTICATED_UID');
-        $loginTotp = $session->get('login.totp');
-        $totp = is_array($loginTotp) === false ? str_split((string) $loginTotp) : (array) $loginTotp;
-        $uid = $session->get('UID');
+        $auth = $this->auth();
+        $this->login($request, $auth);
+        $this->verify($request, $auth);
+        $email = $auth->getPendingLoginEmail();
+        $pendingUserId = $auth->getPendingUserId();
+        $loginTotp = $auth->getPendingLoginTotp();
+        $totp = is_string($loginTotp) === true ? str_split($loginTotp) : [];
+        $uid = $auth->getAuthenticatedUserId();
 
         return $this->twig->render(
             'login.twig',
@@ -38,7 +33,7 @@ class Login extends Controller
                 $this->twigVariables,
                 [
                     'email' => $email,
-                    'uUID' => $uUID,
+                    'uUID' => $pendingUserId,
                     'totp' => $totp,
                     'UID' => $uid
                 ]
@@ -46,32 +41,27 @@ class Login extends Controller
         );
     }
 
-    /**
-     * Summary of login
-     * @param \app\Http\Request $request
-     * @param \app\Service\SessionService $session
-     * @return void
-     */
-    private function login(Request $request, SessionService $session): void
+    private function login(Request $request, AuthService $auth): void
     {
         $submit = $request->post('submit_login');
         $email = $request->post('email');
         if ((bool) $submit === true && (bool) $email === true) {
-            $session->set('login.email', $email);
+            $auth->setPendingLoginEmail($email);
             $userService = new UserService($this->application);
             $user = $userService->getUserByEmail($email);
             if ($user === null) {
+                $session = $this->application->get('sessionService');
                 $user = $userService->createUserByEmail($email, $session->get('_IPaddress'));
             }
 
             $userId = (int) $user->getId();
-            $session->set('UNAUTHENTICATED_UID', $userId);
-            $session->set('login.mfa_required', false);
+            $auth->setPendingUserId($userId);
+            $auth->setLoginMfaRequired(false);
 
             $mfaService = new MFATOTPService($this->application);
             $mfaEnabled = $mfaService->hasEnabledMfa($userId);
             if ($mfaEnabled === true) {
-                $session->set('login.mfa_required', true);
+                $auth->setLoginMfaRequired(true);
                 $this->twigVariables['login']['success'][] = __('login.mfa-app-instructions', [
                     'digits' => (string) MFA_TOTP_DIGITS,
                     'period' => (string) MFA_TOTP_PERIOD,
@@ -94,27 +84,21 @@ class Login extends Controller
         } //end if
     }
 
-    /**
-     * Summary of verify
-     * @param \app\Http\Request $request
-     * @param \app\Service\SessionService $session
-     * @return void
-     */
-    private function verify(Request $request, SessionService $session): void
+    private function verify(Request $request, AuthService $auth): void
     {
         $submit = $request->post('submit_totp');
         $otp = $request->post('totp');
         $jwtService = new JWTService($this->application);
         if ((bool) $submit === true && (bool) $otp === true) {
             $otp = is_array($otp) === true ? implode('', $otp) : (string) $otp;
-            $session->set('login.totp', $otp);
-            $userId = (int) $session->get('UNAUTHENTICATED_UID');
+            $auth->setPendingLoginTotp($otp);
+            $userId = $auth->getPendingUserId();
 
             if ($userId === null) {
                 $this->redirectPrevRoute($request);
             }
 
-            $mfaRequired = (bool) $session->get('login.mfa_required');
+            $mfaRequired = $auth->isLoginMfaRequired();
             if ($mfaRequired === true) {
                 $mfaService = new MFATOTPService($this->application);
                 $isValid = $mfaService->verifyCode($userId, $otp);
@@ -125,15 +109,21 @@ class Login extends Controller
 
             if ((bool) $isValid === true) {
                 $this->twigVariables['login']['success'][] = __('success-authenticated');
-                $jwtToken = $jwtService->authenticate($session->get('login.email'), $isValid);
+                $pendingEmail = $auth->getPendingLoginEmail();
+                if ($pendingEmail === null) {
+                    $this->twigVariables['login']['errors'][] = __('error-invalid-otp');
+                    return;
+                }
+
+                $jwtToken = $jwtService->authenticate($pendingEmail, $isValid);
                 if ($jwtToken !== false) {
-                    $session->set('jwt_token', $jwtToken);
+                    $auth->loginUserWithToken($userId, $jwtToken);
                     header('Authorization: Bearer ' . $jwtToken);
                 }
                 return;
             }
 
-            $storedToken = $session->get('jwt_token');
+            $storedToken = $auth->getStoredJwtToken();
             if (is_string($storedToken) === true && $storedToken !== '') {
                 $authorizationResult = $jwtService->authorize('Bearer ' . $storedToken);
                 if ($authorizationResult instanceof Response) {
@@ -142,7 +132,7 @@ class Login extends Controller
                 }
 
                 if (is_array($authorizationResult) === true && isset($authorizationResult['token']) === true) {
-                    $session->set('jwt_token', $authorizationResult['token']);
+                    $auth->storeJwtToken($authorizationResult['token']);
                 }
             }
 

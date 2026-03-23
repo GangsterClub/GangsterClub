@@ -10,22 +10,10 @@ use app\Http\Response;
 
 class Session
 {
-    /**
-     * Summary of application
-     * @var Application
-     */
     protected Application $application;
 
-    /**
-     * Summary of savePath
-     * @var string
-     */
     private string $savePath;
 
-    /**
-     * Summary of __construct
-     * @param \app\Container\Application $application
-     */
     public function __construct(Application $application)
     {
         $this->application = $application;
@@ -35,16 +23,11 @@ class Session
         }
     }
 
-    /**
-     * Summary of handle
-     * @param \app\Http\Request $request
-     * @param callable $next
-     * @return \app\Http\Response|object
-     */
     public function handle(Request $request, callable $next): ?Response
     {
         $session = new \app\Service\SessionService($request);
         $this->application->addService('sessionService', $session);
+        $this->application->addService('authService', new \app\Service\AuthService($this->application));
         ini_set('session.save_handler', 'files');
         session_set_save_handler($session, true);
         session_save_path($this->savePath);

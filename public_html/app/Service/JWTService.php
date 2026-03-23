@@ -7,11 +7,9 @@ namespace app\Service;
 use app\Container\Application;
 use app\Http\Request;
 use app\Http\Response;
-use app\Service\SessionService;
 use Firebase\JWT\BeforeValidException;
 use Firebase\JWT\ExpiredException;
 use Firebase\JWT\SignatureInvalidException;
-use src\Business\UserService;
 use UnexpectedValueException;
 
 class JWTService
@@ -20,10 +18,13 @@ class JWTService
 
     private JWT $jwt;
 
-    public function __construct(Application $application, ?JWT $jwt = null)
+    private AuthService $authService;
+
+    public function __construct(Application $application, ?JWT $jwt = null, ?AuthService $authService = null)
     {
         $this->application = $application;
         $this->jwt = $jwt ?? new JWT();
+        $this->authService = $authService ?? $application->get('authService');
     }
 
     public function authenticate(string $username, bool $hasValidCredentials = false): string|false
@@ -94,26 +95,26 @@ class JWTService
         }
     }
 
-    public function authorizeRequest(Request $request, SessionService $session): Response|array
+    public function authorizeRequest(Request $request): Response|array
     {
-        $authorizationHeader = $this->resolveAuthorizationHeader($request, $session);
+        $authorizationHeader = $this->resolveAuthorizationHeader($request);
         $authorizationResult = $this->authorize($authorizationHeader);
 
         if (is_array($authorizationResult) === true && isset($authorizationResult['token']) === true) {
-            $session->set('jwt_token', $authorizationResult['token']);
+            $this->authService->storeJwtToken($authorizationResult['token']);
         }
 
         return $authorizationResult;
     }
 
-    private function resolveAuthorizationHeader(Request $request, SessionService $session): ?string
+    private function resolveAuthorizationHeader(Request $request): ?string
     {
         $authorizationHeader = $request->getHeader('Authorization')
             ?? $request->getHeader('authorization')
             ?? $request->server('HTTP_AUTHORIZATION');
 
         if ($authorizationHeader === null || trim((string) $authorizationHeader) === '') {
-            $storedToken = $session->get('jwt_token');
+            $storedToken = $this->authService->getStoredJwtToken();
             if (is_string($storedToken) === true && $storedToken !== '') {
                 return 'Bearer ' . $storedToken;
             }
@@ -142,23 +143,7 @@ class JWTService
      */
     private function authorizeExpiredToken(): Response|array
     {
-        $session = $this->application->get('sessionService');
-        if ($session instanceof SessionService === false) {
-            return $this->unauthorizedResponse('Expired access token');
-        }
-
-        $userId = $session->get('UID');
-        if ($userId === null || $userId === '') {
-            return $this->unauthorizedResponse('Expired access token');
-        }
-
-        $userId = (int) $userId;
-        if ($userId <= 0) {
-            return $this->unauthorizedResponse('Expired access token');
-        }
-
-        $userService = new UserService($this->application);
-        $user = $userService->getUserById($userId);
+        $user = $this->authService->getAuthenticatedUser();
         if ($user === null) {
             return $this->unauthorizedResponse('Expired access token');
         }

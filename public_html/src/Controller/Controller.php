@@ -6,31 +6,16 @@ namespace src\Controller;
 
 use app\Container\Application;
 use app\Http\Request;
+use app\Service\AuthService;
 
 class Controller
 {
-    /**
-     * Summary of application
-     * @var Application
-     */
     protected Application $application;
 
-    /**
-     * Summary of twig
-     * @var \Twig\Environment
-     */
     protected \Twig\Environment $twig;
 
-    /**
-     * Summary of twigVariables
-     * @var array
-     */
     protected array $twigVariables = [];
 
-    /**
-     * Summary of __construct
-     * @param \app\Container\Application $application
-     */
     public function __construct(Application $application)
     {
         $this->application = $application;
@@ -45,11 +30,6 @@ class Controller
         $this->application->get('sessionService')->set('PREV_ROUTE', REQUEST_URI);
     }
 
-    /**
-     * Summary of __invoke
-     * @param \app\Http\Request $request
-     * @return string|null
-     */
     public function __invoke(Request $request): string|null
     {
         if (strpos($cls = $this::class, $rpl = SRC_CONTROLLER) !== false) {
@@ -67,11 +47,11 @@ class Controller
         return null;
     }
 
-    /**
-     * Summary of redirectPrevRoute
-     * @param \app\Http\Request $request
-     * @return void
-     */
+    protected function auth(): AuthService
+    {
+        return $this->application->get('authService');
+    }
+
     protected function redirectPrevRoute(Request $request): void
     {
         $session = $this->application->get('sessionService');

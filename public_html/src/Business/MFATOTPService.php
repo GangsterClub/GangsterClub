@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace src\Business;
 
-use app\Service\SessionService;
 use src\Data\Repository\UserMFATOTPRepository;
 
 class MFATOTPService
@@ -13,13 +12,10 @@ class MFATOTPService
 
     private UserMFATOTPRepository $repository;
 
-    private SessionService $sessionService;
-
     public function __construct(\app\Container\Application $application)
     {
         $this->totpService = new TOTPService();
         $this->repository = new UserMFATOTPRepository($application->get('dbh'));
-        $this->sessionService = $application->get('sessionService');
     }
 
     public function hasEnabledMfa(int $userId): bool
@@ -94,18 +90,8 @@ class MFATOTPService
         $isValid = $this->totpService->verifyTOTP($record->secret, $code, $digits, $period);
         if ($isValid === true) {
             $this->repository->touchLastVerified($userId);
-            $this->authenticateUser($userId);
         }
 
         return $isValid;
-    }
-
-    private function authenticateUser(int $userId): void
-    {
-        $session = $this->sessionService;
-        $session->remove('UNAUTHENTICATED_UID');
-        $session->remove('login.mfa_required');
-        $session->set('UID', $userId);
-        $session->regenerate();
     }
 }
