@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace src\Controller;
 
+use app\Http\Response;
+
 class SetLocale extends Controller
 {
     /**
@@ -11,7 +13,7 @@ class SetLocale extends Controller
      * @param \app\Http\Request $request
      * @return string|null
      */
-    public function __invoke(\app\Http\Request $request): ?string
+    public function __invoke(\app\Http\Request $request): Response
     {
         $locale = ($request->getParameter('locale') ?? null);
         if ($locale !== null) {
@@ -24,6 +26,6 @@ class SetLocale extends Controller
             $translationService->setLocale($locale);
             $session->set('preferred_language', $locale);
         }
-        $this->redirectPrevRoute($request);
+        return $this->redirectPrevRoute($request);
     }
 }

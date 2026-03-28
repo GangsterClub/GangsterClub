@@ -6,6 +6,7 @@ namespace src\Controller;
 
 use app\Container\Application;
 use app\Http\Request;
+use app\Http\Response;
 use app\Service\AuthService;
 
 class Controller
@@ -30,21 +31,22 @@ class Controller
         $this->application->get('sessionService')->set('PREV_ROUTE', REQUEST_URI);
     }
 
-    public function __invoke(Request $request): string|null
+    public function __invoke(Request $request): Response
     {
         if (strpos($cls = $this::class, $rpl = SRC_CONTROLLER) !== false) {
             $view = strtolower(str_replace($rpl, '', $cls));
             if (file_exists(DOC_ROOT . '/src/View/' . $view . '.twig') === true) {
-                return (string) $this->twig->render($view . '.twig', $this->twigVariables);
+                return Response::html((string) $this->twig->render($view . '.twig', $this->twigVariables));
             }
         }
 
         if (strtolower(ENVIRONMENT) !== "production" && DEVELOPMENT === true) {
-            print_r('<pre>');
-            var_dump($request);
-            print_r('</pre>');
+            return Response::html(
+                '<pre>' . htmlspecialchars(var_export($request, true), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</pre>'
+            );
         }
-        return null;
+
+        return Response::html('');
     }
 
     protected function auth(): AuthService
@@ -52,16 +54,13 @@ class Controller
         return $this->application->get('authService');
     }
 
-    protected function redirectPrevRoute(Request $request): void
+    protected function redirectPrevRoute(Request $request): Response
     {
         $session = $this->application->get('sessionService');
         $prevRoute = ($session->get('PREV_ROUTE') ??
             ($request->server('HTTP_REFERER')) ??
             (APP_BASE . '/'));
 
-        if (headers_sent() === false) {
-            header('Location: ' . $prevRoute, true, 301);
-            $this->application->exit();
-        }
+        return Response::redirect((string) $prevRoute, 301);
     }
 }

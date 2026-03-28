@@ -8,40 +8,59 @@ use app\Http\Request;
 use app\Http\Response;
 use app\Service\AuthService;
 use app\Service\JWTService;
-use src\Business\UserService;
-use src\Business\TOTPEmailService;
 use src\Business\EmailService;
 use src\Business\MFATOTPService;
+use src\Business\TOTPEmailService;
+use src\Business\UserService;
 
 class Login extends Controller
 {
-    public function __invoke(Request $request): string
+    private ?string $authorizationHeader = null;
+
+    public function __invoke(Request $request): Response
     {
         $this->application->get('translationService')->setFile('login');
         $auth = $this->auth();
-        $this->login($request, $auth);
-        $this->verify($request, $auth);
+
+        $loginResponse = $this->login($request, $auth);
+        if ($loginResponse instanceof Response) {
+            return $loginResponse;
+        }
+
+        $verifyResponse = $this->verify($request, $auth);
+        if ($verifyResponse instanceof Response) {
+            return $verifyResponse;
+        }
+
         $email = $auth->getPendingLoginEmail();
         $pendingUserId = $auth->getPendingUserId();
         $loginTotp = $auth->getPendingLoginTotp();
         $totp = is_string($loginTotp) === true ? str_split($loginTotp) : [];
         $uid = $auth->getAuthenticatedUserId();
 
-        return $this->twig->render(
-            'login.twig',
-            array_merge(
-                $this->twigVariables,
-                [
-                    'email' => $email,
-                    'uUID' => $pendingUserId,
-                    'totp' => $totp,
-                    'UID' => $uid
-                ]
+        $response = Response::html(
+            $this->twig->render(
+                'login.twig',
+                array_merge(
+                    $this->twigVariables,
+                    [
+                        'email' => $email,
+                        'uUID' => $pendingUserId,
+                        'totp' => $totp,
+                        'UID' => $uid,
+                    ]
+                )
             )
         );
+
+        if (is_string($this->authorizationHeader) === true && $this->authorizationHeader !== '') {
+            return $response->withHeader($this->authorizationHeader);
+        }
+
+        return $response;
     }
 
-    private function login(Request $request, AuthService $auth): void
+    private function login(Request $request, AuthService $auth): ?Response
     {
         $submit = $request->post('submit_login');
         $email = $request->post('email');
@@ -66,7 +85,7 @@ class Login extends Controller
                     'digits' => (string) MFA_TOTP_DIGITS,
                     'period' => (string) MFA_TOTP_PERIOD,
                 ]);
-                return;
+                return null;
             }
 
             $totpEmailService = new TOTPEmailService($this->application);
@@ -76,26 +95,28 @@ class Login extends Controller
             $emailSent = $emailService->sendTOTPEmail($email, $otp);
 
             if ((bool) $emailSent === true) {
-                $this->redirectPrevRoute($request);
-                return;
+                return $this->redirectPrevRoute($request);
             }
 
             $this->twigVariables['login']['errors'][] = __('error-email');
-        } //end if
+        }
+
+        return null;
     }
 
-    private function verify(Request $request, AuthService $auth): void
+    private function verify(Request $request, AuthService $auth): ?Response
     {
         $submit = $request->post('submit_totp');
         $otp = $request->post('totp');
         $jwtService = new JWTService($this->application);
+
         if ((bool) $submit === true && (bool) $otp === true) {
             $otp = is_array($otp) === true ? implode('', $otp) : (string) $otp;
             $auth->setPendingLoginTotp($otp);
             $userId = $auth->getPendingUserId();
 
             if ($userId === null) {
-                $this->redirectPrevRoute($request);
+                return $this->redirectPrevRoute($request);
             }
 
             $mfaRequired = $auth->isLoginMfaRequired();
@@ -112,23 +133,23 @@ class Login extends Controller
                 $pendingEmail = $auth->getPendingLoginEmail();
                 if ($pendingEmail === null) {
                     $this->twigVariables['login']['errors'][] = __('error-invalid-otp');
-                    return;
+                    return null;
                 }
 
                 $jwtToken = $jwtService->authenticate($pendingEmail, $isValid);
                 if ($jwtToken !== false) {
                     $auth->loginUserWithToken($userId, $jwtToken);
-                    header('Authorization: Bearer ' . $jwtToken);
+                    $this->authorizationHeader = 'Authorization: Bearer ' . $jwtToken;
                 }
-                return;
+
+                return null;
             }
 
             $storedToken = $auth->getStoredJwtToken();
             if (is_string($storedToken) === true && $storedToken !== '') {
                 $authorizationResult = $jwtService->authorize('Bearer ' . $storedToken);
                 if ($authorizationResult instanceof Response) {
-                    $authorizationResult->send();
-                    return;
+                    return $authorizationResult;
                 }
 
                 if (is_array($authorizationResult) === true && isset($authorizationResult['token']) === true) {
@@ -137,6 +158,8 @@ class Login extends Controller
             }
 
             $this->twigVariables['login']['errors'][] = __('error-invalid-otp');
-        } //end if
+        }
+
+        return null;
     }
 }

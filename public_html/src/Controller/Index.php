@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace src\Controller;
 
+use app\Http\Response;
+
 class Index extends Controller
 {
     /**
@@ -11,7 +13,7 @@ class Index extends Controller
      * @param \app\Http\Request $request
      * @return string
      */
-    public function sayHello(\app\Http\Request $request): string
+    public function sayHello(\app\Http\Request $request): Response
     {
         $name = ($request->getParameter('name') ?? null);
         if ($name !== null) {
@@ -23,7 +25,7 @@ class Index extends Controller
             $hello = __('hello', ['name' => $name]);
         }
 
-        return $this->twig->render(
+        return Response::html($this->twig->render(
             'index.twig',
             array_merge(
                 $this->twigVariables,
@@ -32,6 +34,6 @@ class Index extends Controller
                     'hello' => $hello
                 ]
             )
-        );
+        ));
     }
 }

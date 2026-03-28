@@ -6,30 +6,10 @@ namespace app\Http;
 
 class Response
 {
-    /**
-     * Summary of content
-     * @var string
-     */
     private string $content;
-
-    /**
-     * Summary of statusCode
-     * @var int
-     */
     private int $statusCode;
-
-    /**
-     * Summary of headers
-     * @var array
-     */
     private array $headers = [];
 
-    /**
-     * Summary of __construct
-     * @param string $content
-     * @param int $statusCode
-     * @param array $headers
-     */
     public function __construct(string $content, int $statusCode = 200, array $headers = [])
     {
         $this->content = (string) $content;
@@ -37,10 +17,34 @@ class Response
         $this->headers = (array) $headers;
     }
 
-    /**
-     * Summary of send
-     * @return \app\Http\Response
-     */
+    public static function html(string $content, int $statusCode = 200, array $headers = []): self
+    {
+        return new self($content, $statusCode, $headers);
+    }
+
+    public static function json(array $payload, int $statusCode = 200, array $headers = []): self
+    {
+        $encoded = json_encode($payload);
+        if ($encoded === false) {
+            $encoded = '{}';
+        }
+
+        $headers[] = 'Content-Type: application/json; charset=utf-8';
+        return new self($encoded, $statusCode, $headers);
+    }
+
+    public static function redirect(string $location, int $statusCode = 302): self
+    {
+        return new self('', $statusCode, ['Location: ' . $location]);
+    }
+
+    public function withHeader(string $header): self
+    {
+        $response = clone $this;
+        $response->headers[] = $header;
+        return $response;
+    }
+
     public function send(): Response
     {
         if (headers_sent() === false) {

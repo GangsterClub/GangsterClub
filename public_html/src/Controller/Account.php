@@ -6,6 +6,7 @@ namespace src\Controller;
 
 use app\Container\Application;
 use app\Http\Request;
+use app\Http\Response;
 use app\Service\AuthService;
 use src\Business\AccountService;
 use src\Business\EmailService;
@@ -38,17 +39,24 @@ class Account extends Controller
         $this->mfaService = new MFATOTPService($application);
     }
 
-    public function __invoke(Request $request): string
+    public function __invoke(Request $request): Response
     {
         $this->application->get('translationService')->setFile('account');
         $auth = $this->auth();
 
-        $this->enforceAuthentication($auth);
+        $redirect = $this->enforceAuthentication($auth);
+        if ($redirect instanceof Response) {
+            return $redirect;
+        }
 
         $userId = $auth->getAuthenticatedUserId();
+        if ($userId === null) {
+            return Response::redirect(APP_BASE . '/login', 301);
+        }
+
         $user = $this->userService->getUserById($userId);
         if ($user === null) {
-            $this->application->header('/login');
+            return Response::redirect(APP_BASE . '/login', 301);
         }
 
         $user = $this->handleUsernameChange($request, $user);
@@ -66,30 +74,32 @@ class Account extends Controller
             ? $this->mfaService->generateQRCode($pendingSecret, $mfaLabel)
             : null;
 
-        return $this->twig->render(
-            'account.twig',
-            array_merge(
-                $this->twigVariables,
-                [
-                    'user' => $user,
-                    'account' => $this->accountMessages,
-                    'pendingEmailChange' => $pendingEmailChange,
-                    'mfa' => [
-                        'enabled' => $mfaEnabled,
-                        'pendingSecret' => $pendingSecret,
-                        'otpauth' => $otpauth,
-                        'qrCodeUrl' => $qrCodeUrl,
-                        'digits' => (int) MFA_TOTP_DIGITS,
-                        'period' => (int) MFA_TOTP_PERIOD,
-                        'emailDigits' => (int) TOTP_DIGITS,
-                        'emailPeriod' => (int) TOTP_PERIOD,
-                    ],
-                ]
+        return Response::html(
+            $this->twig->render(
+                'account.twig',
+                array_merge(
+                    $this->twigVariables,
+                    [
+                        'user' => $user,
+                        'account' => $this->accountMessages,
+                        'pendingEmailChange' => $pendingEmailChange,
+                        'mfa' => [
+                            'enabled' => $mfaEnabled,
+                            'pendingSecret' => $pendingSecret,
+                            'otpauth' => $otpauth,
+                            'qrCodeUrl' => $qrCodeUrl,
+                            'digits' => (int) MFA_TOTP_DIGITS,
+                            'period' => (int) MFA_TOTP_PERIOD,
+                            'emailDigits' => (int) TOTP_DIGITS,
+                            'emailPeriod' => (int) TOTP_PERIOD,
+                        ],
+                    ]
+                )
             )
         );
     }
 
-    public function verifyEmailChange(Request $request): string
+    public function verifyEmailChange(Request $request): Response
     {
         $this->application->get('translationService')->setFile('account');
         $token = (string) $request->getParameter('token', '');
@@ -101,25 +111,29 @@ class Account extends Controller
         $messageKey = $this->getVerificationMessageKey($status);
         $isSuccess = $status === AccountService::EMAIL_CHANGE_CONFIRMED;
 
-        return $this->twig->render(
-            'account-email-verify.twig',
-            array_merge(
-                $this->twigVariables,
-                [
-                    'verification' => [
-                        'success' => $isSuccess,
-                        'message' => __($messageKey),
-                    ],
-                ]
+        return Response::html(
+            $this->twig->render(
+                'account-email-verify.twig',
+                array_merge(
+                    $this->twigVariables,
+                    [
+                        'verification' => [
+                            'success' => $isSuccess,
+                            'message' => __($messageKey),
+                        ],
+                    ]
+                )
             )
         );
     }
 
-    private function enforceAuthentication(AuthService $auth): void
+    private function enforceAuthentication(AuthService $auth): ?Response
     {
         if ($auth->getAuthenticatedUserId() === null) {
-            $this->application->header('/login');
+            return Response::redirect(APP_BASE . '/login', 301);
         }
+
+        return null;
     }
 
     private function handleUsernameChange(Request $request, User $user): User

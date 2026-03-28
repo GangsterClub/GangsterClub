@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace src\Controller;
 
 use app\Http\Request;
+use app\Http\Response;
 
 class Logout extends Controller
 {
-    public function __invoke(Request $request): ?string
+    public function __invoke(Request $request): Response
     {
         $auth = $this->auth();
         $auth->logoutUser();
-        $this->application->header('/login');
-        return null;
+        return Response::redirect(APP_BASE . '/login', 301);
     }
 }
