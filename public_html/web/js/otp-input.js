@@ -29,7 +29,7 @@ window.onload = () => {
         }
 
         inputs.forEach((input, index) => {
-            let digit = digits[index] || '';
+            const digit = typeof digits[index] === 'string' ? digits[index] : '';
             if (input && typeof input.value !== 'undefined' && /^\d$/.test(digit)) {
                 input.value = digit || '';
             }
