@@ -66,4 +66,9 @@ class Application extends Container
     {
         return str_replace(filter_input(INPUT_SERVER, 'SCRIPT_NAME', FILTER_SANITIZE_URL), '', filter_input(INPUT_SERVER, 'SCRIPT_FILENAME', FILTER_SANITIZE_URL));
     }
+
+    public function exit(?int $code = 0): never
+    {
+        exit(is_int($code) === true ? $code : null);
+    }
 }
