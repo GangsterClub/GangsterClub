@@ -29,7 +29,7 @@ window.onload = () => {
         }
 
         inputs.forEach((input, index) => {
-            let digit = String(digits[index]);
+            let digit = digits[index] || '';
             if (input && typeof input.value !== 'undefined' && /^\d$/.test(digit)) {
                 input.value = digit || '';
             }
