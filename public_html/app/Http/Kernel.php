@@ -61,12 +61,7 @@ class Kernel
         $result = $controllerInstance->$action($request);
         if ($result instanceof Response === false) {
             throw new \UnexpectedValueException(
-                sprintf(
-                    'Controller [%s::%s] must return %s.',
-                    htmlspecialchars($name, ENT_QUOTES, 'UTF-8'),
-                    htmlspecialchars($action, ENT_QUOTES, 'UTF-8'),
-                    Response::class
-                )
+                sprintf('Controller [%s::%s] must return %s.', $name, $action, Response::class)
             );
         }
 
