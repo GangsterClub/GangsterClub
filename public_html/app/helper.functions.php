@@ -1,11 +1,5 @@
 <?php
 
-/**
- * Summary of __
- * @param string $key
- * @param array $replacements
- * @return string
- */
 function __(string $key, array $replacements = []): string
 {
     global $app;
@@ -18,23 +12,11 @@ function __(string $key, array $replacements = []): string
     return $translationService->get($key, $replacements);
 }
 
-/**
- * Summary of translate
- * @param string $key
- * @param array $replacements
- * @return string
- */
 function translate(string $key, array $replacements = []): string
 {
     return __($key, $replacements);
 }
 
-/**
- * Summary of loadEnv
- * @param string $envFilePath
- * @throws \RuntimeException
- * @return void
- */
 function loadEnv(string $envFilePath): void
 {
     if ((bool) file_exists($envFilePath) === false) {

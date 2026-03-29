@@ -9,41 +9,12 @@ use app\Service\YamlCacheService as TranslationsCache;
 
 class TranslationService
 {
-    /**
-     * Summary of locale
-     * @var string
-     */
     protected string $locale = 'en';
-
-    /**
-     * Summary of fallbackLocale
-     * @var string
-     */
     protected string $fallbackLocale = 'en';
-
-    /**
-     * Summary of supportedLanguages
-     * @var array
-     */
     protected array $supportedLanguages = [];
-
-    /**
-     * Summary of translations
-     * @var array
-     */
     protected array $translations = [];
-
-    /**
-     * Summary of file
-     * @var string
-     */
     protected string $file = 'messages';
 
-    /**
-     * Summary of __construct
-     * @param string $locale
-     * @param string $fallbackLocale
-     */
     public function __construct(string $locale = 'en', string $fallbackLocale = 'en')
     {
         $this->locale = $locale;
@@ -51,13 +22,6 @@ class TranslationService
         $this->supportedLanguages = include_once __DIR__ . '/../languages.php';
     }
 
-    /**
-     * Summary of get
-     * @param string $key
-     * @param array $replacements
-     * @param bool $useFallback
-     * @return string
-     */
     public function get(string $key, array $replacements = [], bool $useFallback = true): string
     {
         $file = $this->file;
@@ -78,12 +42,6 @@ class TranslationService
         return $this->replacePlaceholders(($translation ?? $key), $replacements);
     }
 
-    /**
-     * Summary of loadTranslationFile
-     * @param string $locale
-     * @param string $file
-     * @return void
-     */
     protected function loadTranslationFile(string $locale, string $file): void
     {
         if (isset($this->translations[$locale][$file]) === true) {
@@ -127,13 +85,6 @@ class TranslationService
         return $parsedTranslations ?: $parsed;
     }
 
-    /**
-     * Summary of getFallbackTranslation
-     * @param string $file
-     * @param string $messageKey
-     * @throws \Exception
-     * @return string
-     */
     protected function getFallbackTranslation(string $file, string $messageKey): string
     {
         $this->loadTranslationFile($this->fallbackLocale, $file);
@@ -145,12 +96,6 @@ class TranslationService
         throw new \Exception(htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8'));
     }
 
-    /**
-     * Summary of replacePlaceholders
-     * @param string $message
-     * @param array $replacements
-     * @return string
-     */
     protected function replacePlaceholders(string $message, array $replacements): string
     {
         foreach ($replacements as $placeholder => $value) {
@@ -174,11 +119,6 @@ class TranslationService
         return $message;
     }
 
-    /**
-     * Summary of setLocale
-     * @param string $locale
-     * @return void
-     */
     public function setLocale(string $locale): void
     {
         if (array_key_exists($locale, $this->supportedLanguages) === true) {
@@ -193,48 +133,26 @@ class TranslationService
         $this->translations[$this->locale] = [];
     }
 
-    /**
-     * Summary of getLocale
-     * @return string
-     */
     public function getLocale(): string
     {
         return $this->locale;
     }
 
-    /**
-     * Summary of setFallbackLocale
-     * @param string $fallbackLocale
-     * @return void
-     */
     public function setFallbackLocale(string $fallbackLocale): void
     {
         $this->fallbackLocale = $fallbackLocale;
     }
 
-    /**
-     * Summary of getFallbackLocale
-     * @return string
-     */
     public function getFallbackLocale(): string
     {
         return $this->fallbackLocale;
     }
 
-    /**
-     * Summary of getSupportedLanguages
-     * @return array
-     */
     public function getSupportedLanguages(): array
     {
         return $this->supportedLanguages;
     }
 
-    /**
-     * Summary of setFile
-     * @param string $filename
-     * @return void
-     */
     public function setFile(string $filenameWithoutExtension): void
     {
         $this->file = $filenameWithoutExtension;

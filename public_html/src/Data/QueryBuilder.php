@@ -6,42 +6,14 @@ namespace src\Data;
 
 class QueryBuilder
 {
-    /**
-     * @var \PDO
-     */
     protected \PDO $connection;
 
-    /**
-     * @var string
-     */
     protected string $table;
-
-    /**
-     * @var array
-     */
     protected array $wheres = [];
-
-    /**
-     * @var ?int
-     */
     protected ?int $limit = null;
-
-    /**
-     * @var array
-     */
     protected array $orderBys = [];
-
-    /**
-     * @var ?array
-     */
     protected ?array $updates = null;
 
-    /**
-     * Constructor
-     *
-     * @param \PDO $connection
-     * @param string $table
-     */
     public function __construct(\PDO $connection, string $table)
     {
         $this->connection = $connection;

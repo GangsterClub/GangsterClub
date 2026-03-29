@@ -9,10 +9,6 @@ use PHPMailer\PHPMailer\Exception;
 
 class EmailService
 {
-    /**
-     * Summary of mailer
-     * @var PHPMailer
-     */
     private PHPMailer $mailer;
 
     public function __construct()
@@ -21,10 +17,6 @@ class EmailService
         $this->configureMailer();
     }
 
-    /**
-     * Summary of configureMailer
-     * @return void
-     */
     private function configureMailer(): void
     {
         try {
@@ -49,12 +41,6 @@ class EmailService
         }
     }
 
-    /**
-     * Summary of sendTOTPEmail
-     * @param string $toEmail
-     * @param string $totp
-     * @return bool
-     */
     public function sendTOTPEmail(string $toEmail, string $totp): bool
     {
         try {

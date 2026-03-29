@@ -8,16 +8,8 @@ use src\Data\Connection;
 
 class TOTPEmailRepository
 {
-    /**
-     * Summary of dbh
-     * @var Connection
-     */
     private Connection $dbh;
 
-    /**
-     * Summary of __construct
-     * @param Connection $dbh
-     */
     public function __construct(Connection $dbh)
     {
         $this->dbh = $dbh;

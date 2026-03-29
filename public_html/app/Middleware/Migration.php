@@ -6,68 +6,34 @@ namespace app\Middleware;
 
 class Migration implements MigrationInterface
 {
-    /**
-     * Summary of dbh
-     * @var \src\Data\Connection
-     */
     protected $dbh;
-
-    /**
-     * @var array<int, string>
-     */
     protected array $tables = [];
 
-    /**
-     * Summary of __construct
-     * @param \src\Data\Connection $dbh
-     */
     public function __construct(\src\Data\Connection $dbh)
     {
         $this->dbh = $dbh;
     }
 
-    /**
-     * Summary of up
-     * @return void
-     */
     public function up(): void
     {
         // Define the schema changes for the migration
     }
 
-    /**
-     * Summary of down
-     * @return void
-     */
     public function down(): void
     {
         // Define the rollback changes for the migration
     }
 
-    /**
-     * Summary of log
-     * @param string $message
-     * @return void
-     */
     public function log(string $message): void
     {
         print_r($message . PHP_EOL);
     }
 
-    /**
-     * Summary of execute
-     * @param string $sql
-     * @return void
-     */
     protected function execute(string $sql): void
     {
         $this->dbh->query($sql);
     }
 
-    /**
-     * Summary of getTables
-     * @return array<int, string>
-     */
     public function getTables(): array
     {
         return $this->tables;

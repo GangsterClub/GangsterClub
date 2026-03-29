@@ -8,16 +8,8 @@ use src\Data\Connection;
 
 class MigrationPipeline
 {
-    /**
-     * Summary of migrations
-     * @var array
-     */
     protected array $migrations = [];
 
-    /**
-     * Summary of dataPreserver
-     * @var \app\Middleware\MigrationDataPreserver
-     */
     protected MigrationDataPreserver $dataPreserver;
 
     public function __construct(Connection $connection)
@@ -25,20 +17,11 @@ class MigrationPipeline
         $this->dataPreserver = new MigrationDataPreserver($connection);
     }
 
-    /**
-     * Summary of addMigration
-     * @param \app\Middleware\Migration $migration
-     * @return void
-     */
     public function addMigration(Migration $migration)
     {
         $this->migrations[] = $migration;
     }
 
-    /**
-     * Summary of migrate
-     * @return void
-     */
     public function migrate()
     {
         foreach ($this->migrations as $migration) {
@@ -48,10 +31,6 @@ class MigrationPipeline
         $this->dataPreserver->restore($this->collectTables());
     }
 
-    /**
-     * Summary of rollback
-     * @return void
-     */
     public function rollback()
     {
         $tables = $this->collectTables();
@@ -64,9 +43,6 @@ class MigrationPipeline
         }
     }
 
-    /**
-     * @return array<int, string>
-     */
     protected function collectTables(): array
     {
         $tables = [];

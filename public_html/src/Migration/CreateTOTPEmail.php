@@ -6,10 +6,6 @@ class CreateTOTPEmail extends \app\Middleware\Migration
 {
     protected array $tables = ['totp_email'];
 
-    /**
-     * Summary of up
-     * @return void
-     */
     public function up(): void
     {
         $sql = "CREATE TABLE IF NOT EXISTS `totp_email` (
@@ -24,10 +20,6 @@ class CreateTOTPEmail extends \app\Middleware\Migration
         $this->log("TOTPEmail created successfully.");
     }
 
-    /**
-     * Summary of down
-     * @return void
-     */
     public function down(): void
     {
         $sql = "DROP TABLE IF EXISTS `totp_email`";

@@ -9,23 +9,9 @@ use app\Service\YamlCacheService as RoutesCache;
 
 class Router
 {
-    /**
-     * Summary of routes
-     * @var array
-     */
     private static array $routes = [];
-
-    /**
-     * Summary of methods
-     * @var array
-     */
     private static array $methods = ['GET'];
 
-    /**
-     * Summary of load
-     * @param string $yaml
-     * @return void
-     */
     public function load(string $yaml): void
     {
         $cachedYaml = RoutesCache::getPath($yaml);
@@ -59,13 +45,6 @@ class Router
         return $routes ?? $parsed;
     }
 
-    /**
-     * Summary of extract
-     * @param string $url
-     * @param string $method
-     * @param array $parameters
-     * @return array
-     */
     public static function extract(string $url, string $method, ...$parameters): array
     {
         if ((bool) ($routeData = self::matchRoute($url, $method)) === true) {
@@ -76,12 +55,6 @@ class Router
         return (array) $parameters;
     }
 
-    /**
-     * Summary of match
-     * @param string $url
-     * @param string $method
-     * @return Route|null
-     */
     public function match(string $url, string $method): ?Route
     {
         if ((bool) ($routeData = self::matchRoute($url, $method)) === true) {
@@ -92,12 +65,6 @@ class Router
         return null;
     }
 
-    /**
-     * Summary of matchRoute
-     * @param string $url
-     * @param string $method
-     * @return array|null
-     */
     private static function matchRoute(string $url, string $method): ?array
     {
         $filteredRoutes = array_filter(
@@ -114,11 +81,6 @@ class Router
         return null;
     }
 
-    /**
-     * Summary of replacePattern
-     * @param string $route
-     * @return string
-     */
     private static function replacePattern(string $route): string
     {
         $route = preg_replace_callback(
@@ -132,13 +94,6 @@ class Router
         return (string) $pattern;
     }
 
-    /**
-     * Summary of extractParameters
-     * @param string $url
-     * @param string $routePath
-     * @param array $parameters
-     * @return array
-     */
     private static function extractParameters(string $url, string $routePath, ...$parameters): array
     {
         $routePattern = self::replacePattern($routePath);

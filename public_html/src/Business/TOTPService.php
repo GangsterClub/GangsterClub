@@ -53,11 +53,6 @@ class TOTPService
         return $totp->getProvisioningUri();
     }
 
-    /**
-     * Summary of generateQRCode
-     * @param string $secret
-     * @return string
-     */
     public function generateQRCode(
         string $secret,
         string $label = APP_NAME,
@@ -78,12 +73,6 @@ class TOTPService
         return $sanitized === '' ? APP_NAME : $sanitized;
     }
 
-    /**
-     * Summary of verifyTOTP
-     * @param string $secret
-     * @param string $code
-     * @return bool
-     */
     public function verifyTOTP(string $secret, string $code, int $digits = MFA_TOTP_DIGITS, int $period = MFA_TOTP_PERIOD): bool
     {
         $totp = TOTP::create($secret, $period);

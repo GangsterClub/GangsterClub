@@ -4,16 +4,6 @@ home:
     controller: Home
     methods: ['GET', 'HEAD', 'POST']
 
-hello:
-    path: /hello(?:/)?(?:/{name})?
-    controller: Index::sayHello
-    methods: ['GET', 'HEAD']
-
-staticExample:
-    path: /static/example
-    controller: StaticExample
-    methods: ['GET', 'HEAD']
-
 setLocale:
     path: /set/locale/{locale}
     controller: SetLocale

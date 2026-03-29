@@ -8,11 +8,6 @@ use app\Http\Response;
 
 class SetLocale extends Controller
 {
-    /**
-     * Summary of __invoke
-     * @param \app\Http\Request $request
-     * @return string|null
-     */
     public function __invoke(\app\Http\Request $request): Response
     {
         $locale = ($request->getParameter('locale') ?? null);

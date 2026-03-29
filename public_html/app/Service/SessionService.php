@@ -8,29 +8,11 @@ use app\Http\Request;
 
 class SessionService extends \SessionHandler
 {
-    /**
-     * Summary of ipAddress
-     * @var ?string
-     */
     private ?string $ipAddress;
-
-    /**
-     * Summary of userAgent
-     * @var string
-     */
     private string $userAgent;
 
-    /**
-     * Summary of request
-     * @var \app\Http\Request
-     */
     private Request $request;
 
-    /**
-     * Summary of __construct
-     * $this->ipAddress = $_SERVER["REMOTE_ADDR"];
-     * $this->userAgent = $_SERVER['HTTP_USER_AGENT'];
-     */
     public function __construct(Request $request)
     {
         $this->request = $request;
@@ -45,15 +27,6 @@ class SessionService extends \SessionHandler
         $this->userAgent = (filter_var($request->server('HTTP_USER_AGENT'), 515) ?? 'Undefined');
     }
 
-    /**
-     * Summary of start
-     * @param string $name
-     * @param mixed $limit
-     * @param mixed $path
-     * @param mixed $domain
-     * @param mixed $secure
-     * @return void
-     */
     public function start(string $name, ?int $limit = 0, ?string $path = '/', ?string $domain = null, ?bool $secure = null): void
     {
         ini_set('session.name', $name . '_Session');
@@ -98,10 +71,6 @@ class SessionService extends \SessionHandler
         }
     }
 
-    /**
-     * Summary of regenerate
-     * @return void
-     */
     public function regenerate(): void
     {
         if ($this->has('_obsolete') === true && $this->get('_obsolete') === true) {
@@ -120,10 +89,6 @@ class SessionService extends \SessionHandler
         $this->set('_lastNewSession', time());
     }
 
-    /**
-     * Summary of validate
-     * @return bool
-     */
     protected function validate(): bool
     {
         if ($this->has('_lastNewSession') === false) {
@@ -143,10 +108,6 @@ class SessionService extends \SessionHandler
         return true;
     }
 
-    /**
-     * Summary of preventHijacking
-     * @return bool
-     */
     protected function preventHijacking(): bool
     {
         $IPaddress = $this->get('_IPaddress');
@@ -167,10 +128,6 @@ class SessionService extends \SessionHandler
         return true;
     }
 
-    /**
-     * Summary of writeClose
-     * @return void
-     */
     public function writeClose(): void
     {
         $regenerate = ($this->get('_regenerate') ?? false);
@@ -182,12 +139,6 @@ class SessionService extends \SessionHandler
         session_write_close();
     }
 
-    /**
-     * Summary of get, Lazy session initialization
-     * @param string $key
-     * @param mixed $default
-     * @return mixed
-     */
     public function get(string $key, $default = null): mixed
     {
         if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -200,12 +151,6 @@ class SessionService extends \SessionHandler
             $default;
     }
 
-    /**
-     * Summary of set
-     * @param string $key
-     * @param mixed $value
-     * @return void
-     */
     public function set(string $key, mixed $value): void
     {
         if (session_status() === PHP_SESSION_ACTIVE) {
@@ -213,11 +158,6 @@ class SessionService extends \SessionHandler
         }
     }
 
-    /**
-     * Summary of has, using Lazy session initialization
-     * @param string $key
-     * @return bool
-     */
     public function has(string $key): bool
     {
         if (session_status() === PHP_SESSION_ACTIVE) {
@@ -227,11 +167,6 @@ class SessionService extends \SessionHandler
         return false;
     }
 
-    /**
-     * Summary of remove
-     * @param string $key
-     * @return void
-     */
     public function remove(string $key): void
     {
         if (session_status() === PHP_SESSION_ACTIVE) {
@@ -239,10 +174,6 @@ class SessionService extends \SessionHandler
         }
     }
 
-    /**
-     * Summary of reset
-     * @return void
-     */
     private function reset(): void
     {
         $_SESSION = [];

@@ -6,10 +6,6 @@ namespace src\Data;
 
 class Connection
 {
-    /**
-     * Summary of connection
-     * @var ?\PDO
-     */
     private ?\PDO $connection = null;
     //private static $instanceCount = 0; // Testing purposes
 
@@ -42,31 +38,16 @@ class Connection
         $this->connection = null;
     }
 
-    /**
-     * Summary of getConnection
-     * @return \PDO|null
-     */
     public function getConnection(): \PDO|null
     {
         return $this->connection;
     }
 
-    /**
-     * Summary of table
-     * @param string $table
-     * @return \src\Data\QueryBuilder
-     */
     public function table(string $table): QueryBuilder
     {
         return new QueryBuilder($this->connection, $table);
     }
 
-    /**
-     * Summary of query
-     * @param string $query
-     * @param array $params
-     * @return void
-     */
     public function query(string $query, array $params = []): void
     {
         $this->connection->prepare($query)->execute($params);

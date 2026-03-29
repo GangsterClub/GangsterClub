@@ -6,10 +6,6 @@ class CreateUser extends \app\Middleware\Migration
 {
     protected array $tables = ['user'];
 
-    /**
-     * Summary of up
-     * @return void
-     */
     public function up(): void
     {
         $sql = "CREATE TABLE IF NOT EXISTS `user` (
@@ -26,10 +22,6 @@ class CreateUser extends \app\Middleware\Migration
         $this->log("User created successfully.");
     }
 
-    /**
-     * Summary of down
-     * @return void
-     */
     public function down(): void
     {
         $sql = "DROP TABLE IF EXISTS `user`";

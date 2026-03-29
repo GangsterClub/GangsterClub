@@ -9,25 +9,13 @@ use src\Entity\User;
 
 class UserService
 {
-    /**
-     * @var UserRepository
-     */
     protected UserRepository $userRepository;
 
-    /**
-     * Summary of __construct
-     * @param \app\Container\Application $application
-     */
     public function __construct(\app\Container\Application $application)
     {
         $this->userRepository = new UserRepository($application->get('dbh'));
     }
 
-    /**
-     * Summary of getUserByEmail
-     * @param string $email
-     * @return \src\Entity\User|null
-     */
     public function getUserByEmail(string $email): User|null
     {
         $data = $this->userRepository->findByEmail($email);
@@ -40,11 +28,6 @@ class UserService
         return $user;
     }
 
-    /**
-     * Summary of getUserById
-     * @param int $userId
-     * @return \src\Entity\User|null
-     */
     public function getUserById(int $userId): User|null
     {
         $data = $this->userRepository->findById($userId);
@@ -55,13 +38,6 @@ class UserService
         return $this->entity($data);
     }
 
-    /**
-     * Summary of createUserByEmail
-     * @param string $email
-     * @param string $ipAddress
-     * @param ?\src\Entity\User $user
-     * @return \src\Entity\User|null
-     */
     public function createUserByEmail(string $email, string $ipAddress, ?User $user = null): User|null
     {
         $data = $this->userRepository->findByEmail($email);
@@ -80,11 +56,6 @@ class UserService
         return $user;
     }
 
-    /**
-     * Summary of entity
-     * @param \stdClass $object
-     * @return \src\Entity\User
-     */
     private function entity(\stdClass $object): User
     {
         return new User(
