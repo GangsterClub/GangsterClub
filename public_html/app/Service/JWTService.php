@@ -70,8 +70,6 @@ class JWTService
             return $this->unauthorizedResponse('Invalid access token');
         }
 
-        header('Authorization: Bearer ' . $refreshedToken);
-
         return [
             'token' => $refreshedToken,
             'payload' => $payload,

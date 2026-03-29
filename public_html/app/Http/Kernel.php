@@ -14,13 +14,10 @@ class Kernel
 
     private MiddlewarePipeline $middlewarePipeline;
 
-    private ?Response $response;
-
     public function __construct(Application $application)
     {
         $this->application = $application;
         $this->middlewarePipeline = new MiddlewarePipeline();
-        $this->response = null;
     }
 
     public function addMiddleware(callable $middleware): self
@@ -31,22 +28,19 @@ class Kernel
 
     public function handleRequest(Request $request): Response
     {
-        $method = $request->getMethod();
-        $allowedMethods = $request->getParameter('methods') ?? ['GET'];
-        $isAllowed = (bool) in_array($method, $allowedMethods);
+        try {
+            $method = $request->getMethod();
+            $router = $this->application->get('router');
+            $route = $router->match(REQUEST_URI, $method);
 
-        $router = $this->application->get('router');
-        $route = $router->match(REQUEST_URI, $method);
-        $isRoute = (bool) $route;
+            $finalHandler = $route instanceof Route
+                ? fn(Request $request) => $this->handleController($route, $request)
+                : fn() => $this->handleNotFound();
 
-        $finalHandler = match (true) {
-            $isRoute === false && $isAllowed === true => fn() => $this->handleNotFound(),
-            $isRoute === true && $isAllowed === false => fn() => $this->handleMethodNotAllowed(),
-            $isRoute === true && $isAllowed === true => fn($request) => $this->handleController($route, $request),
-            default => fn() => new Response('Internal Server Error', 500),
-        };
-
-        return $this->middlewarePipeline->handle($request, $finalHandler);
+            return $this->middlewarePipeline->handle($request, $finalHandler);
+        } catch (\Throwable $throwable) {
+            return $this->handleException($throwable);
+        }
     }
 
     public function terminate(Request $request, Response $response): void
@@ -65,8 +59,13 @@ class Kernel
 
         $controllerInstance = $this->fetchControllerInstance($name, $action);
         $result = $controllerInstance->$action($request);
+        if ($result instanceof Response === false) {
+            throw new \UnexpectedValueException(
+                sprintf('Controller [%s::%s] must return %s.', $name, $action, Response::class)
+            );
+        }
 
-        return $this->normalizeControllerResponse($result);
+        return $result;
     }
 
     private function fetchControllerInstance(string $name, string $action, string $act = "__invoke"): Controller
@@ -80,26 +79,13 @@ class Kernel
         return $this->application->make($cntrllr);
     }
 
-    private function normalizeControllerResponse(mixed $result): Response
+    private function handleException(\Throwable $throwable): Response
     {
-        if ($result instanceof Response) {
-            return $result;
-        }
-
-        if (is_array($result) === true) {
-            return Response::json($result);
-        }
-
-        return Response::html((string) $result);
+        return new Response('Internal Server Error', 500);
     }
 
     private function handleNotFound(): Response
     {
         return new Response('Not Found', 404);
-    }
-
-    private function handleMethodNotAllowed(): Response
-    {
-        return new Response('Method Not Allowed', 405);
     }
 }

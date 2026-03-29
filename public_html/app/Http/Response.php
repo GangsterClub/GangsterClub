@@ -45,7 +45,7 @@ class Response
         return $response;
     }
 
-    public function send(): Response
+    public function send(): self
     {
         if (headers_sent() === false) {
             http_response_code($this->statusCode);
@@ -56,5 +56,20 @@ class Response
 
         print_r($this->content);
         return $this;
+    }
+
+    public function getStatusCode(): int
+    {
+        return $this->statusCode;
+    }
+
+    public function getHeaders(): array
+    {
+        return $this->headers;
+    }
+
+    public function getContent(): string
+    {
+        return $this->content;
     }
 }

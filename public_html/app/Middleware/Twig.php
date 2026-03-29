@@ -10,28 +10,14 @@ use app\Http\Response;
 
 class Twig
 {
-    /**
-     * Summary of application
-     * @var Application
-     */
     protected Application $application;
 
-    /**
-     * Summary of __construct
-     * @param \app\Container\Application $application
-     */
     public function __construct(Application $application)
     {
         $this->application = $application;
     }
 
-    /**
-     * Summary of handle
-     * @param \app\Http\Request $request
-     * @param callable $next
-     * @return \app\Http\Response|object
-     */
-    public function handle(Request $request, callable $next): ?Response
+    public function handle(Request $request, callable $next): Response
     {
         $loader = new \Twig\Loader\FilesystemLoader(DOC_ROOT . '/src/View/');
         $assetVersion = $this->getAssetVersion(

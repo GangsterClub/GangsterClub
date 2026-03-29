@@ -23,7 +23,7 @@ class Session
         }
     }
 
-    public function handle(Request $request, callable $next): ?Response
+    public function handle(Request $request, callable $next): Response
     {
         $session = new \app\Service\SessionService($request);
         $this->application->addService('sessionService', $session);

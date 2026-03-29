@@ -18,7 +18,7 @@ class AuthSessionJWT
         $this->application = $application;
     }
 
-    public function handle(Request $request, callable $next): ?Response
+    public function handle(Request $request, callable $next): Response
     {
         $auth = $this->application->get('authService');
         if ($auth->getAuthenticatedUserId() === null) {
@@ -28,8 +28,6 @@ class AuthSessionJWT
         $jwtService = new JWTService($this->application);
         $authorizationResult = $jwtService->authorizeRequest($request);
         if ($authorizationResult instanceof Response) {
-            $authorizationResult->send();
-            $this->application->exit();
             return $authorizationResult;
         }
 
