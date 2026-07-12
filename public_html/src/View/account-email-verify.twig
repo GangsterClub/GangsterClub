@@ -6,15 +6,23 @@
 {% endblock %}
 
 {% block content %}
-    <section class="max-w-xl mx-auto py-24 px-6 text-gray-700 dark:text-gray-200">
-        <div class="space-y-4">
-            <h1 class="text-3xl font-bold">{{ __('account.email-verify-title') }}</h1>
-            {% if verification.success %}
-                {{ alerts.success(verification.message) }}
-            {% else %}
-                {{ alerts.error(verification.message) }}
-            {% endif %}
-            <a class="inline-flex items-center underline font-semibold" href="{{ docRoot }}login">{{ __('account.email-verify-back-to-login') }}</a>
+    <section class="relative flex min-h-screen items-center justify-center px-6 py-24 text-gray-700 dark:text-gray-200">
+        <div class="page-backdrop"></div>
+        <div class="panel panel-feature relative z-10 w-full max-w-xl">
+            <div class="mb-6 text-center">
+                <p class="mb-2 text-xs font-bold uppercase tracking-[0.35em] text-gray-500 dark:text-gray-400">{{ __('account.email-verify-eyebrow') }}</p>
+                <h1 class="text-3xl font-extrabold">{{ __('account.email-verify-title') }}</h1>
+            </div>
+
+            <div class="space-y-5">
+                {% if verification.success %}
+                    {{ alerts.success(verification.message) }}
+                {% else %}
+                    {{ alerts.error(verification.message) }}
+                {% endif %}
+
+                <a class="btn-primary w-full" href="{{ docRoot }}login">{{ __('account.email-verify-back-to-login') }}</a>
+            </div>
         </div>
     </section>
 {% endblock %}

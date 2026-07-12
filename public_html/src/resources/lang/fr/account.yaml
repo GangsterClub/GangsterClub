@@ -70,4 +70,5 @@ mfa-email-code-send-error: "We could not send the email verification code needed
 mfa-email-code-required: "Enter the email verification code to enable MFA."
 mfa-email-code-invalid: "The email verification code was invalid or expired."
 email-verify-title: "Email verification"
+email-verify-eyebrow: "Account security"
 email-verify-back-to-login: "Back to login"

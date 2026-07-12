@@ -116,7 +116,8 @@ class Login extends Controller
             $userId = $auth->getPendingUserId();
 
             if ($userId === null) {
-                return $this->redirectPrevRoute($request);
+                $this->twigVariables['login']['errors'][] = __('error-invalid-otp');
+                return null;
             }
 
             $mfaRequired = $auth->isLoginMfaRequired();
