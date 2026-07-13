@@ -6,12 +6,6 @@ body {
     padding: 0;
 }
 
-.logout {
-    position: absolute;
-    right: .6rem;
-    background: oldlace;
-}
-
 .dropdown:hover .dropdown-menu {
     display: block;
 }
