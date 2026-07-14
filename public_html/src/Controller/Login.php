@@ -22,6 +22,8 @@ class Login extends Controller
         $this->application->get('translationService')->setFile('login');
         $auth = $this->auth();
 
+        $this->twigVariables['login'] = $this->consumeFlash('login');
+
         $loginResponse = $this->login($request, $auth);
         if ($loginResponse instanceof Response) {
             return $loginResponse;
@@ -81,11 +83,11 @@ class Login extends Controller
             $mfaEnabled = $mfaService->hasEnabledMfa($userId);
             if ($mfaEnabled === true) {
                 $auth->setLoginMfaRequired(true);
-                $this->twigVariables['login']['success'][] = __('login.mfa-app-instructions', [
+                $this->flash('login', 'success', __('login.mfa-app-instructions', [
                     'digits' => (string) MFA_TOTP_DIGITS,
                     'period' => (string) MFA_TOTP_PERIOD,
-                ]);
-                return null;
+                ]));
+                return $this->redirectSelf();
             }
 
             $totpEmailService = new TOTPEmailService($this->application);
@@ -95,10 +97,12 @@ class Login extends Controller
             $emailSent = $emailService->sendTOTPEmail($email, $otp);
 
             if ((bool) $emailSent === true) {
-                return $this->redirectPrevRoute($request);
+                $this->flash('login', 'success', __('otp-email-sent'));
+                return $this->redirectSelf();
             }
 
-            $this->twigVariables['login']['errors'][] = __('error-email');
+            $this->flash('login', 'errors', __('error-email'));
+            return $this->redirectSelf();
         }
 
         return null;
@@ -116,8 +120,8 @@ class Login extends Controller
             $userId = $auth->getPendingUserId();
 
             if ($userId === null) {
-                $this->twigVariables['login']['errors'][] = __('error-invalid-otp');
-                return null;
+                $this->flash('login', 'errors', __('error-invalid-otp'));
+                return $this->redirectSelf();
             }
 
             $mfaRequired = $auth->isLoginMfaRequired();
@@ -130,11 +134,11 @@ class Login extends Controller
             }
 
             if ((bool) $isValid === true) {
-                $this->twigVariables['login']['success'][] = __('success-authenticated');
+                $this->flash('login', 'success', __('success-authenticated'));
                 $pendingEmail = $auth->getPendingLoginEmail();
                 if ($pendingEmail === null) {
-                    $this->twigVariables['login']['errors'][] = __('error-invalid-otp');
-                    return null;
+                    $this->flash('login', 'errors', __('error-invalid-otp'));
+                    return $this->redirectSelf();
                 }
 
                 $jwtToken = $jwtService->authenticate($pendingEmail, $isValid);
@@ -143,7 +147,7 @@ class Login extends Controller
                     $this->authorizationHeader = 'Authorization: Bearer ' . $jwtToken;
                 }
 
-                return null;
+                return $this->redirectSelf();
             }
 
             $storedToken = $auth->getStoredJwtToken();
@@ -158,7 +162,8 @@ class Login extends Controller
                 }
             }
 
-            $this->twigVariables['login']['errors'][] = __('error-invalid-otp');
+            $this->flash('login', 'errors', __('error-invalid-otp'));
+            return $this->redirectSelf();
         }
 
         return null;

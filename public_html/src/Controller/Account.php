@@ -59,9 +59,23 @@ class Account extends Controller
             return Response::redirect(APP_BASE . '/login', 301);
         }
 
+        $this->accountMessages = $this->consumeFlash('account');
+
         $user = $this->handleUsernameChange($request, $user);
         $this->handleEmailChange($request, $user);
         $this->handleMfa($request, $user, $auth);
+
+        if ($request->getMethod() === 'POST') {
+            foreach ($this->accountMessages['errors'] as $message) {
+                $this->flash('account', 'errors', (string) $message);
+            }
+
+            foreach ($this->accountMessages['success'] as $message) {
+                $this->flash('account', 'success', (string) $message);
+            }
+
+            return $this->redirectSelf();
+        }
 
         $pendingEmailChange = $this->formatPendingEmailChange($user->getId());
         $pendingSecret = $auth->getPendingMfaSecret();

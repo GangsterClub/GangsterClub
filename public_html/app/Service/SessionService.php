@@ -158,6 +158,48 @@ class SessionService extends \SessionHandler
         }
     }
 
+    public function flash(string $bag, string $type, string $message): void
+    {
+        $messages = $this->getFlashMessages();
+        $messages[$bag][$type][] = $message;
+        $this->storeFlashMessages($messages);
+    }
+
+    public function consumeFlash(string $bag): array
+    {
+        $messages = $this->getFlashMessages();
+        $bagMessages = $messages[$bag] ?? [];
+        unset($messages[$bag]);
+        $this->storeFlashMessages($messages);
+
+        return [
+            'errors' => is_array($bagMessages['errors'] ?? null) ? $bagMessages['errors'] : [],
+            'success' => is_array($bagMessages['success'] ?? null) ? $bagMessages['success'] : [],
+        ];
+    }
+
+    private function getFlashMessages(): array
+    {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            return [];
+        }
+
+        $messages = $_SESSION['_flash_messages'] ?? [];
+        return is_array($messages) === true ? $messages : [];
+    }
+
+    private function storeFlashMessages(array $messages): void
+    {
+        if ($messages === []) {
+            $this->remove('_flash_messages');
+            return;
+        }
+
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $_SESSION['_flash_messages'] = $messages;
+        }
+    }
+
     public function has(string $key): bool
     {
         if (session_status() === PHP_SESSION_ACTIVE) {

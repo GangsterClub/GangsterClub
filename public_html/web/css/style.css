@@ -9,3 +9,25 @@ body {
 .dropdown:hover .dropdown-menu {
     display: block;
 }
+
+.auth-step-fade {
+    animation: auth-step-fade-in 260ms ease-out both;
+}
+
+@keyframes auth-step-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(0.75rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .auth-step-fade {
+        animation: none;
+    }
+}

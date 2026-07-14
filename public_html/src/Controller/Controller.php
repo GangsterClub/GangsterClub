@@ -28,7 +28,10 @@ class Controller
 
     public function __destruct()
     {
-        $this->application->get('sessionService')->set('PREV_ROUTE', REQUEST_URI);
+        $session = $this->application->get('sessionService');
+        if (defined('REQUEST_METHOD') === true && REQUEST_METHOD === 'GET') {
+            $session->set('PREV_ROUTE', REQUEST_URI);
+        }
     }
 
     public function __invoke(Request $request): Response
@@ -61,6 +64,21 @@ class Controller
             ($request->server('HTTP_REFERER')) ??
             (APP_BASE . '/'));
 
-        return Response::redirect((string) $prevRoute, 301);
+        return Response::redirect((string) $prevRoute, 303);
+    }
+
+    protected function redirectSelf(): Response
+    {
+        return Response::redirect((string) (REQUEST_URI ?? (APP_BASE . '/')), 303);
+    }
+
+    protected function flash(string $bag, string $type, string $message): void
+    {
+        $this->application->get('sessionService')->flash($bag, $type, $message);
+    }
+
+    protected function consumeFlash(string $bag): array
+    {
+        return $this->application->get('sessionService')->consumeFlash($bag);
     }
 }
