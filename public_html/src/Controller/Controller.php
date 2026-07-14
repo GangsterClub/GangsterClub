@@ -44,6 +44,7 @@ class Controller
         }
 
         if (strtolower(ENVIRONMENT) !== "production" && DEVELOPMENT === true) {
+            /* Sensitive information exposure: */
             return Response::html(
                 '<pre>' . htmlspecialchars(var_export($request, true), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</pre>'
             );

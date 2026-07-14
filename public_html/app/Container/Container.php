@@ -25,7 +25,7 @@ class Container
         return null;
     }
 
-    public function addService(string $name, ?object $service): void
+    public function addService(string $name, object|callable|null $service): void
     {
         $this->container[$name] = $service;
     }
@@ -34,7 +34,7 @@ class Container
     {
         if (array_key_exists($name, $this->container) === true) {
             if (is_callable($this->container[$name]) === true) {
-                return $this->container[$name]();
+                $this->container[$name] = $this->container[$name]();
             }
 
             return $this->container[$name];

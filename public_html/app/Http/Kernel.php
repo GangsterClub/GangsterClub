@@ -7,6 +7,7 @@ namespace app\Http;
 use app\Container\Application;
 use app\Middleware\MiddlewarePipeline;
 use src\Controller\Controller;
+use src\Data\Exception\DatabaseConnectionException;
 
 class Kernel
 {
@@ -81,6 +82,15 @@ class Kernel
 
     private function handleException(\Throwable $throwable): Response
     {
+        if ($throwable instanceof DatabaseConnectionException) {
+            $message = $throwable->getPublicMessage();
+            if (strtolower(ENVIRONMENT) !== 'production' && DEVELOPMENT === true) {
+                $message = $throwable->getDevelopmentMessage();
+            }
+
+            return Response::html(htmlspecialchars($message, ENT_QUOTES, 'UTF-8'), 500);
+        }
+
         return new Response('Internal Server Error', 500);
     }
 

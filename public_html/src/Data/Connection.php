@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace src\Data;
 
+use src\Data\Exception\DatabaseConnectionException;
+
 class Connection
 {
     private ?\PDO $connection = null;
@@ -21,13 +23,17 @@ class Connection
 
             $this->connection = new \PDO(DB_CONN_STRING, DB_USER, DB_PASS, $options);
         } catch (\PDOException $exc) {
-            $error = "Unable to establish a database connection.";
-            if (strtolower(ENVIRONMENT) !== "production" && DEVELOPMENT === true) {
-                $error = "PDOException caught: " . print_r($exc->getMessage(), true);
-                $error = new \PDOException($error);
-            }
+            /* Sensitive information exposure stored in server logs: */
+            error_log(
+                "Database connection failure [" . date(DATE_ATOM) . "]: "
+                . $exc->getMessage()
+                . " in "
+                . $exc->getFile()
+                . ":"
+                . $exc->getLine()
+            );
 
-            die(htmlspecialchars($error, ENT_QUOTES, 'UTF-8'));
+            throw new DatabaseConnectionException($exc);
         }
     }
 

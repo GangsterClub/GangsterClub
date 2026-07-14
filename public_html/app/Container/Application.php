@@ -24,7 +24,7 @@ class Application extends Container
 
     private function registerServices(): void
     {
-        $this->addService('dbh', new \src\Data\Connection());
+        $this->addService('dbh', fn(): \src\Data\Connection => new \src\Data\Connection());
         $this->addService('router', $this->router = new Router());
         $this->addService('translationService', new \app\Service\TranslationService());
     }
