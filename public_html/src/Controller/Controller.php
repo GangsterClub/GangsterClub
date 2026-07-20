@@ -43,7 +43,7 @@ class Controller
             }
         }
 
-        if (strtolower(ENVIRONMENT) !== "production" && DEVELOPMENT === true) {
+        if ($this->canShowRequestDump($request) === true) {
             /* Sensitive information exposure: */
             return Response::html(
                 '<pre>' . htmlspecialchars(var_export($request, true), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</pre>'
@@ -51,6 +51,22 @@ class Controller
         }
 
         return Response::html('');
+    }
+
+    private function canShowRequestDump(Request $request): bool
+    {
+        if (strtolower(ENVIRONMENT) === 'production' || DEVELOPMENT !== true) {
+            return false;
+        }
+
+        $clientIp = (string) $request->server('REMOTE_ADDR', '');
+        $developerIps = (string) $request->env('DEVELOPER_IPS', '');
+        $allowedIps = array_filter(
+            array_map('trim', explode(',', $developerIps)),
+            fn(string $ip): bool => $ip !== ''
+        );
+
+        return in_array($clientIp, $allowedIps, true);
     }
 
     protected function auth(): AuthService

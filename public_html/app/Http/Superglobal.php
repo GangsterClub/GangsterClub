@@ -26,7 +26,7 @@ class Superglobal
 
         $server['REMOTE_ADDR_ORIGINAL'] = $server['REMOTE_ADDR'] ?? null;
 
-        $clientIpHeader = CLIENT_IP_HEADER ?? null;
+        $clientIpHeader = getenv('CLIENT_IP_HEADER') ?? null;
 
         if ($clientIpHeader !== null) {
             $headerName = 'HTTP_' . strtoupper(str_replace('-', '_', $clientIpHeader));
