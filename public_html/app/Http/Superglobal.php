@@ -22,10 +22,26 @@ class Superglobal
 
     public function __construct()
     {
+        $server = $_SERVER;
+
+        $server['REMOTE_ADDR_ORIGINAL'] = $server['REMOTE_ADDR'] ?? null;
+
+        $clientIpHeader = CLIENT_IP_HEADER ?? null;
+
+        if ($clientIpHeader !== null) {
+            $headerName = 'HTTP_' . strtoupper(str_replace('-', '_', $clientIpHeader));
+            $clientIp = trim($server[$headerName] ?? '');
+
+            if (filter_var($clientIp, FILTER_VALIDATE_IP) !== false) {
+                $server['REMOTE_ADDR'] = $clientIp;
+            }
+        }
+
+        // 515 = FILTER_SANITIZE_SPECIAL_CHARS
         //$this->globals = filter_var_array($GLOBALS, 515); // testing purposes
         $this->get = filter_input_array(INPUT_GET, 515) ?? [];
         $this->post = filter_input_array(INPUT_POST, 515) ?? [];
-        $this->server = filter_input_array(INPUT_SERVER, 515) ?? [];
+        $this->server = filter_var_array($server, 515) ?? [];
         $this->cookie = filter_input_array(INPUT_COOKIE, 515) ?? [];
         $this->put = $this->parseRequestMethod('PUT');
         $this->delete = $this->parseRequestMethod('DELETE');
