@@ -22,6 +22,10 @@ class Login extends Controller
         $this->application->get('translationService')->setFile('login');
         $auth = $this->auth();
 
+        if ($auth->getAuthenticatedUserId() !== null) {
+            return Response::redirect(APP_BASE . '/account', 303);
+        }
+
         $this->twigVariables['login'] = $this->consumeFlash('login');
 
         $loginResponse = $this->login($request, $auth);
@@ -134,7 +138,6 @@ class Login extends Controller
             }
 
             if ((bool) $isValid === true) {
-                $this->flash('login', 'success', __('success-authenticated'));
                 $pendingEmail = $auth->getPendingLoginEmail();
                 if ($pendingEmail === null) {
                     $this->flash('login', 'errors', __('error-invalid-otp'));
@@ -145,8 +148,11 @@ class Login extends Controller
                 if ($jwtToken !== false) {
                     $auth->loginUserWithToken($userId, $jwtToken);
                     $this->authorizationHeader = 'Authorization: Bearer ' . $jwtToken;
+                    $this->flash('account', 'success', __('success-authenticated'));
+                    return Response::redirect(APP_BASE . '/account', 303);
                 }
 
+                $this->flash('login', 'errors', __('error-invalid-otp'));
                 return $this->redirectSelf();
             }
 

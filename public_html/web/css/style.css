@@ -10,6 +10,20 @@ body {
     display: block;
 }
 
+.page-fade {
+    animation: page-fade-in 200ms ease-out both;
+}
+
+@keyframes page-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
 .auth-step-fade {
     animation: auth-step-fade-in 260ms ease-out both;
 }
@@ -27,6 +41,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .page-fade,
     .auth-step-fade {
         animation: none;
     }
