@@ -63,7 +63,7 @@ The project dependencies are managed with Composer. The `composer install` comma
 
 ## Tailwind CSS
 
-The project uses Tailwind CSS for styling. See the Quick Start for the compilation command.
+The project is tested with **Tailwind CSS v4.2.2**. Compile the CSS using the command shown in the Quick Start.
 
 ## Migration
 
