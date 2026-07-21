@@ -40,7 +40,7 @@ function loadEnv(string $envFilePath): void
 
         $value = preg_replace_callback(
             '/\$\{([A-Z_]+)\}/',
-            fn($matches) => getenv($matches[1]) ?: $matches[0],
+            fn($matches) => (bool) getenv($matches[1]) === true ? getenv($matches[1]) : $matches[0],
             $value
         );
 

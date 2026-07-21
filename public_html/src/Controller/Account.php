@@ -81,10 +81,10 @@ class Account extends Controller
         $pendingSecret = $auth->getPendingMfaSecret();
         $mfaEnabled = $this->mfaService->hasEnabledMfa($user->getId());
         $mfaLabel = APP_NAME . ':' . $user->getEmail();
-        $otpauth = is_string($pendingSecret) && $pendingSecret !== ''
+        $otpauth = (bool) (is_string($pendingSecret) && $pendingSecret !== '') === true
             ? $this->mfaService->generateProvisioningUri($pendingSecret, $mfaLabel)
             : null;
-        $qrCodeUrl = is_string($pendingSecret) && $pendingSecret !== ''
+        $qrCodeUrl = (bool) (is_string($pendingSecret) && $pendingSecret !== '') === true
             ? $this->mfaService->generateQRCode($pendingSecret, $mfaLabel)
             : null;
 

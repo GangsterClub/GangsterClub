@@ -173,8 +173,8 @@ class SessionService extends \SessionHandler
         $this->storeFlashMessages($messages);
 
         return [
-            'errors' => is_array($bagMessages['errors'] ?? null) ? $bagMessages['errors'] : [],
-            'success' => is_array($bagMessages['success'] ?? null) ? $bagMessages['success'] : [],
+            'errors' => is_array($bagMessages['errors'] ?? null) === true ? $bagMessages['errors'] : [],
+            'success' => is_array($bagMessages['success'] ?? null) === true ? $bagMessages['success'] : [],
         ];
     }
 

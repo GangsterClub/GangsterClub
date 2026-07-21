@@ -75,14 +75,14 @@ class TranslationService
     private function parseTranslationFile(string $filePath, array $parsed = []): array
     {
         if ((bool) function_exists('yaml_parse_file') === true) {
-            $parsedTranslations = @yaml_parse_file($filePath) ?: $parsed;
+            $parsedTranslations = file_exists($filePath) === true ? @yaml_parse_file($filePath) : $parsed;
         }
 
         if ((bool) class_exists('\Symfony\Component\Yaml\Yaml') === true && isset($parsedTranslations) === false) {
-            $parsedTranslations = @Yaml::parseFile($filePath) ?: $parsed;
+            $parsedTranslations = file_exists($filePath) === true ? @Yaml::parseFile($filePath) : $parsed;
         }
 
-        return $parsedTranslations ?: $parsed;
+        return (bool) $parsedTranslations === true ? $parsedTranslations : $parsed;
     }
 
     protected function getFallbackTranslation(string $file, string $messageKey): string
@@ -103,7 +103,7 @@ class TranslationService
                 $value = implode(
                     ', ',
                     array_map(
-                        static fn($item) => (is_scalar($item) || $item === null) ? (string) $item : '[complex]',
+                        static fn($item) => (bool) (is_scalar($item) || $item === null) === true ? (string) $item : '[complex]',
                         $value
                     )
                 );

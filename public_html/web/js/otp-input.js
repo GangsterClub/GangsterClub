@@ -17,25 +17,37 @@ window.onload = () => {
     // Handling pasted OTP of 6 digits
     function handlePaste(evt, inputs) {
         evt.preventDefault();
+
         const pastedText = evt.clipboardData.getData('text').trim();
-        if (!/^\d{6}$/.test(pastedText)) { // Change {6} if needed.
+
+        if (!/^\d{6}$/.test(pastedText)) {
             return;
         }
 
         const digits = pastedText.split('');
-        inputs = Array.from(inputs).filter(input => input.tagName.toLowerCase() === 'input');
-        if (inputs.length < digits.length) {
+        const inputElements = Array.from(inputs).filter(
+            input => input.tagName.toLowerCase() === 'input'
+        );
+
+        if (inputElements.length < digits.length) {
             return;
         }
 
-        inputs.forEach((input, index) => {
-            const digit = typeof digits[index] === 'string' ? digits[index] : '';
-            if (input && typeof input.value !== 'undefined' && /^\d$/.test(digit)) {
-                input.value = digit || '';
+        const digitIterator = digits.values();
+
+        inputElements.forEach((input) => {
+            const { value: digit, done } = digitIterator.next();
+
+            if (done) {
+                return;
+            }
+
+            if (typeof input.value !== 'undefined' && /^\d$/.test(digit)) {
+                input.value = digit;
             }
         });
 
-        inputs[inputs.length - 1].focus();
+        inputElements.at(-1)?.focus();
     }
 
     // Apply listeners and "hack" value afterwards

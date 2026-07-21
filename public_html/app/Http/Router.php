@@ -35,11 +35,11 @@ class Router
     private function parse(string $yaml, array $parsed = []): array
     {
         if ((bool) function_exists('yaml_parse_file') === true) {
-            $routes = @yaml_parse_file($yaml) ?: $parsed;
+            $routes = file_exists($yaml) === true ? @yaml_parse_file($yaml) : $parsed;
         }
 
         if ((bool) class_exists('\Symfony\Component\Yaml\Yaml') === true && isset($routes) === false) {
-            $routes = @Yaml::parseFile($yaml) ?: $parsed;
+            $routes = file_exists($yaml) === true ? @Yaml::parseFile($yaml) : $parsed;
         }
 
         return $routes ?? $parsed;
