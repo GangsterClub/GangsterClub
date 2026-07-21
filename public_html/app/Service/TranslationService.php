@@ -103,7 +103,7 @@ class TranslationService
                 $value = implode(
                     ', ',
                     array_map(
-                        static fn($item) => (bool) (is_scalar($item) || $item === null) === true ? (string) $item : '[complex]',
+                        static fn($item) => (is_scalar($item) === true || $item === null) ? (string) $item : '[complex]',
                         $value
                     )
                 );
