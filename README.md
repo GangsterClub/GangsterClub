@@ -2,7 +2,7 @@
 
 > **Alpha** · v0.0.5
 
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/d174a0a0c4e748569fc5f12c24b068d2)](https://app.codacy.com/gh/GangsterClub/GangsterClub/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade) [![Known Vulnerabilities](https://snyk.io/test/github/GangsterClub/GangsterClub/badge.svg)](https://snyk.io/test/github/GangsterClub/GangsterClub)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/c9f86499481244ff9269ab82373c7361)](https://app.codacy.com/gh/GangsterClub/GangsterClub/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade) [![Known Vulnerabilities](https://snyk.io/test/github/GangsterClub/GangsterClub/badge.svg)](https://snyk.io/test/github/GangsterClub/GangsterClub)
 
 A custom PHP MVC framework for building web applications.
 
