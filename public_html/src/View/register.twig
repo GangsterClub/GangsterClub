@@ -29,19 +29,19 @@
                     {% if (uUID or UID) %}
                         {% if (uUID) %}
                             <div class="mb-4">
-                                <label for="email_reference" class="block">{{ __('email-address') }}</label>
+                                <label for="email_reference" class="block">{{ __('login.email-address') }}</label>
                                 <input type="email" id="email_reference" value="{{ email }}" class="auth-input contrast-75 cursor-not-allowed" autocomplete="username" disabled />
                             </div>
                         {% endif %}
                         {% set name, value, type, submitName = 'totp', totp, 'text', 'submit_totp' %}
-                        {% set label = __('verification-code') %}
-                        {% set submit = __('verify') %}
+                        {% set label = __('login.verification-code') %}
+                        {% set submit = __('login.verify') %}
                         {{ forms.otpInput(name, value, type, label, value) }}
                     {% else %}
                         {% set name, value, type = 'username', '', 'text' %}
                         {{ forms.textInput(name, value, type, __('username'), __('provide-valid-username')) }}
                         {% set name, value, type, submitName = 'email', email, 'email', 'submit_register' %}
-                        {{ forms.textInput(name, value, type, __('email-address'), __('provide-valid-email-address')) }}
+                        {{ forms.textInput(name, value, type, __('login.email-address'), __('login.provide-valid-email-address')) }}
                         {% set submit = __('register') %}
                     {% endif %}
                     {{ forms.submitInput(submitName, submit) }}
@@ -49,7 +49,7 @@
                 {% if not uUID and not UID %}
                     <hr class="my-6 border-gray-400 dark:border-gray-600 w-full">
                     <p class="mt-8">{{ __('already-have-account') }}
-                        <a href="{{ docRoot }}login" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-semibold">{{ __('sign-in') }}</a>.
+                        <a href="{{ docRoot }}login" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-semibold">{{ __('login.sign-in') }}</a>.
                     </p>
                 {% endif %}
             </div>

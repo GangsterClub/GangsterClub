@@ -1,0 +1,6 @@
+register: "Registreren"
+username: "Gebruikersnaam"
+provide-valid-username: "Geef een geldige gebruikersnaam op."
+email-address-already-in-use: "E-mailadres is al in gebruik."
+username-already-in-use: "Gebruikersnaam is al in gebruik."
+already-have-account: "Heb je al een account?"

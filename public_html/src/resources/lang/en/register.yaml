@@ -1,0 +1,6 @@
+register: "Register"
+username: "Username"
+provide-valid-username: "Please provide a valid username."
+email-address-already-in-use: "Email address already in use."
+username-already-in-use: "Username already in use."
+already-have-account: "Already have an account?"

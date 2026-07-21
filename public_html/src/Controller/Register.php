@@ -19,7 +19,7 @@ class Register extends Controller
 
     public function __invoke(Request $request): Response
     {
-        $this->application->get('translationService')->setFile('login');
+        $this->application->get('translationService')->setFile('register');
         $auth = $this->auth();
 
         if ($auth->getAuthenticatedUserId() !== null) {
@@ -78,7 +78,7 @@ class Register extends Controller
         $userService = new UserService($this->application);
 
         if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
-            $this->flash('register', 'errors', __('provide-valid-email-address'));
+            $this->flash('register', 'errors', __('login.provide-valid-email-address'));
             return $this->redirectSelf();
         }
 
@@ -100,7 +100,7 @@ class Register extends Controller
         $session = $this->application->get('sessionService');
         $user = $userService->createUser($username, $email, $session->get('_IPaddress'));
         if ($user === null) {
-            $this->flash('register', 'errors', __('error-email'));
+            $this->flash('register', 'errors', __('login.error-email'));
             return $this->redirectSelf();
         }
 
@@ -116,11 +116,11 @@ class Register extends Controller
         $emailSent = $emailService->sendTOTPEmail($email, $otp);
 
         if ((bool) $emailSent === true) {
-            $this->flash('register', 'success', __('otp-email-sent'));
+            $this->flash('register', 'success', __('login.otp-email-sent'));
             return $this->redirectSelf();
         }
 
-        $this->flash('register', 'errors', __('error-email'));
+        $this->flash('register', 'errors', __('login.error-email'));
         return $this->redirectSelf();
     }
 
@@ -136,7 +136,7 @@ class Register extends Controller
             $userId = $auth->getPendingUserId();
 
             if ($userId === null) {
-                $this->flash('register', 'errors', __('error-invalid-otp'));
+                $this->flash('register', 'errors', __('login.error-invalid-otp'));
                 return $this->redirectSelf();
             }
 
@@ -152,7 +152,7 @@ class Register extends Controller
             if ((bool) $isValid === true) {
                 $pendingEmail = $auth->getPendingLoginEmail();
                 if ($pendingEmail === null) {
-                    $this->flash('register', 'errors', __('error-invalid-otp'));
+                    $this->flash('register', 'errors', __('login.error-invalid-otp'));
                     return $this->redirectSelf();
                 }
 
@@ -160,11 +160,11 @@ class Register extends Controller
                 if ($jwtToken !== false) {
                     $auth->loginUserWithToken($userId, $jwtToken);
                     $this->authorizationHeader = 'Authorization: Bearer ' . $jwtToken;
-                    $this->flash('account', 'success', __('success-authenticated'));
+                    $this->flash('account', 'success', __('login.success-authenticated'));
                     return Response::redirect(APP_BASE . '/account', 303);
                 }
 
-                $this->flash('register', 'errors', __('error-invalid-otp'));
+                $this->flash('register', 'errors', __('login.error-invalid-otp'));
                 return $this->redirectSelf();
             }
 
@@ -180,7 +180,7 @@ class Register extends Controller
                 }
             }
 
-            $this->flash('register', 'errors', __('error-invalid-otp'));
+            $this->flash('register', 'errors', __('login.error-invalid-otp'));
             return $this->redirectSelf();
         }
 
