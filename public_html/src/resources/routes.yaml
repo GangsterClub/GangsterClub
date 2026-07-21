@@ -14,6 +14,11 @@ login:
     controller: Login
     methods: ['GET', 'HEAD', 'POST']
 
+register:
+    path: /register
+    controller: Register
+    methods: ['GET', 'HEAD', 'POST']
+
 account:
     path: /account
     controller: Account

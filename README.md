@@ -1,4 +1,4 @@
-# GangsterClub Online ALPHA v0.0.4
+# GangsterClub Online ALPHA v0.0.5
 
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/d174a0a0c4e748569fc5f12c24b068d2)](https://app.codacy.com/gh/GangsterClub/GangsterClub/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade) [![Known Vulnerabilities](https://snyk.io/test/github/GangsterClub/GangsterClub/badge.svg)](https://snyk.io/test/github/GangsterClub/GangsterClub)
 
@@ -13,9 +13,9 @@ This is a boilerplate custom MVC framework in progress written in PHP.
 Execute command `composer install` from public_html, requires [composer installation](https://getcomposer.org/download/)
 
 - twig/twig ^3.23.0
-- phpmailer/phpmailer ^7.0.2
-- spomky-labs/otphp ^11.4.2
-- firebase/php-jwt ^7.0
+- phpmailer/phpmailer ^7.1.1
+- spomky-labs/otphp ^11.5.0
+- firebase/php-jwt ^7.1
 
 Optional depencency as defined by suggest:
 
@@ -33,7 +33,20 @@ Execute the following command from public_html, requires [tailwindcss v4.2.2 ins
 
 ## Migration
 
-Execute the following commands from public_html to (1.) migrate or (2.) rollback the database schema
+Use migrations to create or update the database schema.
 
-1. `php run.php --migrate`
-2. `php run.php --rollback`
+> **Warning:** The migration system attempts to preserve existing data, but schema changes may still result in data loss. Always create a full database backup before running a migration, performing a rollback, or moving the application to another server.
+
+From the `public_html` directory, run one of the following commands:
+
+### Migrate the database schema and import preserved data, if any
+
+```bash
+php run.php --migrate
+```
+
+### Roll back the last migration and preserve data
+
+```bash
+php run.php --rollback
+```

@@ -36,6 +36,17 @@ class UserRepository
             ->first();
     }
 
+    public function createUser(string $username, string $email, string $ipAddress): bool
+    {
+        $userRecord = [
+            'username' => $username,
+            'email' => $email,
+            'ip_address' => $ipAddress,
+        ];
+
+        return $this->dbh->table('user')->insert($userRecord);
+    }
+
     public function createUserByEmail(string $email, string $ipAddress): bool
     {
         $userRecord = [

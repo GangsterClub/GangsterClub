@@ -16,7 +16,8 @@ class CreateUser extends \app\Middleware\Migration
             `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
             `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             `deleted_at` DATETIME NULL DEFAULT NULL,
-            UNIQUE (`email`)
+            UNIQUE (`email`),
+            UNIQUE (`username`)
         )";
         $this->execute($sql);
         $this->log("User created successfully.");

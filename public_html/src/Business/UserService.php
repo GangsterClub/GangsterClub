@@ -28,6 +28,16 @@ class UserService
         return $user;
     }
 
+    public function getUserByUsername(string $username): User|null
+    {
+        $data = $this->userRepository->findByUsername($username);
+        if ($data === false) {
+            return null;
+        }
+
+        return $this->entity($data);
+    }
+
     public function getUserById(int $userId): User|null
     {
         $data = $this->userRepository->findById($userId);
@@ -36,6 +46,21 @@ class UserService
         }
 
         return $this->entity($data);
+    }
+
+    public function createUser(string $username, string $email, string $ipAddress): User|null
+    {
+        $created = $this->userRepository->createUser($username, $email, $ipAddress);
+        if ($created !== true) {
+            return null;
+        }
+
+        $data = $this->userRepository->findByEmail($email);
+        if (is_object($data) === true) {
+            return $this->entity($data);
+        }
+
+        return null;
     }
 
     public function createUserByEmail(string $email, string $ipAddress, ?User $user = null): User|null
