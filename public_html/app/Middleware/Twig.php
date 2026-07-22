@@ -33,6 +33,7 @@ class Twig
         $twig->addGlobal('docRoot', WEB_ROOT);
         $twig->addGlobal('assetVersion', $assetVersion);
         $twig->addExtension(new \app\Twig\TranslationExtension());
+        $twig->addExtension(new \app\Twig\CsrfExtension($this->application->get('csrfService')));
         $this->application->addService('twig', $twig);
         $response = $next($request);
         return $response;
