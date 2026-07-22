@@ -32,4 +32,4 @@ accountVerifyEmail:
 logout:
     path: /logout
     controller: Logout
-    methods: ['GET', 'HEAD']
+    methods: ['GET', 'HEAD', 'POST']
