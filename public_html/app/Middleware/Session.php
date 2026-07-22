@@ -27,7 +27,6 @@ class Session
     {
         $session = new \app\Service\SessionService($request);
         $this->application->addService('sessionService', $session);
-        $this->application->addService('csrfService', new \app\Service\CsrfService($session));
         $this->application->addService('authService', new \app\Service\AuthService($this->application));
         ini_set('session.save_handler', 'files');
         session_set_save_handler($session, true);

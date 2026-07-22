@@ -322,7 +322,6 @@ class Account extends Controller
             $enabled = $this->mfaService->enableMfa($userId, $pendingSecret);
             if ($enabled === true) {
                 $auth->clearPendingMfaSetup();
-                $auth->rotateCsrfToken();
                 $this->accountMessages['success'][] = __('account.mfa-enabled');
             } else {
                 $this->accountMessages['errors'][] = __('account.mfa-enable-error');
@@ -357,7 +356,6 @@ class Account extends Controller
             $disabled = $this->mfaService->disableMfa($userId);
             if ($disabled === true) {
                 $auth->setPendingMfaSecret(null);
-                $auth->rotateCsrfToken();
                 $this->accountMessages['success'][] = __('account.mfa-disabled');
             } else {
                 $this->accountMessages['errors'][] = __('account.mfa-disable-error');

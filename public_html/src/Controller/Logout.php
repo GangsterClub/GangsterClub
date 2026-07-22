@@ -13,6 +13,6 @@ class Logout extends Controller
     {
         $auth = $this->auth();
         $auth->logoutUser();
-        return Response::redirect(APP_BASE . '/login', 303);
+        return Response::redirect(APP_BASE . '/login', 301);
     }
 }

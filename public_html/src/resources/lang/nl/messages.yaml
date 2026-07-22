@@ -4,6 +4,3 @@ goodbye: "Tot ziens, :name!"
 "Hello, you didn't provide a name.": "Hallo, u hebt geen naam opgegeven."
 visitor: bezoeker
 pal: maat
-csrf-title: "Page expired"
-csrf-message: "This page or form expired. Please refresh the page or return to the form, then try again. Your action was not submitted."
-csrf-action: "Return and try again"

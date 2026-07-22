@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace app\Service;
 
 use app\Container\Application;
-use app\Service\CsrfService;
 use src\Business\UserService;
 use src\Entity\User;
 
@@ -20,7 +19,6 @@ class AuthService
         $this->session()->regenerate();
         $this->setAuthenticatedUserId($userId);
         $this->clearPendingAuthentication();
-        $this->rotateCsrfToken();
     }
 
     public function loginUserWithToken(int $userId, string $jwtToken): void
@@ -47,8 +45,6 @@ class AuthService
         if ($regenerateSession === true) {
             $this->session()->regenerate();
         }
-
-        $this->rotateCsrfToken();
     }
 
     public function getAuthenticatedUserId(): ?int
@@ -186,14 +182,6 @@ class AuthService
         }
 
         return $value;
-    }
-
-    public function rotateCsrfToken(): void
-    {
-        $csrf = $this->application->get('csrfService');
-        if ($csrf instanceof CsrfService) {
-            $csrf->rotateToken();
-        }
     }
 
     private function session(): SessionService
