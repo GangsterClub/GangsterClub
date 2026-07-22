@@ -16,6 +16,7 @@ class AuthService
 
     public function loginUser(int $userId): void
     {
+        $this->session()->regenerate();
         $this->setAuthenticatedUserId($userId);
         $this->clearPendingAuthentication();
     }
