@@ -9,14 +9,7 @@ $kernel->addMiddleware(
     }
 );
 
-$kernel->addMiddleware(
-    function ($request, $next) use ($app) {
-        $authSessionJwtMiddleware = $app->make(\app\Middleware\AuthSessionJWT::class);
-        return $authSessionJwtMiddleware->handle($request, $next);
-    }
-);
-
-// Locale depend on $_SESSION for now
+// Locale depends on $_SESSION for now.
 $kernel->addMiddleware(
     function ($request, $next) use ($app) {
         $localeMiddleware = $app->make(\app\Middleware\Locale::class);
@@ -24,10 +17,24 @@ $kernel->addMiddleware(
     }
 );
 
-// Mount twig to your kernel last, if possible
+// Mount Twig before CSRF so CSRF failures can render application-styled error pages.
 $kernel->addMiddleware(
     function ($request, $next) use ($app) {
         $twigMiddleware = $app->make(\app\Middleware\Twig::class);
         return $twigMiddleware->handle($request, $next);
+    }
+);
+
+$kernel->addMiddleware(
+    function ($request, $next) use ($app) {
+        $csrfMiddleware = $app->make(\app\Middleware\Csrf::class);
+        return $csrfMiddleware->handle($request, $next);
+    }
+);
+
+$kernel->addMiddleware(
+    function ($request, $next) use ($app) {
+        $authSessionJwtMiddleware = $app->make(\app\Middleware\AuthSessionJWT::class);
+        return $authSessionJwtMiddleware->handle($request, $next);
     }
 );
