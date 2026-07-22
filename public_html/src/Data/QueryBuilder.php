@@ -167,6 +167,8 @@ class QueryBuilder
             throw new InvalidArgumentException('Update data cannot be empty.');
         }
 
+        $this->assertHasWhereClause('update()');
+
         $query = "UPDATE {$this->table} SET " . implode(', ', array_map(function ($key): string {
             return self::validateIdentifier((string) $key, 'column') . " = ?";
         }, array_keys($data)));
@@ -178,6 +180,21 @@ class QueryBuilder
         return (bool) $stmt->execute($bindings);
     }
 
+    public function updateAll(array $data): bool
+    {
+        if ($data === []) {
+            throw new InvalidArgumentException('Update data cannot be empty.');
+        }
+
+        $query = "UPDATE {$this->table} SET " . implode(', ', array_map(function ($key): string {
+            return self::validateIdentifier((string) $key, 'column') . " = ?";
+        }, array_keys($data)));
+
+        $bindings = array_values($data);
+        $stmt = $this->connection->prepare($query);
+        return (bool) $stmt->execute($bindings);
+    }
+
     /**
      * Delete records
      *
@@ -185,10 +202,20 @@ class QueryBuilder
      */
     public function delete(): bool
     {
+        $this->assertHasWhereClause('delete()');
+
         $query = "DELETE FROM {$this->table}";
         $bindings = [];
         $query .= $this->buildWhereClause($bindings);
 
+        $stmt = $this->connection->prepare($query);
+        return (bool) $stmt->execute($bindings);
+    }
+
+    public function deleteAll(): bool
+    {
+        $query = "DELETE FROM {$this->table}";
+        $bindings = [];
         $stmt = $this->connection->prepare($query);
         return (bool) $stmt->execute($bindings);
     }
@@ -235,6 +262,13 @@ class QueryBuilder
         }
 
         return $query;
+    }
+
+    private function assertHasWhereClause(string $method): void
+    {
+        if ((bool) $this->wheres === false) {
+            throw new InvalidArgumentException("{$method} requires at least one where() condition.");
+        }
     }
 
     private function buildWhereClause(array &$bindings): string

@@ -7,7 +7,6 @@ namespace src\Controller;
 use app\Http\Request;
 use app\Http\Response;
 use app\Service\AuthService;
-use app\Service\JWTService;
 use src\Business\EmailService;
 use src\Business\MFATOTPService;
 use src\Business\TOTPEmailService;
@@ -78,6 +77,12 @@ class AuthEntryController extends Controller
         $submit = $request->post('submit_login');
         $email = $request->post('email');
         if ((bool) $submit === true && (bool) $email === true) {
+            $rateLimit = $this->application->get('authRateLimitService');
+            if ($rateLimit instanceof \app\Service\AuthRateLimitService && $rateLimit->allowAttempt('login', (string) $email, 5, 900) === false) {
+                $this->flash('login', 'errors', __('error-email'));
+                return $this->redirectSelf();
+            }
+
             $auth->setPendingLoginEmail($email);
             $userService = new UserService($this->application);
             $user = $userService->getUserByEmail($email);
@@ -179,10 +184,16 @@ class AuthEntryController extends Controller
     {
         $submit = $request->post('submit_totp');
         $otp = $request->post('totp');
-        $jwtService = new JWTService($this->application);
 
         if ((bool) $submit === true && (bool) $otp === true) {
             $otp = is_array($otp) === true ? implode('', $otp) : (string) $otp;
+            $rateLimit = $this->application->get('authRateLimitService');
+            $pendingEmail = $auth->getPendingLoginEmail();
+            if ($rateLimit instanceof \app\Service\AuthRateLimitService && $pendingEmail !== null && $rateLimit->allowAttempt('otp', $pendingEmail, 5, 900) === false) {
+                $this->flash($mode, 'errors', $this->translateForMode($mode, 'error-invalid-otp'));
+                return $this->redirectSelf();
+            }
+
             $auth->setPendingLoginTotp($otp);
             $userId = $auth->getPendingUserId();
 
@@ -207,28 +218,9 @@ class AuthEntryController extends Controller
                     return $this->redirectSelf();
                 }
 
-                $jwtToken = $jwtService->authenticate($pendingEmail, $isValid);
-                if ($jwtToken !== false) {
-                    $auth->loginUserWithToken($userId, $jwtToken);
-                    $this->authorizationHeader = 'Authorization: Bearer ' . $jwtToken;
-                    $this->flash('account', 'success', $this->translateForMode($mode, 'success-authenticated'));
-                    return Response::redirect(APP_BASE . '/account', 303);
-                }
-
-                $this->flash($mode, 'errors', $this->translateForMode($mode, 'error-invalid-otp'));
-                return $this->redirectSelf();
-            }
-
-            $storedToken = $auth->getStoredJwtToken();
-            if (is_string($storedToken) === true && $storedToken !== '') {
-                $authorizationResult = $jwtService->authorize('Bearer ' . $storedToken);
-                if ($authorizationResult instanceof Response) {
-                    return $authorizationResult;
-                }
-
-                if (is_array($authorizationResult) === true && isset($authorizationResult['token']) === true) {
-                    $auth->storeJwtToken($authorizationResult['token']);
-                }
+                $auth->loginUser($userId);
+                $this->flash('account', 'success', $this->translateForMode($mode, 'success-authenticated'));
+                return Response::redirect(APP_BASE . '/account', 303);
             }
 
             $this->flash($mode, 'errors', $this->translateForMode($mode, 'error-invalid-otp'));

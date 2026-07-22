@@ -118,8 +118,12 @@ class Account extends Controller
         $this->application->get('translationService')->setFile('account');
         $token = (string) $request->getParameter('token', '');
         $status = AccountService::EMAIL_CHANGE_INVALID;
-        if ($token !== '') {
-            $status = $this->accountService->confirmEmailChange($token);
+
+        if ($request->getMethod() === 'POST') {
+            $token = (string) $request->post('token', $token);
+            if ($token !== '') {
+                $status = $this->accountService->confirmEmailChange($token);
+            }
         }
 
         $messageKey = $this->getVerificationMessageKey($status);
@@ -134,6 +138,7 @@ class Account extends Controller
                         'verification' => [
                             'success' => $isSuccess,
                             'message' => __($messageKey),
+                            'token' => $token,
                         ],
                     ]
                 )
