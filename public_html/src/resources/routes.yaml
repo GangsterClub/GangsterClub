@@ -7,7 +7,7 @@ home:
 setLocale:
     path: /set/locale/{locale}
     controller: SetLocale
-    methods: ['GET', 'HEAD', 'POST']
+    methods: ['GET', 'HEAD']
 
 login:
     path: /login
@@ -27,7 +27,7 @@ account:
 accountVerifyEmail:
     path: /account/email/verify/{token}
     controller: Account::verifyEmailChange
-    methods: ['GET', 'HEAD', 'POST']
+    methods: ['GET', 'HEAD']
 
 logout:
     path: /logout

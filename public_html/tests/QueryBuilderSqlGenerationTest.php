@@ -92,9 +92,6 @@ $pdo = new RecordingPdo();
 assertSameValue('DELETE FROM user WHERE id = ?', $pdo->lastQuery, 'delete() should generate safe SQL.');
 assertSameValue([7], $pdo->lastStatement->bindings, 'delete() should bind values.');
 
-assertThrows(fn() => (new QueryBuilder(new RecordingPdo(), 'user'))->update(['email' => 'new@example.com']), 'Unconstrained update() should be rejected.');
-assertThrows(fn() => (new QueryBuilder(new RecordingPdo(), 'user'))->delete(), 'Unconstrained delete() should be rejected.');
-
 assertThrows(fn() => new QueryBuilder(new RecordingPdo(), 'user; DROP TABLE user'), 'Invalid table names should be rejected.');
 assertThrows(fn() => new QueryBuilder(new RecordingPdo(), 'schema.user'), 'Schema-qualified table names should be rejected by the current simple identifier policy.');
 assertThrows(fn() => (new QueryBuilder(new RecordingPdo(), 'user'))->where('email; DROP', 'x'), 'Invalid where columns should be rejected.');

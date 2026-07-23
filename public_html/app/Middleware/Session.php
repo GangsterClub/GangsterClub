@@ -29,7 +29,6 @@ class Session
         $this->application->addService('sessionService', $session);
         $this->application->addService('csrfService', new \app\Service\CsrfService($session));
         $this->application->addService('authService', new \app\Service\AuthService($this->application));
-        $this->application->addService('authRateLimitService', new \app\Service\AuthRateLimitService($this->application));
         ini_set('session.save_handler', 'files');
         session_set_save_handler($session, true);
         session_save_path($this->savePath);

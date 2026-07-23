@@ -36,12 +36,9 @@
                 {% set inactiveLangs = langs|filter((val, key) => key != locale) %}
                 {% for key, value in inactiveLangs %}
                     <li>
-                        <form method="POST" action="{{ docRoot }}set/locale/{{ key }}" class="block">
-                            {{ csrf_field() }}
-                            <button type="submit" class="{% if loop.first %}rounded-t {% elseif loop.last %}rounded-b {% endif %}w-full bg-slate-800 dark:bg-gray-100 hover:bg-slate-700 dark:hover:bg-gray-200 py-2 px-4 block whitespace-no-wrap text-left text-gray-200 dark:text-gray-700">
-                                <i class="inline-block flag-{{ key }} bg-no-repeat bg-cover bg-center w-6 h-5 ml-auto -mt-1 mr-1 -mb-1"></i>&nbsp;{{ value|raw }}
-                            </button>
-                        </form>
+                        <a class="{% if loop.first %}rounded-t {% elseif loop.last %}rounded-b {% endif %}bg-slate-800 dark:bg-gray-100 hover:bg-slate-700 dark:hover:bg-gray-200 py-2 px-4 block whitespace-no-wrap" href="{{ docRoot }}set/locale/{{ key }}">
+                            <i class="inline-block flag-{{ key }} bg-no-repeat bg-cover bg-center w-6 h-5 ml-auto -mt-1 mr-1 -mb-1"></i>&nbsp;{{ value|raw }}
+                        </a>
                     </li>
                 {% endfor %}
             </ul>

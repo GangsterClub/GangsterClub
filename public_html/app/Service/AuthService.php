@@ -17,20 +17,35 @@ class AuthService
 
     public function loginUser(int $userId): void
     {
-        $this->clearAuthenticationState();
         $this->session()->regenerate();
         $this->setAuthenticatedUserId($userId);
         $this->clearPendingAuthentication();
         $this->rotateCsrfToken();
     }
 
+    public function loginUserWithToken(int $userId, string $jwtToken): void
+    {
+        $this->loginUser($userId);
+        $this->storeJwtToken($jwtToken);
+    }
+
     public function logoutUser(bool $regenerateSession = true): void
     {
-        $this->clearAuthenticationState();
+        foreach ([
+            AuthSessionKeys::AUTHENTICATED_USER_ID,
+            AuthSessionKeys::PENDING_USER_ID,
+            AuthSessionKeys::PENDING_LOGIN_EMAIL,
+            AuthSessionKeys::PENDING_LOGIN_TOTP,
+            AuthSessionKeys::LOGIN_MFA_REQUIRED,
+            AuthSessionKeys::PENDING_MFA_SECRET,
+            AuthSessionKeys::MFA_SETUP_EMAIL_SECRET,
+            AuthSessionKeys::JWT_TOKEN,
+        ] as $key) {
+            $this->session()->remove($key);
+        }
 
         if ($regenerateSession === true) {
             $this->session()->regenerate();
-            $this->session()->destroy();
         }
 
         $this->rotateCsrfToken();
@@ -125,6 +140,16 @@ class AuthService
         $this->session()->remove(AuthSessionKeys::MFA_SETUP_EMAIL_SECRET);
     }
 
+    public function storeJwtToken(?string $token): void
+    {
+        $this->setStringValue(AuthSessionKeys::JWT_TOKEN, $token);
+    }
+
+    public function getStoredJwtToken(): ?string
+    {
+        return $this->getStringValue(AuthSessionKeys::JWT_TOKEN);
+    }
+
     public function getMfaSetupEmailSessionKey(): string
     {
         return AuthSessionKeys::MFA_SETUP_EMAIL_SECRET;
@@ -141,21 +166,6 @@ class AuthService
         $this->session()->remove(AuthSessionKeys::PENDING_LOGIN_EMAIL);
         $this->session()->remove(AuthSessionKeys::PENDING_LOGIN_TOTP);
         $this->session()->remove(AuthSessionKeys::LOGIN_MFA_REQUIRED);
-    }
-
-    private function clearAuthenticationState(): void
-    {
-        foreach ([
-            AuthSessionKeys::AUTHENTICATED_USER_ID,
-            AuthSessionKeys::PENDING_USER_ID,
-            AuthSessionKeys::PENDING_LOGIN_EMAIL,
-            AuthSessionKeys::PENDING_LOGIN_TOTP,
-            AuthSessionKeys::LOGIN_MFA_REQUIRED,
-            AuthSessionKeys::PENDING_MFA_SECRET,
-            AuthSessionKeys::MFA_SETUP_EMAIL_SECRET,
-        ] as $key) {
-            $this->session()->remove($key);
-        }
     }
 
     private function setStringValue(string $key, ?string $value): void
