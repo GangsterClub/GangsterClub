@@ -23,7 +23,7 @@
 {% endblock %}
 
 {% block js %}
-    {% if (uUID or UID) %}
+    {% if awaitingOtp or UID %}
         <script type="text/javascript" src="js/otp-input.js"></script>
     {% endif %}
 {% endblock %}
