@@ -6,6 +6,7 @@ namespace src\Controller;
 
 use app\Http\Request;
 use app\Http\Response;
+use app\Service\AuthRateLimitService;
 use app\Service\AuthService;
 use src\Business\AuthEntryService;
 
@@ -74,6 +75,12 @@ class AuthEntryController extends Controller
         $submit = $request->post('submit_login');
         $email = $request->post('email');
         if ((bool) $submit === true && (bool) $email === true) {
+            $rateLimit = $this->application->get('authRateLimitService');
+            if ($rateLimit instanceof AuthRateLimitService && $rateLimit->allowAttempt('login', (string) $email, 5, 900) === false) {
+                $this->flash('login', 'errors', __('error-email'));
+                return $this->redirectSelf();
+            }
+
             return $this->mapFirstStepResult(
                 'login',
                 $this->authEntryService()->beginLogin($auth, (string) $email)
@@ -107,6 +114,13 @@ class AuthEntryController extends Controller
 
         if ((bool) $submit === true && (bool) $otp === true) {
             $otp = is_array($otp) === true ? implode('', $otp) : (string) $otp;
+            $rateLimit = $this->application->get('authRateLimitService');
+            $pendingEmail = $auth->getPendingLoginEmail();
+            if ($rateLimit instanceof AuthRateLimitService && $pendingEmail !== null && $rateLimit->allowAttempt('otp', $pendingEmail, 5, 900) === false) {
+                $this->flash($mode, 'errors', $this->translateForMode($mode, 'error-invalid-otp'));
+                return $this->redirectSelf();
+            }
+
             return $this->mapVerifyResult($mode, $this->authEntryService()->verify($auth, $mode, $otp));
         }
 
