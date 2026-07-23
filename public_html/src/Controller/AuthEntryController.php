@@ -187,9 +187,11 @@ class AuthEntryController extends Controller
     private function buildTwigVariables(AuthService $auth): array
     {
         $loginTotp = $auth->getPendingLoginTotp();
+        $pendingEmail = $auth->getPendingLoginEmail();
 
         return [
-            'email' => $auth->getPendingLoginEmail(),
+            'email' => $pendingEmail,
+            'awaitingOtp' => $pendingEmail !== null,
             'uUID' => $auth->getPendingUserId(),
             'totp' => is_string($loginTotp) === true ? str_split($loginTotp) : [],
             'UID' => $auth->getAuthenticatedUserId(),
