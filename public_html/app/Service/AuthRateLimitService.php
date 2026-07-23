@@ -4,63 +4,47 @@ declare(strict_types=1);
 
 namespace app\Service;
 
+use src\Data\Connection;
+
 class AuthRateLimitService
 {
-    private const SESSION_KEY = '_auth_rate_limits';
-
-    public function __construct(private SessionService $session) {}
+    public function __construct(private Connection $connection) {}
 
     public function allowAttempt(string $scope, string $identifier, int $maxAttempts, int $windowSeconds): bool
     {
         $maxAttempts = max(1, $maxAttempts);
         $windowSeconds = max(1, $windowSeconds);
-        $key = $this->key($scope, $identifier);
-        $now = time();
-        $limits = $this->loadLimits();
-        $entry = $limits[$key] ?? ['count' => 0, 'expires_at' => 0];
-        $expiresAt = (int) ($entry['expires_at'] ?? 0);
-        $count = (int) ($entry['count'] ?? 0);
-
-        if ($expiresAt <= $now) {
-            $count = 0;
-            $expiresAt = $now + $windowSeconds;
+        $scope = $this->normalizeScope($scope);
+        $identifierHash = $this->identifierHash($identifier);
+        $pdo = $this->connection->getConnection();
+        if ($pdo === null) {
+            throw new \RuntimeException('Database connection is not available for auth rate limiting.');
         }
 
-        if ($count >= $maxAttempts) {
-            $limits[$key] = ['count' => $count, 'expires_at' => $expiresAt];
-            $this->storeLimits($limits);
-            return false;
-        }
+        $expiresAt = (new \DateTimeImmutable('+' . $windowSeconds . ' seconds'))->format('Y-m-d H:i:s');
+        $insert = $pdo->prepare(
+            'INSERT INTO auth_rate_limit (scope, identifier_hash, attempt_count, expires_at) VALUES (?, ?, 0, ?) '
+            . 'ON DUPLICATE KEY UPDATE attempt_count = IF(expires_at <= CURRENT_TIMESTAMP, 0, attempt_count), '
+            . 'expires_at = IF(expires_at <= CURRENT_TIMESTAMP, VALUES(expires_at), expires_at)'
+        );
+        $insert->execute([$scope, $identifierHash, $expiresAt]);
 
-        $limits[$key] = ['count' => $count + 1, 'expires_at' => $expiresAt];
-        $this->storeLimits($limits);
+        $update = $pdo->prepare(
+            'UPDATE auth_rate_limit SET attempt_count = attempt_count + 1 '
+            . 'WHERE scope = ? AND identifier_hash = ? AND attempt_count < ? AND expires_at > CURRENT_TIMESTAMP'
+        );
+        $update->execute([$scope, $identifierHash, $maxAttempts]);
 
-        return true;
+        return $update->rowCount() === 1;
     }
 
-    private function loadLimits(): array
+    private function normalizeScope(string $scope): string
     {
-        if (session_status() === PHP_SESSION_ACTIVE) {
-            $limits = $_SESSION[self::SESSION_KEY] ?? [];
-            return is_array($limits) === true ? $limits : [];
-        }
-
-        $limits = $this->session->get(self::SESSION_KEY, []);
-        return is_array($limits) === true ? $limits : [];
+        return substr(strtolower(trim($scope)), 0, 32);
     }
 
-    private function storeLimits(array $limits): void
+    private function identifierHash(string $identifier): string
     {
-        if (session_status() === PHP_SESSION_ACTIVE) {
-            $_SESSION[self::SESSION_KEY] = $limits;
-            return;
-        }
-
-        $this->session->set(self::SESSION_KEY, $limits);
-    }
-
-    private function key(string $scope, string $identifier): string
-    {
-        return hash('sha256', strtolower(trim($scope)) . ':' . strtolower(trim($identifier)));
+        return hash('sha256', strtolower(trim($identifier)));
     }
 }

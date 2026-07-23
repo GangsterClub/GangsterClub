@@ -11,6 +11,7 @@ $migrationManager = new MigrationPipeline($dbh);
 // Add migrations here
 $migrationManager->addMigration(new \src\Migration\CreateUser($dbh));
 $migrationManager->addMigration(new \src\Migration\CreateTOTPEmail($dbh));
+$migrationManager->addMigration(new \src\Migration\CreateAuthRateLimit($dbh));
 $migrationManager->addMigration(new \src\Migration\CreateUserMFATOTP($dbh));
 $migrationManager->addMigration(new \src\Migration\CreateUserEmailChange($dbh));
 
