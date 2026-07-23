@@ -118,4 +118,23 @@ $svc = makeService($app->session, $users, $mfa);
 $result = $svc->beginLogin(new AuthService($app), 'known@example.test');
 assertSameValue(AuthEntryService::STATUS_APP_MFA_REQUIRED, $result['status'], 'Existing app-MFA users should be routed to app verification.');
 
+$app = new AuthEntryServiceTestApplication();
+$users = new FakeUserService();
+$users->byUsername['mfa-user'] = makeUser(8, 'mfa-user', 'mfa-user@example.test');
+$mfa = new FakeMfaService();
+$mfa->enabled = true;
+$auth = new AuthService($app);
+$svc = makeService($app->session, $users, $mfa);
+$result = $svc->beginLogin($auth, 'mfa-user');
+assertSameValue(AuthEntryService::STATUS_APP_MFA_REQUIRED, $result['status'], 'Existing app-MFA users should be found by username and routed to app verification.');
+assertSameValue('mfa-user@example.test', $auth->getPendingLoginEmail(), 'Username login should store the account email for the pending MFA session.');
+
+$app = new AuthEntryServiceTestApplication();
+$users = new FakeUserService();
+$email = new FakeEmailService();
+$svc = makeService($app->session, $users, email: $email);
+$result = $svc->beginLogin(new AuthService($app), 'not-an-email');
+assertSameValue(AuthEntryService::STATUS_VALIDATION_ERROR, $result['status'], 'Unknown non-email login identifiers should be rejected before email delivery.');
+assertSameValue([], $email->sent, 'Unknown non-email login identifiers should not try to send an OTP email.');
+
 fwrite(STDOUT, "AuthEntryService tests passed.\n");

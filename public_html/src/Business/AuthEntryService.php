@@ -39,14 +39,18 @@ class AuthEntryService
 
     public function beginLogin(AuthService $auth, string $email): array
     {
-        $email = trim($email);
-        $user = $this->userService->getUserByEmail($email);
+        $identifier = trim($email);
+        $user = $this->userService->getUserByEmail($identifier);
+        if ($user === null) {
+            $user = $this->userService->getUserByUsername($identifier);
+        }
 
-        $auth->setPendingLoginEmail($email);
         $auth->setPendingLoginTotp(null);
         $auth->setLoginMfaRequired(false);
 
         if ($user !== null) {
+            $email = $user->getEmail();
+            $auth->setPendingLoginEmail($email);
             $userId = (int) $user->getId();
             $auth->setPendingUserId($userId);
             $this->sessionService->remove(self::PENDING_CREATE_BY_EMAIL);
@@ -59,9 +63,16 @@ class AuthEntryService
             return $this->sendPersistedEmailOtp($userId, $email);
         }
 
+        if ($identifier === '' || filter_var($identifier, FILTER_VALIDATE_EMAIL) === false) {
+            $auth->setPendingLoginEmail(null);
+            $auth->setPendingUserId(null);
+            return ['status' => self::STATUS_VALIDATION_ERROR, 'error' => 'provide-valid-email'];
+        }
+
+        $auth->setPendingLoginEmail($identifier);
         $auth->setPendingUserId(null);
         $this->sessionService->set(self::PENDING_CREATE_BY_EMAIL, true);
-        return $this->sendEmailOnlyOtp($email);
+        return $this->sendEmailOnlyOtp($identifier);
     }
 
     public function beginRegistration(AuthService $auth, string $username, string $email): array
