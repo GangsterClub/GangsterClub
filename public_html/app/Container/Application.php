@@ -13,6 +13,9 @@ use src\Business\MFATOTPService;
 use src\Business\TOTPEmailService;
 use src\Business\TOTPService;
 use src\Business\UserService;
+use src\Data\Connection;
+use src\Data\Repository\TOTPEmailRepository;
+use src\Data\Repository\UserMFATOTPRepository;
 
 class Application extends Container
 {
@@ -32,13 +35,26 @@ class Application extends Container
 
     private function registerServices(): void
     {
-        $this->addService('dbh', fn(): \src\Data\Connection => new \src\Data\Connection());
+        $this->addService('dbh', fn(): Connection => new Connection());
         $this->addService('router', $this->router = new Router());
         $this->addService('translationService', new \app\Service\TranslationService());
         $this->addService('userService', fn(): UserService => new UserService($this));
-        $this->addService('mfaTotpService', fn(): MFATOTPService => new MFATOTPService($this));
-        $this->addService('totpEmailService', fn(): TOTPEmailService => new TOTPEmailService($this));
         $this->addService('totpService', fn(): TOTPService => new TOTPService());
+        $this->addService('userMfaTotpRepository', fn(): UserMFATOTPRepository => new UserMFATOTPRepository(
+            $this->getRegisteredService('dbh', Connection::class)
+        ));
+        $this->addService('totpEmailRepository', fn(): TOTPEmailRepository => new TOTPEmailRepository(
+            $this->getRegisteredService('dbh', Connection::class)
+        ));
+        $this->addService('mfaTotpService', fn(): MFATOTPService => new MFATOTPService(
+            $this->getRegisteredService('totpService', TOTPService::class),
+            $this->getRegisteredService('userMfaTotpRepository', UserMFATOTPRepository::class)
+        ));
+        $this->addService('totpEmailService', fn(): TOTPEmailService => new TOTPEmailService(
+            $this->getRegisteredService('totpService', TOTPService::class),
+            $this->getRegisteredService('totpEmailRepository', TOTPEmailRepository::class),
+            $this->getRegisteredService('sessionService', SessionService::class)
+        ));
         $this->addService('emailService', fn(): EmailService => new EmailService());
         $this->addService('jwtService', fn(): JWTService => new JWTService($this));
         $this->addService('authEntryService', fn(): AuthEntryService => new AuthEntryService(
