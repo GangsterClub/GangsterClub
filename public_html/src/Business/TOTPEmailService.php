@@ -17,14 +17,11 @@ class TOTPEmailService
 
     protected SessionService $sessionService;
 
-    public function __construct(
-        TOTPService $totp,
-        TOTPEmailRepository $totpEmailRepository,
-        SessionService $sessionService
-    ) {
-        $this->totp = $totp;
-        $this->totpEmailRepository = $totpEmailRepository;
-        $this->sessionService = $sessionService;
+    public function __construct(\app\Container\Application $application)
+    {
+        $this->totp = new TOTPService();
+        $this->totpEmailRepository = new TOTPEmailRepository($application->get('dbh'));
+        $this->sessionService = $application->get('sessionService');
     }
 
     /**
