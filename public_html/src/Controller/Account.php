@@ -36,7 +36,12 @@ class Account extends Controller
         parent::__construct($application);
         $this->accountService = new AccountService($application);
         $this->userService = new UserService($application);
-        $this->mfaService = new MFATOTPService($application);
+        $mfaService = $application->get('mfaTotpService');
+        if (($mfaService instanceof MFATOTPService) === false) {
+            throw new \RuntimeException('mfaTotpService service is not available.');
+        }
+
+        $this->mfaService = $mfaService;
     }
 
     public function __invoke(Request $request): Response
@@ -244,6 +249,16 @@ class Account extends Controller
         $this->accountMessages['success'][] = __('account.email-change-requested');
     }
 
+    private function getTotpEmailService(): TOTPEmailService
+    {
+        $totpEmailService = $this->application->get('totpEmailService');
+        if (($totpEmailService instanceof TOTPEmailService) === false) {
+            throw new \RuntimeException('totpEmailService service is not available.');
+        }
+
+        return $totpEmailService;
+    }
+
     private function handleMfa(Request $request, User $user, AuthService $auth): void
     {
         $userId = $user->getId();
@@ -261,7 +276,7 @@ class Account extends Controller
                 $auth->setPendingMfaSecret($this->mfaService->generateSecret());
             }
 
-            $totpEmailService = new TOTPEmailService($this->application);
+            $totpEmailService = $this->getTotpEmailService();
             $emailCode = $totpEmailService->generateEmailTOTPForSession($userId, $auth->getMfaSetupEmailSessionKey());
 
             $emailService = new EmailService();
@@ -320,7 +335,7 @@ class Account extends Controller
                 return;
             }
 
-            $totpEmailService = new TOTPEmailService($this->application);
+            $totpEmailService = $this->getTotpEmailService();
             if ($totpEmailService->verifyEmailTOTPForSession($userId, $emailCode, $auth->getMfaSetupEmailSessionKey()) === false) {
                 $this->accountMessages['errors'][] = __('account.mfa-email-code-invalid');
                 return;

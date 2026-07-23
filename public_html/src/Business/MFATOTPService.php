@@ -12,10 +12,10 @@ class MFATOTPService
 
     private UserMFATOTPRepository $repository;
 
-    public function __construct(\app\Container\Application $application)
+    public function __construct(TOTPService $totpService, UserMFATOTPRepository $repository)
     {
-        $this->totpService = new TOTPService();
-        $this->repository = new UserMFATOTPRepository($application->get('dbh'));
+        $this->totpService = $totpService;
+        $this->repository = $repository;
     }
 
     public function hasEnabledMfa(int $userId): bool
