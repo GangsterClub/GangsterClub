@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace app\Container;
 
 use app\Http\Router;
+use app\Service\AuthRateLimitService;
 use app\Service\JWTService;
 use app\Service\SessionService;
 use src\Business\AuthEntryService;
@@ -41,6 +42,9 @@ class Application extends Container
         $this->addService('totpService', fn(): TOTPService => new TOTPService());
         $this->addService('emailService', fn(): EmailService => new EmailService());
         $this->addService('jwtService', fn(): JWTService => new JWTService($this));
+        $this->addService('authRateLimitService', fn(): AuthRateLimitService => new AuthRateLimitService(
+            $this->getRegisteredService('sessionService', SessionService::class)
+        ));
         $this->addService('authEntryService', fn(): AuthEntryService => new AuthEntryService(
             $this->getRegisteredService('userService', UserService::class),
             $this->getRegisteredService('mfaTotpService', MFATOTPService::class),

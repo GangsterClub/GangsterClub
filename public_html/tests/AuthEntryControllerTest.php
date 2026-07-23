@@ -39,6 +39,7 @@ require_once __DIR__ . '/../app/Http/Response.php';
 require_once __DIR__ . '/../app/Service/SessionService.php';
 require_once __DIR__ . '/../app/Service/AuthSessionKeys.php';
 require_once __DIR__ . '/../app/Service/AuthService.php';
+require_once __DIR__ . '/../app/Service/AuthRateLimitService.php';
 require_once __DIR__ . '/../src/Controller/Controller.php';
 require_once __DIR__ . '/../src/Controller/AuthEntryController.php';
 require_once __DIR__ . '/../src/Business/AuthEntryService.php';
@@ -59,16 +60,28 @@ final class AuthEntryTestSession extends \app\Service\SessionService
 
 final class AuthEntryTestTranslation { public function setFile(string $file): void {} }
 final class AuthEntryTestCsrf { public function rotateToken(): void {} }
-
+final class AuthEntryTestRateLimit extends \app\Service\AuthRateLimitService
+{
+    public bool $allowed = true;
+    public array $attempts = [];
+    public function __construct() {}
+    public function allowAttempt(string $scope, string $identifier, int $maxAttempts, int $windowSeconds): bool
+    {
+        $this->attempts[] = [$scope, $identifier, $maxAttempts, $windowSeconds];
+        return $this->allowed;
+    }
+}
 final class AuthEntryTestApplication extends Application
 {
     public AuthEntryTestSession $session;
     public AuthService $auth;
+    public AuthEntryTestRateLimit $rateLimit;
 
     public function __construct()
     {
         $this->session = new AuthEntryTestSession();
         $this->auth = new AuthService($this);
+        $this->rateLimit = new AuthEntryTestRateLimit();
     }
 
     public function get(string $name): ?object
@@ -79,6 +92,7 @@ final class AuthEntryTestApplication extends Application
             'translationService' => new AuthEntryTestTranslation(),
             'twig' => new \Twig\Environment(new \Twig\Loader\ArrayLoader(['login.twig' => 'login', 'register.twig' => 'register'])),
             'csrfService' => new AuthEntryTestCsrf(),
+            'authRateLimitService' => $this->rateLimit,
             default => null,
         };
     }
@@ -121,23 +135,33 @@ function assertContainsValue(string $needle, array $haystack, string $message): 
     }
 }
 
-function runController(string $mode, array $post, array $result): array
+function runController(string $mode, array $post, array $result, ?callable $configure = null): array
 {
     $app = new AuthEntryTestApplication();
+    if ($configure !== null) {
+        $configure($app);
+    }
     $service = new FakeAuthEntryService();
     $service->queue[] = $result;
     $response = (new TestAuthEntryController($app, $service))->handle(new AuthEntryTestRequest($post), $mode);
-    return [$response, $app->session->flashes, $service->calls];
+    return [$response, $app->session->flashes, $service->calls, $app->rateLimit->attempts];
 }
 
-[$response, $flashes, $calls] = runController('login', ['submit_login' => '1', 'email' => 'known@example.test'], ['status' => AuthEntryService::STATUS_EMAIL_OTP_SENT]);
+[$response, $flashes, $calls, $attempts] = runController('login', ['submit_login' => '1', 'email' => 'known@example.test'], ['status' => AuthEntryService::STATUS_EMAIL_OTP_SENT]);
 assertSameValue(303, $response->getStatusCode(), 'Existing-user login should redirect after sending email OTP.');
 assertSameValue([['beginLogin', 'known@example.test']], $calls, 'Login should delegate lookup and OTP work to the service.');
+assertSameValue([['login', 'known@example.test', 5, 900]], $attempts, 'Login attempts should be rate limited before sending OTP.');
 assertContainsValue('otp-email-sent', $flashes['login']['success'] ?? [], 'Existing-user login should flash email OTP instructions.');
 
 [$response, $flashes, $calls] = runController('login', ['submit_login' => '1', 'email' => 'new@example.test'], ['status' => AuthEntryService::STATUS_EMAIL_OTP_SENT]);
 assertSameValue([['beginLogin', 'new@example.test']], $calls, 'Unknown-email login should delegate deferred user creation to the service.');
 assertContainsValue('otp-email-sent', $flashes['login']['success'] ?? [], 'Unknown-email login should still send email OTP before account creation.');
+
+[$response, $flashes, $calls] = runController('login', ['submit_login' => '1', 'email' => 'blocked@example.test'], ['status' => AuthEntryService::STATUS_EMAIL_OTP_SENT], function (AuthEntryTestApplication $app): void {
+    $app->rateLimit->allowed = false;
+});
+assertSameValue([], $calls, 'Rate-limited login should not send another OTP.');
+assertContainsValue('error-email', $flashes['login']['errors'] ?? [], 'Rate-limited login should show a generic email error.');
 
 [$response, $flashes, $calls] = runController('register', ['submit_register' => '1', 'username' => 'alice', 'email' => 'dupe@example.test'], ['status' => AuthEntryService::STATUS_VALIDATION_ERROR, 'error' => 'duplicate-email']);
 assertSameValue([['beginRegistration', 'alice', 'dupe@example.test']], $calls, 'Register should delegate duplicate checks to the service.');
