@@ -7,7 +7,10 @@ namespace src\Controller;
 use app\Http\Request;
 use app\Http\Response;
 use app\Service\AuthService;
-use src\Business\AuthEntryService;
+use src\Business\EmailService;
+use src\Business\MFATOTPService;
+use src\Business\TOTPEmailService;
+use src\Business\UserService;
 
 class AuthEntryController extends Controller
 {
@@ -74,10 +77,36 @@ class AuthEntryController extends Controller
         $submit = $request->post('submit_login');
         $email = $request->post('email');
         if ((bool) $submit === true && (bool) $email === true) {
-            return $this->mapFirstStepResult(
-                'login',
-                $this->authEntryService()->beginLogin($auth, (string) $email)
-            );
+            $rateLimit = $this->application->get('authRateLimitService');
+            if ($rateLimit instanceof \app\Service\AuthRateLimitService && $rateLimit->allowAttempt('login', (string) $email, 5, 900) === false) {
+                $this->flash('login', 'errors', __('error-email'));
+                return $this->redirectSelf();
+            }
+
+            $auth->setPendingLoginEmail($email);
+            $userService = new UserService($this->application);
+            $user = $userService->getUserByEmail($email);
+            if ($user === null) {
+                $session = $this->application->get('sessionService');
+                $user = $userService->createUserByEmail($email, $session->get('_IPaddress'));
+            }
+
+            $userId = (int) $user->getId();
+            $auth->setPendingUserId($userId);
+            $auth->setLoginMfaRequired(false);
+
+            $mfaService = new MFATOTPService($this->application);
+            $mfaEnabled = $mfaService->hasEnabledMfa($userId);
+            if ($mfaEnabled === true) {
+                $auth->setLoginMfaRequired(true);
+                $this->flash('login', 'success', __('login.mfa-app-instructions', [
+                    'digits' => (string) MFA_TOTP_DIGITS,
+                    'period' => (string) MFA_TOTP_PERIOD,
+                ]));
+                return $this->redirectSelf();
+            }
+
+            return $this->sendEmailOtp($userId, $email, 'login', __('otp-email-sent'), __('error-email'));
         }
 
         return null;
@@ -138,32 +167,46 @@ class AuthEntryController extends Controller
 
     private function mapVerifyResult(string $mode, array $result): Response
     {
-        switch ($result['status'] ?? null) {
-            case AuthEntryService::STATUS_AUTHORIZATION_RESPONSE:
-                return $result['response'];
-            case AuthEntryService::STATUS_AUTHENTICATED:
-                $jwtToken = (string) ($result['jwtToken'] ?? '');
-                if ($jwtToken !== '') {
-                    $this->authorizationHeader = 'Authorization: Bearer ' . $jwtToken;
-                }
-                $this->flash('account', 'success', $this->translateForMode($mode, 'success-authenticated'));
-                return Response::redirect(APP_BASE . '/account', 303);
-            default:
+        $submit = $request->post('submit_totp');
+        $otp = $request->post('totp');
+
+        if ((bool) $submit === true && (bool) $otp === true) {
+            $otp = is_array($otp) === true ? implode('', $otp) : (string) $otp;
+            $rateLimit = $this->application->get('authRateLimitService');
+            $pendingEmail = $auth->getPendingLoginEmail();
+            if ($rateLimit instanceof \app\Service\AuthRateLimitService && $pendingEmail !== null && $rateLimit->allowAttempt('otp', $pendingEmail, 5, 900) === false) {
                 $this->flash($mode, 'errors', $this->translateForMode($mode, 'error-invalid-otp'));
                 return $this->redirectSelf();
-        }
-    }
+            }
 
-    private function validationErrorMessage(string $error, string $mode): string
-    {
-        return match ($error) {
-            'provide-valid-email' => $this->translateForMode($mode, 'provide-valid-email-address'),
-            'provide-valid-username' => __('provide-valid-username'),
-            'duplicate-email' => __('email-address-already-in-use'),
-            'duplicate-username' => __('username-already-in-use'),
-            default => $this->translateForMode($mode, 'error-email'),
-        };
-    }
+            $auth->setPendingLoginTotp($otp);
+            $userId = $auth->getPendingUserId();
+
+            if ($userId === null) {
+                $this->flash($mode, 'errors', $this->translateForMode($mode, 'error-invalid-otp'));
+                return $this->redirectSelf();
+            }
+
+            $mfaRequired = $auth->isLoginMfaRequired();
+            if ($mfaRequired === true) {
+                $mfaService = new MFATOTPService($this->application);
+                $isValid = $mfaService->verifyCode($userId, $otp);
+            } else {
+                $totpEmailService = new TOTPEmailService($this->application);
+                $isValid = $totpEmailService->verifyEmailTOTP($userId, $otp);
+            }
+
+            if ((bool) $isValid === true) {
+                $pendingEmail = $auth->getPendingLoginEmail();
+                if ($pendingEmail === null) {
+                    $this->flash($mode, 'errors', $this->translateForMode($mode, 'error-invalid-otp'));
+                    return $this->redirectSelf();
+                }
+
+                $auth->loginUser($userId);
+                $this->flash('account', 'success', $this->translateForMode($mode, 'success-authenticated'));
+                return Response::redirect(APP_BASE . '/account', 303);
+            }
 
     protected function authEntryService(): AuthEntryService
     {

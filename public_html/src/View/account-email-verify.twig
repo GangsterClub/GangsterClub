@@ -21,7 +21,15 @@
                     {{ alerts.error(verification.message) }}
                 {% endif %}
 
-                <a class="btn-primary w-full" href="{{ docRoot }}login">{{ __('account.email-verify-back-to-login') }}</a>
+                {% if not verification.success %}
+                    <form method="POST" class="space-y-4">
+                        {{ csrf_field() }}
+                        <input type="hidden" name="token" value="{{ verification.token }}" />
+                        <button type="submit" class="btn-primary w-full">{{ __('account.email-verify-title') }}</button>
+                    </form>
+                {% endif %}
+
+                <a class="btn-secondary w-full text-center" href="{{ docRoot }}login">{{ __('account.email-verify-back-to-login') }}</a>
             </div>
         </div>
     </section>

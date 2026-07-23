@@ -34,7 +34,7 @@ $kernel->addMiddleware(
 
 $kernel->addMiddleware(
     function ($request, $next) use ($app) {
-        $authSessionJwtMiddleware = $app->make(\app\Middleware\AuthSessionJWT::class);
-        return $authSessionJwtMiddleware->handle($request, $next);
+        $securityHeadersMiddleware = $app->make(\app\Middleware\SecurityHeaders::class);
+        return $securityHeadersMiddleware->handle($request, $next);
     }
 );

@@ -110,33 +110,38 @@ class SessionService extends \SessionHandler
 
     protected function preventHijacking(): bool
     {
-        $IPaddress = $this->get('_IPaddress');
-        $uAgent = $this->get('_userAgent');
-        if (isset($IPaddress) === false || isset($uAgent) === false) {
+        $storedUserAgent = $this->get('_userAgent');
+        if (is_string($storedUserAgent) === false || $storedUserAgent === '') {
             return false;
         }
 
-        $userAgent = $this->userAgent;
-        if ($uAgent !== $userAgent) {
-            return false;
-        }
-
-        if ($IPaddress !== $this->ipAddress) {
-            return false;
-        }
-
-        return true;
+        return $storedUserAgent === $this->userAgent;
     }
 
     public function writeClose(): void
     {
         $regenerate = ($this->get('_regenerate') ?? false);
-        if (random_int(1, 100) <= 5 && $this->get('_lastNewSession') < (time() - 300) || ($regenerate === true)) {
+        $shouldRegenerate = $regenerate === true || ($this->get('_lastNewSession') < (time() - 300) && random_int(1, 100) <= 5);
+        if ($shouldRegenerate === true) {
             $this->remove('_regenerate');
             $this->regenerate();
         }
 
         session_write_close();
+    }
+
+    public function destroy(string $id = ''): bool
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_unset();
+            session_destroy();
+        }
+
+        if (headers_sent() === false) {
+            setcookie(session_name(), '', time() - 3600, '/');
+        }
+
+        return true;
     }
 
     public function get(string $key, $default = null): mixed

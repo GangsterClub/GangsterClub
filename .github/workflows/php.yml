@@ -1,0 +1,57 @@
+name: PHP
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ['8.4', '8.5']
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: gangsterclub
+          MYSQL_USER: gangsterclub
+          MYSQL_PASSWORD: gangsterclub
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: mbstring, pdo, pdo_mysql, sodium
+          tools: composer
+      - name: Install dependencies
+        working-directory: public_html
+        run: composer install --no-interaction --prefer-dist
+      - name: Validate Composer config
+        working-directory: public_html
+        run: composer validate --no-check-publish
+      - name: Audit dependencies
+        working-directory: public_html
+        run: composer security
+      - name: Lint PHP
+        working-directory: public_html
+        run: composer lint
+      - name: Static analysis
+        working-directory: public_html
+        run: composer analyse
+      - name: Unit tests
+        working-directory: public_html
+        run: composer test
+      - name: Integration tests
+        working-directory: public_html
+        run: composer test:integration
