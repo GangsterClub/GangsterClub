@@ -7,14 +7,7 @@ namespace src\Controller;
 use app\Http\Request;
 use app\Http\Response;
 use app\Service\AuthService;
-use app\Service\JWTService;
-use app\Service\SessionService;
 use src\Business\AuthEntryService;
-use src\Business\EmailService;
-use src\Business\MFATOTPService;
-use src\Business\TOTPEmailService;
-use src\Business\TOTPService;
-use src\Business\UserService;
 
 class AuthEntryController extends Controller
 {
@@ -174,20 +167,12 @@ class AuthEntryController extends Controller
 
     protected function authEntryService(): AuthEntryService
     {
-        $sessionService = $this->application->get('sessionService');
-        if (($sessionService instanceof SessionService) === false) {
-            throw new \RuntimeException('Session service is not available.');
+        $authEntryService = $this->application->get('authEntryService');
+        if (($authEntryService instanceof AuthEntryService) === false) {
+            throw new \RuntimeException('Auth entry service is not available.');
         }
 
-        return new AuthEntryService(
-            new UserService($this->application),
-            new MFATOTPService($this->application),
-            new TOTPEmailService($this->application),
-            new TOTPService(),
-            new EmailService(),
-            new JWTService($this->application),
-            $sessionService
-        );
+        return $authEntryService;
     }
 
     private function translateForMode(string $mode, string $key): string

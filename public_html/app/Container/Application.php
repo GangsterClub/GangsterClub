@@ -5,6 +5,14 @@ declare(strict_types=1);
 namespace app\Container;
 
 use app\Http\Router;
+use app\Service\JWTService;
+use app\Service\SessionService;
+use src\Business\AuthEntryService;
+use src\Business\EmailService;
+use src\Business\MFATOTPService;
+use src\Business\TOTPEmailService;
+use src\Business\TOTPService;
+use src\Business\UserService;
 
 class Application extends Container
 {
@@ -27,6 +35,36 @@ class Application extends Container
         $this->addService('dbh', fn(): \src\Data\Connection => new \src\Data\Connection());
         $this->addService('router', $this->router = new Router());
         $this->addService('translationService', new \app\Service\TranslationService());
+        $this->addService('userService', fn(): UserService => new UserService($this));
+        $this->addService('mfaTotpService', fn(): MFATOTPService => new MFATOTPService($this));
+        $this->addService('totpEmailService', fn(): TOTPEmailService => new TOTPEmailService($this));
+        $this->addService('totpService', fn(): TOTPService => new TOTPService());
+        $this->addService('emailService', fn(): EmailService => new EmailService());
+        $this->addService('jwtService', fn(): JWTService => new JWTService($this));
+        $this->addService('authEntryService', fn(): AuthEntryService => new AuthEntryService(
+            $this->getRegisteredService('userService', UserService::class),
+            $this->getRegisteredService('mfaTotpService', MFATOTPService::class),
+            $this->getRegisteredService('totpEmailService', TOTPEmailService::class),
+            $this->getRegisteredService('totpService', TOTPService::class),
+            $this->getRegisteredService('emailService', EmailService::class),
+            $this->getRegisteredService('jwtService', JWTService::class),
+            $this->getRegisteredService('sessionService', SessionService::class)
+        ));
+    }
+
+    /**
+     * @template T of object
+     * @param class-string<T> $className
+     * @return T
+     */
+    private function getRegisteredService(string $name, string $className): object
+    {
+        $service = $this->get($name);
+        if (($service instanceof $className) === false) {
+            throw new \RuntimeException($name . ' service is not available.');
+        }
+
+        return $service;
     }
 
     private function configure(string $dir): void
