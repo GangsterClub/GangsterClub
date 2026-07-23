@@ -44,19 +44,19 @@ class Account extends Controller
         $this->application->get('translationService')->setFile('account');
         $auth = $this->auth();
 
-        $redirect = $this->enforceAuthentication($auth);
+        $redirect = $this->enforceAuthentication($request, $auth);
         if ($redirect instanceof Response) {
             return $redirect;
         }
 
         $userId = $auth->getAuthenticatedUserId();
         if ($userId === null) {
-            return Response::redirect(APP_BASE . '/login', 301);
+            return $this->redirectToLogin($request);
         }
 
         $user = $this->userService->getUserById($userId);
         if ($user === null) {
-            return Response::redirect(APP_BASE . '/login', 301);
+            return $this->redirectToLogin($request);
         }
 
         $this->accountMessages = $this->consumeFlash('account');
@@ -141,13 +141,20 @@ class Account extends Controller
         );
     }
 
-    private function enforceAuthentication(AuthService $auth): ?Response
+    private function enforceAuthentication(Request $request, AuthService $auth): ?Response
     {
         if ($auth->getAuthenticatedUserId() === null) {
-            return Response::redirect(APP_BASE . '/login', 301);
+            return $this->redirectToLogin($request);
         }
 
         return null;
+    }
+
+    private function redirectToLogin(Request $request): Response
+    {
+        $statusCode = strtoupper($request->getMethod()) === 'POST' ? 303 : 302;
+
+        return Response::redirect(APP_BASE . '/login', $statusCode);
     }
 
     private function handleUsernameChange(Request $request, User $user): User
