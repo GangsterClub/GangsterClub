@@ -8,9 +8,12 @@ use app\Http\Request;
 use app\Http\Response;
 use app\Service\AuthService;
 use app\Service\JWTService;
+use app\Service\SessionService;
+use src\Business\AuthEntryService;
 use src\Business\EmailService;
 use src\Business\MFATOTPService;
 use src\Business\TOTPEmailService;
+use src\Business\TOTPService;
 use src\Business\UserService;
 
 class AuthEntryController extends Controller
@@ -78,30 +81,10 @@ class AuthEntryController extends Controller
         $submit = $request->post('submit_login');
         $email = $request->post('email');
         if ((bool) $submit === true && (bool) $email === true) {
-            $auth->setPendingLoginEmail($email);
-            $userService = new UserService($this->application);
-            $user = $userService->getUserByEmail($email);
-            if ($user === null) {
-                $session = $this->application->get('sessionService');
-                $user = $userService->createUserByEmail($email, $session->get('_IPaddress'));
-            }
-
-            $userId = (int) $user->getId();
-            $auth->setPendingUserId($userId);
-            $auth->setLoginMfaRequired(false);
-
-            $mfaService = new MFATOTPService($this->application);
-            $mfaEnabled = $mfaService->hasEnabledMfa($userId);
-            if ($mfaEnabled === true) {
-                $auth->setLoginMfaRequired(true);
-                $this->flash('login', 'success', __('login.mfa-app-instructions', [
-                    'digits' => (string) MFA_TOTP_DIGITS,
-                    'period' => (string) MFA_TOTP_PERIOD,
-                ]));
-                return $this->redirectSelf();
-            }
-
-            return $this->sendEmailOtp($userId, $email, 'login', __('otp-email-sent'), __('error-email'));
+            return $this->mapFirstStepResult(
+                'login',
+                $this->authEntryService()->beginLogin($auth, (string) $email)
+            );
         }
 
         return null;
@@ -114,128 +97,97 @@ class AuthEntryController extends Controller
             return null;
         }
 
-        $username = trim((string) $request->post('username'));
-        $email = trim((string) $request->post('email'));
-        $userService = new UserService($this->application);
-
-        if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
-            $this->flash('register', 'errors', __('login.provide-valid-email-address'));
-            return $this->redirectSelf();
-        }
-
-        if ($username === '') {
-            $this->flash('register', 'errors', __('provide-valid-username'));
-            return $this->redirectSelf();
-        }
-
-        if ($userService->getUserByEmail($email) !== null) {
-            $this->flash('register', 'errors', __('email-address-already-in-use'));
-            return $this->redirectSelf();
-        }
-
-        if ($userService->getUserByUsername($username) !== null) {
-            $this->flash('register', 'errors', __('username-already-in-use'));
-            return $this->redirectSelf();
-        }
-
-        $session = $this->application->get('sessionService');
-        $user = $userService->createUser($username, $email, $session->get('_IPaddress'));
-        if ($user === null) {
-            $this->flash('register', 'errors', __('login.error-email'));
-            return $this->redirectSelf();
-        }
-
-        $userId = (int) $user->getId();
-        $auth->setPendingLoginEmail($email);
-        $auth->setPendingUserId($userId);
-        $auth->setLoginMfaRequired(false);
-
-        return $this->sendEmailOtp($userId, $email, 'register', __('login.otp-email-sent'), __('login.error-email'));
-    }
-
-    private function sendEmailOtp(
-        int $userId,
-        string $email,
-        string $flashScope,
-        string $successMessage,
-        string $errorMessage
-    ): Response {
-        $totpEmailService = new TOTPEmailService($this->application);
-        $otp = $totpEmailService->generateEmailTOTP($userId);
-
-        $emailService = new EmailService();
-        $emailSent = $emailService->sendTOTPEmail($email, $otp);
-
-        if ((bool) $emailSent === true) {
-            $this->flash($flashScope, 'success', $successMessage);
-            return $this->redirectSelf();
-        }
-
-        $this->flash($flashScope, 'errors', $errorMessage);
-        return $this->redirectSelf();
+        return $this->mapFirstStepResult(
+            'register',
+            $this->authEntryService()->beginRegistration(
+                $auth,
+                (string) $request->post('username'),
+                (string) $request->post('email')
+            )
+        );
     }
 
     private function verify(Request $request, AuthService $auth, string $mode): ?Response
     {
         $submit = $request->post('submit_totp');
         $otp = $request->post('totp');
-        $jwtService = new JWTService($this->application);
 
         if ((bool) $submit === true && (bool) $otp === true) {
             $otp = is_array($otp) === true ? implode('', $otp) : (string) $otp;
-            $auth->setPendingLoginTotp($otp);
-            $userId = $auth->getPendingUserId();
-
-            if ($userId === null) {
-                $this->flash($mode, 'errors', $this->translateForMode($mode, 'error-invalid-otp'));
-                return $this->redirectSelf();
-            }
-
-            $mfaRequired = $auth->isLoginMfaRequired();
-            if ($mfaRequired === true) {
-                $mfaService = new MFATOTPService($this->application);
-                $isValid = $mfaService->verifyCode($userId, $otp);
-            } else {
-                $totpEmailService = new TOTPEmailService($this->application);
-                $isValid = $totpEmailService->verifyEmailTOTP($userId, $otp);
-            }
-
-            if ((bool) $isValid === true) {
-                $pendingEmail = $auth->getPendingLoginEmail();
-                if ($pendingEmail === null) {
-                    $this->flash($mode, 'errors', $this->translateForMode($mode, 'error-invalid-otp'));
-                    return $this->redirectSelf();
-                }
-
-                $jwtToken = $jwtService->authenticate($pendingEmail, $isValid);
-                if ($jwtToken !== false) {
-                    $auth->loginUserWithToken($userId, $jwtToken);
-                    $this->authorizationHeader = 'Authorization: Bearer ' . $jwtToken;
-                    $this->flash('account', 'success', $this->translateForMode($mode, 'success-authenticated'));
-                    return Response::redirect(APP_BASE . '/account', 303);
-                }
-
-                $this->flash($mode, 'errors', $this->translateForMode($mode, 'error-invalid-otp'));
-                return $this->redirectSelf();
-            }
-
-            $storedToken = $auth->getStoredJwtToken();
-            if (is_string($storedToken) === true && $storedToken !== '') {
-                $authorizationResult = $jwtService->authorize('Bearer ' . $storedToken);
-                if ($authorizationResult instanceof Response) {
-                    return $authorizationResult;
-                }
-
-                if (is_array($authorizationResult) === true && isset($authorizationResult['token']) === true) {
-                    $auth->storeJwtToken($authorizationResult['token']);
-                }
-            }
-
-            $this->flash($mode, 'errors', $this->translateForMode($mode, 'error-invalid-otp'));
-            return $this->redirectSelf();
+            return $this->mapVerifyResult($mode, $this->authEntryService()->verify($auth, $mode, $otp));
         }
 
         return null;
+    }
+
+    private function mapFirstStepResult(string $mode, array $result): Response
+    {
+        switch ($result['status'] ?? null) {
+            case AuthEntryService::STATUS_APP_MFA_REQUIRED:
+                $this->flash('login', 'success', __('login.mfa-app-instructions', [
+                    'digits' => (string) MFA_TOTP_DIGITS,
+                    'period' => (string) MFA_TOTP_PERIOD,
+                ]));
+                break;
+            case AuthEntryService::STATUS_EMAIL_OTP_SENT:
+                $this->flash($mode, 'success', $this->translateForMode($mode, 'otp-email-sent'));
+                break;
+            case AuthEntryService::STATUS_SEND_ERROR:
+                $this->flash($mode, 'errors', $this->translateForMode($mode, 'error-email'));
+                break;
+            case AuthEntryService::STATUS_VALIDATION_ERROR:
+                $this->flash($mode, 'errors', $this->validationErrorMessage($result['error'] ?? '', $mode));
+                break;
+        }
+
+        return $this->redirectSelf();
+    }
+
+    private function mapVerifyResult(string $mode, array $result): Response
+    {
+        switch ($result['status'] ?? null) {
+            case AuthEntryService::STATUS_AUTHORIZATION_RESPONSE:
+                return $result['response'];
+            case AuthEntryService::STATUS_AUTHENTICATED:
+                $jwtToken = (string) ($result['jwtToken'] ?? '');
+                if ($jwtToken !== '') {
+                    $this->authorizationHeader = 'Authorization: Bearer ' . $jwtToken;
+                }
+                $this->flash('account', 'success', $this->translateForMode($mode, 'success-authenticated'));
+                return Response::redirect(APP_BASE . '/account', 303);
+            default:
+                $this->flash($mode, 'errors', $this->translateForMode($mode, 'error-invalid-otp'));
+                return $this->redirectSelf();
+        }
+    }
+
+    private function validationErrorMessage(string $error, string $mode): string
+    {
+        return match ($error) {
+            'provide-valid-email' => $this->translateForMode($mode, 'provide-valid-email-address'),
+            'provide-valid-username' => __('provide-valid-username'),
+            'duplicate-email' => __('email-address-already-in-use'),
+            'duplicate-username' => __('username-already-in-use'),
+            default => $this->translateForMode($mode, 'error-email'),
+        };
+    }
+
+    protected function authEntryService(): AuthEntryService
+    {
+        $sessionService = $this->application->get('sessionService');
+        if (($sessionService instanceof SessionService) === false) {
+            throw new \RuntimeException('Session service is not available.');
+        }
+
+        return new AuthEntryService(
+            new UserService($this->application),
+            new MFATOTPService($this->application),
+            new TOTPEmailService($this->application),
+            new TOTPService(),
+            new EmailService(),
+            new JWTService($this->application),
+            $sessionService
+        );
     }
 
     private function translateForMode(string $mode, string $key): string
