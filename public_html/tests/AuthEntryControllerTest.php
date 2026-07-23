@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Twig { class Environment { public function __construct(mixed $loader = null) {} public function render(string $name, array $vars = []): string { return $name; } } }
+namespace Twig { class Environment { public static array $lastVars = []; public function __construct(mixed $loader = null) {} public function render(string $name, array $vars = []): string { self::$lastVars = $vars; return $name; } } }
 namespace Twig\Loader { class ArrayLoader { public function __construct(array $templates) {} } }
 namespace {
 
@@ -145,6 +145,18 @@ assertContainsValue('email-address-already-in-use', $flashes['register']['errors
 
 [$response, $flashes, $calls] = runController('register', ['submit_register' => '1', 'username' => 'alice', 'email' => 'new@example.test'], ['status' => AuthEntryService::STATUS_EMAIL_OTP_SENT]);
 assertContainsValue('login.otp-email-sent', $flashes['register']['success'] ?? [], 'Registration should use email OTP before creating the user.');
+
+
+$app = new AuthEntryTestApplication();
+$app->auth->setPendingLoginEmail('pending@example.test');
+$app->auth->setPendingUserId(null);
+$response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'register');
+assertSameValue(200, $response->getStatusCode(), 'Pending registration OTP page should render successfully.');
+assertSameValue(true, \Twig\Environment::$lastVars['awaitingOtp'] ?? null, 'Pending email-only registration should expose awaitingOtp even without a pending user id.');
+assertSameValue(null, \Twig\Environment::$lastVars['uUID'] ?? null, 'Pending email-only registration should not require a pending user id.');
+$template = file_get_contents(__DIR__ . '/../src/View/partial/auth-entry.twig');
+assertSameValue(true, str_contains($template, '{% if (uUID or UID) %}'), 'Logout control should still require a user id, not just pending email OTP state.');
+assertSameValue(true, str_contains($template, '{% if (awaitingOtp) %}'), 'Pending email OTP screens should show the disabled email reference.');
 
 [$response, $flashes, $calls] = runController('login', ['submit_login' => '1', 'email' => 'mfa@example.test'], ['status' => AuthEntryService::STATUS_APP_MFA_REQUIRED]);
 assertContainsValue('login.mfa-app-instructions digits=6 period=30', $flashes['login']['success'] ?? [], 'App MFA should map to app authenticator instructions.');
