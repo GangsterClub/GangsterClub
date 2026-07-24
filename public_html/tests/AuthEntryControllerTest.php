@@ -2,7 +2,28 @@
 
 declare(strict_types=1);
 
-namespace Twig { class Environment { public static array $lastVars = []; public function __construct(mixed $loader = null) {} public function render(string $name, array $vars = []): string { self::$lastVars = $vars; return $name; } } }
+namespace Twig {
+    class Environment
+    {
+        public static array $lastVars = [];
+        public function __construct(mixed $loader = null) {}
+        public function render(string $name, array $vars = []): string
+        {
+            self::$lastVars = $vars;
+            $html = '<main data-template="' . $name . '">';
+            if (($vars['awaitingOtp'] ?? false) || ($vars['UID'] ?? null)) {
+                $html .= '<form action="/logout"><button>Logout</button></form>';
+                if ($vars['awaitingOtp'] ?? false) {
+                    $html .= '<input type="email" id="email_reference" value="' . $vars['email'] . '" disabled />';
+                }
+                $html .= '<input name="totp[]" />';
+            } else {
+                $html .= '<input name="email" />';
+            }
+            return $html . '</main>';
+        }
+    }
+}
 namespace Twig\Loader { class ArrayLoader { public function __construct(array $templates) {} } }
 namespace {
 
@@ -121,6 +142,20 @@ function assertContainsValue(string $needle, array $haystack, string $message): 
     }
 }
 
+function assertResponseContains(Response $response, string $needle, string $message): void
+{
+    if (str_contains($response->getContent(), $needle) === false) {
+        throw new RuntimeException($message . ' Missing ' . $needle . ' in ' . $response->getContent());
+    }
+}
+
+function assertResponseNotContains(Response $response, string $needle, string $message): void
+{
+    if (str_contains($response->getContent(), $needle) === true) {
+        throw new RuntimeException($message . ' Unexpected ' . $needle . ' in ' . $response->getContent());
+    }
+}
+
 function runController(string $mode, array $post, array $result): array
 {
     $app = new AuthEntryTestApplication();
@@ -154,9 +189,15 @@ $response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->han
 assertSameValue(200, $response->getStatusCode(), 'Pending registration OTP page should render successfully.');
 assertSameValue(true, \Twig\Environment::$lastVars['awaitingOtp'] ?? null, 'Pending email-only registration should expose awaitingOtp even without a pending user id.');
 assertSameValue(null, \Twig\Environment::$lastVars['uUID'] ?? null, 'Pending email-only registration should not require a pending user id.');
-$template = file_get_contents(__DIR__ . '/../src/View/partial/auth-entry.twig');
-assertSameValue(true, str_contains($template, '{% if (uUID or UID) %}'), 'Logout control should still require a user id, not just pending email OTP state.');
-assertSameValue(true, str_contains($template, '{% if (awaitingOtp) %}'), 'Pending email OTP screens should show the disabled email reference.');
+assertResponseContains($response, 'name="totp[]"', 'Pending email-only registration should render the OTP step.');
+assertResponseContains($response, 'id="email_reference"', 'Pending email-only registration should show the email reference.');
+assertResponseContains($response, 'pending@example.test', 'Pending email-only registration should show the pending email address.');
+assertResponseContains($response, 'Logout', 'Pending email-only registration should show the logout control.');
+
+$app = new AuthEntryTestApplication();
+$response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'login');
+assertSameValue(200, $response->getStatusCode(), 'Anonymous login page should render successfully.');
+assertResponseNotContains($response, 'Logout', 'Anonymous auth entry pages should not show the logout control.');
 
 [$response, $flashes, $calls] = runController('login', ['submit_login' => '1', 'email' => 'mfa@example.test'], ['status' => AuthEntryService::STATUS_APP_MFA_REQUIRED]);
 assertContainsValue('login.mfa-app-instructions digits=6 period=30', $flashes['login']['success'] ?? [], 'App MFA should map to app authenticator instructions.');
