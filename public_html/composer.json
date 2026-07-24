@@ -29,5 +29,17 @@
             "app\\": "app/",
             "src\\": "src/"
         }
+    },
+    "scripts": {
+        "test": [
+            "php tests/AccountRedirectStatusTest.php",
+            "php tests/AuthEntryControllerTest.php",
+            "php tests/AuthEntryServiceTest.php",
+            "php tests/CsrfMiddlewareTest.php",
+            "php tests/QueryBuilderSqlGenerationTest.php"
+        ],
+        "check": [
+            "@test"
+        ]
     }
 }
