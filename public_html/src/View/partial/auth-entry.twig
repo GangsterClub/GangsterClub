@@ -31,7 +31,7 @@
                     {{ alerts.success(success) }}
                 {% endfor %}
                 {% if (awaitingOtp or UID) %}
-                    {% if (email) %}
+                    {% if (awaitingOtp) %}
                         <div class="mb-4">
                             <label for="email_reference" class="block">{{ authEntry.emailLabel }}</label>
                             <input type="email" id="email_reference" value="{{ email }}" class="auth-input contrast-75 cursor-not-allowed" autocomplete="username" disabled />
