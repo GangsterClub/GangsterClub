@@ -18,7 +18,10 @@ namespace Twig {
                 }
                 $html .= '<input name="totp[]" />';
             } else {
-                $html .= '<input name="email" />';
+                if ($name === 'register.twig') {
+                    $html .= '<input name="username" value="' . htmlspecialchars((string) ($vars['registerUsername'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '" />';
+                }
+                $html .= '<input name="email" value="' . htmlspecialchars((string) ($vars['email'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '" />';
             }
             return $html . '</main>';
         }
@@ -177,6 +180,41 @@ assertContainsValue('otp-email-sent', $flashes['login']['success'] ?? [], 'Unkno
 [$response, $flashes, $calls] = runController('register', ['submit_register' => '1', 'username' => 'alice', 'email' => 'dupe@example.test'], ['status' => AuthEntryService::STATUS_VALIDATION_ERROR, 'error' => 'duplicate-email']);
 assertSameValue([['beginRegistration', 'alice', 'dupe@example.test']], $calls, 'Register should delegate duplicate checks to the service.');
 assertContainsValue('email-address-already-in-use', $flashes['register']['errors'] ?? [], 'Duplicate registration should map to the duplicate-email flash.');
+
+$app = new AuthEntryTestApplication();
+$service = new FakeAuthEntryService();
+$service->queue[] = ['status' => AuthEntryService::STATUS_VALIDATION_ERROR, 'error' => 'duplicate-email'];
+$response = (new TestAuthEntryController($app, $service))->handle(new AuthEntryTestRequest(['submit_register' => '1', 'username' => 'alice', 'email' => 'dupe@example.test']), 'register');
+assertSameValue('{"username":"alice","email":"dupe@example.test"}', $app->session->values['register.form_values'] ?? null, 'Failed registration should temporarily remember submitted values.');
+$response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'login');
+assertSameValue('{"username":"alice","email":"dupe@example.test"}', $app->session->values['register.form_values'] ?? null, 'Visiting login should not consume remembered registration values.');
+$response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'register');
+assertSameValue('alice', \Twig\Environment::$lastVars['registerUsername'] ?? null, 'Register form should expose remembered username once.');
+assertSameValue('dupe@example.test', \Twig\Environment::$lastVars['email'] ?? null, 'Register form should expose remembered email once.');
+assertResponseContains($response, 'name="username" value="alice"', 'Register form should pre-fill remembered username.');
+assertResponseContains($response, 'name="email" value="dupe@example.test"', 'Register form should pre-fill remembered email.');
+assertSameValue(false, array_key_exists('register.form_values', $app->session->values), 'Remembered registration values should be discarded after reading.');
+$response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'register');
+assertSameValue('', \Twig\Environment::$lastVars['registerUsername'] ?? null, 'Register form should not expose remembered username twice.');
+assertSameValue(null, \Twig\Environment::$lastVars['email'] ?? null, 'Register form should not expose remembered email twice.');
+
+$app = new AuthEntryTestApplication();
+$service = new FakeAuthEntryService();
+$service->queue[] = ['status' => AuthEntryService::STATUS_SEND_ERROR];
+(new TestAuthEntryController($app, $service))->handle(new AuthEntryTestRequest(['submit_register' => '1', 'username' => 'send-failed', 'email' => 'failed@example.test']), 'register');
+assertSameValue('{"username":"send-failed","email":"failed@example.test"}', $app->session->values['register.form_values'] ?? null, 'Registration send errors should temporarily remember submitted values.');
+$response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'register');
+assertResponseContains($response, 'name="username" value="send-failed"', 'Register form should pre-fill the username after a send error.');
+assertResponseContains($response, 'name="email" value="failed@example.test"', 'Register form should pre-fill the email after a send error.');
+assertSameValue(false, array_key_exists('register.form_values', $app->session->values), 'Send-error registration values should be discarded after reading.');
+
+$app = new AuthEntryTestApplication();
+$service = new FakeAuthEntryService();
+$service->queue[] = ['status' => AuthEntryService::STATUS_VALIDATION_ERROR, 'error' => 'invalid-username'];
+(new TestAuthEntryController($app, $service))->handle(new AuthEntryTestRequest(['submit_register' => '1', 'username' => 'alice" autofocus onfocus="alert(1)', 'email' => 'safe@example.test']), 'register');
+$response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'register');
+assertResponseContains($response, 'value="alice&quot; autofocus onfocus=&quot;alert(1)"', 'Remembered registration values should be escaped in HTML attributes.');
+assertResponseNotContains($response, 'value="alice" autofocus', 'Remembered registration values should not break out of the value attribute.');
 
 [$response, $flashes, $calls] = runController('register', ['submit_register' => '1', 'username' => 'alice', 'email' => 'new@example.test'], ['status' => AuthEntryService::STATUS_EMAIL_OTP_SENT]);
 assertContainsValue('login.otp-email-sent', $flashes['register']['success'] ?? [], 'Registration should use email OTP before creating the user.');
