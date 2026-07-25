@@ -6,9 +6,16 @@ namespace src\Business;
 
 use src\Data\Repository\UserEmailChangeRepository;
 use src\Data\Repository\UserRepository;
+use src\Entity\User;
 
 class AccountService
 {
+    public const USERNAME_CHANGE_UPDATED = 'updated';
+    public const USERNAME_CHANGE_INVALID = 'invalid';
+    public const USERNAME_CHANGE_UNCHANGED = 'unchanged';
+    public const USERNAME_CHANGE_TAKEN = 'taken';
+    public const USERNAME_CHANGE_ERROR = 'error';
+
     public const EMAIL_CHANGE_CONFIRMED = 'success';
     public const EMAIL_CHANGE_INVALID = 'invalid';
     public const EMAIL_CHANGE_EXPIRED = 'expired';
@@ -25,9 +32,26 @@ class AccountService
         $this->emailChangeRepository = new UserEmailChangeRepository($dbh);
     }
 
-    public function changeUsername(int $userId, string $username): bool
+    public function changeUsername(User $user, string $username): string
     {
-        return $this->userRepository->updateUsername($userId, $username);
+        $username = trim($username);
+        if ((bool) preg_match('/^[A-Za-z0-9._-]{3,32}$/', $username) === false) {
+            return self::USERNAME_CHANGE_INVALID;
+        }
+
+        if (strcasecmp($username, $user->getUsername()) === 0) {
+            return self::USERNAME_CHANGE_UNCHANGED;
+        }
+
+        if ($this->isUsernameTaken($username, $user->getId()) === true) {
+            return self::USERNAME_CHANGE_TAKEN;
+        }
+
+        if ($this->userRepository->updateUsername($user->getId(), $username) === false) {
+            return self::USERNAME_CHANGE_ERROR;
+        }
+
+        return self::USERNAME_CHANGE_UPDATED;
     }
 
     public function changeEmail(int $userId, string $email): bool
