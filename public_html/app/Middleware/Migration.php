@@ -26,7 +26,7 @@ class Migration implements MigrationInterface
 
     public function log(string $message): void
     {
-        print_r($message . PHP_EOL);
+        fwrite(STDOUT, $message . PHP_EOL);
     }
 
     protected function execute(string $sql): void

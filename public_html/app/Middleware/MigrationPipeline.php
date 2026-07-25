@@ -35,7 +35,7 @@ class MigrationPipeline
     {
         $tables = $this->collectTables();
         if ($this->dataPreserver->backup($tables) === true) {
-            print_r('Database snapshot stored successfully.' . PHP_EOL);
+            fwrite(STDOUT, 'Database snapshot stored successfully.' . PHP_EOL);
         }
 
         foreach (array_reverse($this->migrations) as $migration) {
