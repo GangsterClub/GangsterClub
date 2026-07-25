@@ -238,7 +238,13 @@ class Account extends Controller
         }
 
         $verificationUrl = WEB_ROOT . 'account/email/verify/' . $rawToken;
-        $emailService = new EmailService();
+        $emailService = $this->application->get('emailService');
+        if (($emailService instanceof EmailService) === false) {
+            $this->accountService->deletePendingEmailChanges($user->getId());
+            $this->accountMessages['errors'][] = __('account.email-change-error');
+            return;
+        }
+
         $emailSent = $emailService->sendEmailChangeVerification($user->getEmail(), $newEmail, $verificationUrl);
         if ($emailSent === false) {
             $this->accountService->deletePendingEmailChanges($user->getId());
