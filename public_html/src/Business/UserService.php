@@ -67,7 +67,8 @@ class UserService
     {
         $data = $this->userRepository->findByEmail($email);
         if ($data === false) {
-            $created = $this->userRepository->createUserByEmail($email, $ipAddress);
+            $username = bin2hex(openssl_random_pseudo_bytes(16));
+            $created = $this->userRepository->createUserByEmail($email, $ipAddress, $username);
         }
 
         if ($created === true) {
