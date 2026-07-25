@@ -47,10 +47,10 @@ class UserRepository
         return $this->dbh->table('user')->insert($userRecord);
     }
 
-    public function createUserByEmail(string $email, string $ipAddress): bool
+    public function createUserByEmail(string $email, string $ipAddress, string $username): bool
     {
         $userRecord = [
-            'username' => bin2hex(openssl_random_pseudo_bytes(16)),
+            'username' => $username,
             'email' => $email,
             'ip_address' => $ipAddress,
         ];
