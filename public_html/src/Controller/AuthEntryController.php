@@ -17,6 +17,16 @@ class AuthEntryController extends Controller
 
     private ?string $authorizationHeader = null;
 
+    public function login(Request $request): Response
+    {
+        return $this->handle($request, self::MODE_LOGIN);
+    }
+
+    public function register(Request $request): Response
+    {
+        return $this->handle($request, self::MODE_REGISTER);
+    }
+
     public function handle(Request $request, string $mode): Response
     {
         $this->assertValidMode($mode);
@@ -64,13 +74,13 @@ class AuthEntryController extends Controller
     private function handleFirstStep(Request $request, AuthService $auth, string $mode): ?Response
     {
         if ($mode === self::MODE_LOGIN) {
-            return $this->login($request, $auth);
+            return $this->handleLoginFirstStep($request, $auth);
         }
 
-        return $this->register($request, $auth);
+        return $this->handleRegisterFirstStep($request, $auth);
     }
 
-    private function login(Request $request, AuthService $auth): ?Response
+    private function handleLoginFirstStep(Request $request, AuthService $auth): ?Response
     {
         $submit = $request->post('submit_login');
         $email = $request->post('email');
@@ -84,7 +94,7 @@ class AuthEntryController extends Controller
         return null;
     }
 
-    private function register(Request $request, AuthService $auth): ?Response
+    private function handleRegisterFirstStep(Request $request, AuthService $auth): ?Response
     {
         $submit = $request->post('submit_register');
         if ((bool) $submit !== true) {
