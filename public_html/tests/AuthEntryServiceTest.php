@@ -64,7 +64,7 @@ final class FakeMfaService extends MFATOTPService { public bool $enabled=false; 
 final class FakeTotpEmailService extends TOTPEmailService { public bool $valid=true; public function __construct() {} public function generateEmailTOTP(int $userId): string { return '111111'; } public function verifyEmailTOTP(int $userId, string $totp): bool { return $this->valid; } }
 final class FakeTotpService extends TOTPService { public function generateSecret(int $digits = TOTP_DIGITS, int $period = TOTP_PERIOD): string { return 'secret'; } public function generateTOTP(?string $secret = null, ?int $digits = MFA_TOTP_DIGITS, ?int $period = MFA_TOTP_PERIOD): string { return '222222'; } public function verifyTOTP(string $secret, string $totp, int $digits = TOTP_DIGITS, int $period = TOTP_PERIOD): bool { return $secret === 'secret' && $totp === '222222'; } }
 final class FakeEmailService extends EmailService { public array $sent=[]; public function __construct() {} public function sendTOTPEmail(string $toEmail, string $totp): bool { $this->sent[] = [$toEmail, $totp]; return true; } }
-final class FakeJwtService extends JWTService { public function __construct() {} public function authenticate(string $email, bool $totpValid = false): string|false { return $totpValid ? 'jwt-for-'.$email : false; } }
+final class FakeJwtService extends JWTService { public function __construct() {} public function authenticate(string $email, bool $totpValid = false): string|false { return $totpValid === true ? 'jwt-for-'.$email : false; } }
 function makeService(
     AuthEntryServiceTestSession $session,
     FakeUserService $users,

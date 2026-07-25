@@ -208,8 +208,8 @@ class AuthEntryController extends Controller
         }
 
         return [
-            'username' => is_string($values['username'] ?? null) ? $values['username'] : '',
-            'email' => is_string($values['email'] ?? null) ? $values['email'] : null,
+            'username' => is_string($values['username'] ?? null) === true ? $values['username'] : '',
+            'email' => is_string($values['email'] ?? null) === true ? $values['email'] : null,
         ];
     }
 

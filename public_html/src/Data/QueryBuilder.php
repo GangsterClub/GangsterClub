@@ -41,15 +41,15 @@ class QueryBuilder
     {
         $column = self::validateIdentifier($column, 'column');
 
-        if ($value === null && !$this->isExplicitNullOperator($operator)) {
+        if ($value === null && $this->isExplicitNullOperator($operator) === false) {
             $value = $operator;
             $operator = '=';
         }
 
         $operator = self::validateOperator((string) $operator);
 
-        if (in_array($operator, ['IN', 'NOT IN'], true)) {
-            if (!is_array($value) || $value === []) {
+        if ((bool) in_array($operator, ['IN', 'NOT IN'], true) === true) {
+            if ((bool) is_array($value) === false || $value === []) {
                 throw new InvalidArgumentException("Operator {$operator} requires a non-empty array value.");
             }
 
@@ -58,7 +58,7 @@ class QueryBuilder
             return $this;
         }
 
-        if (in_array($operator, ['IS', 'IS NOT'], true) && $value === null) {
+        if ((bool) in_array($operator, ['IS', 'IS NOT'], true) === true && $value === null) {
             $this->wheres[] = ["{$column} {$operator} NULL", []];
             return $this;
         }
@@ -195,7 +195,7 @@ class QueryBuilder
 
     private static function validateIdentifier(string $identifier, string $type): string
     {
-        if (!preg_match(self::IDENTIFIER_PATTERN, $identifier)) {
+        if (preg_match(self::IDENTIFIER_PATTERN, $identifier) === false) {
             throw new InvalidArgumentException("Invalid {$type} identifier: {$identifier}");
         }
 
@@ -206,7 +206,7 @@ class QueryBuilder
     {
         $operator = strtoupper(preg_replace('/\s+/', ' ', trim($operator)) ?? '');
 
-        if (!in_array($operator, self::ALLOWED_OPERATORS, true)) {
+        if ((bool) in_array($operator, self::ALLOWED_OPERATORS, true) === false) {
             throw new InvalidArgumentException("Invalid where operator: {$operator}");
         }
 
@@ -215,7 +215,7 @@ class QueryBuilder
 
     private function isExplicitNullOperator($operator): bool
     {
-        if (!is_string($operator)) {
+        if (is_string($operator) === false) {
             return false;
         }
 

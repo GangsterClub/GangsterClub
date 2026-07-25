@@ -11,7 +11,7 @@ namespace Twig {
         {
             self::$lastVars = $vars;
             $html = '<main data-template="' . $name . '">';
-            if (($vars['awaitingOtp'] ?? false) || ($vars['UID'] ?? null)) {
+            if ((bool) ($vars['awaitingOtp'] ?? false) === true || (bool) ($vars['UID'] ?? null) === true) {
                 $html .= '<form action="/logout"><button>Logout</button></form>';
                 if ($vars['awaitingOtp'] ?? false) {
                     $html .= '<input type="email" id="email_reference" value="' . $vars['email'] . '" disabled />';
@@ -73,7 +73,7 @@ final class AuthEntryTestSession extends \app\Service\SessionService
     public array $values = ['_IPaddress' => '127.0.0.1'];
     public array $flashes = [];
 
-    public function get(string $key, mixed $default = null): mixed { return isset($this->values[$key]) ? filter_var($this->values[$key], 515) : $default; }
+    public function get(string $key, mixed $default = null): mixed { return isset($this->values[$key]) === true ? filter_var($this->values[$key], 515) : $default; }
     public function set(string $key, mixed $value): void { $this->values[$key] = filter_var($value, 515); }
     public function remove(string $key): void { unset($this->values[$key]); }
     public function regenerate(): void {}
