@@ -41,7 +41,7 @@ class QueryBuilder
     {
         $column = self::validateIdentifier($column, 'column');
 
-        if ($value === null && $this->isExplicitNullOperator($operator) === false) {
+        if ($value === null && (bool) $this->isExplicitNullOperator($operator) === false) {
             $value = $operator;
             $operator = '=';
         }
@@ -195,7 +195,7 @@ class QueryBuilder
 
     private static function validateIdentifier(string $identifier, string $type): string
     {
-        if (preg_match(self::IDENTIFIER_PATTERN, $identifier) === false) {
+        if (preg_match(self::IDENTIFIER_PATTERN, $identifier) !== 1) {
             throw new InvalidArgumentException("Invalid {$type} identifier: {$identifier}");
         }
 
