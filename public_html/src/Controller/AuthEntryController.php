@@ -183,7 +183,7 @@ class AuthEntryController extends Controller
     {
         $this->application->get('sessionService')->set(
             self::REGISTER_FORM_VALUES,
-            json_encode(['username' => $username, 'email' => $email], JSON_THROW_ON_ERROR)
+            base64_encode(json_encode(['username' => $username, 'email' => $email], JSON_THROW_ON_ERROR))
         );
     }
 
@@ -197,7 +197,12 @@ class AuthEntryController extends Controller
             return [];
         }
 
-        $values = json_decode($storedValues, true);
+        $encodedValues = base64_decode($storedValues, true);
+        if (is_string($encodedValues) === false) {
+            return [];
+        }
+
+        $values = json_decode($encodedValues, true);
         if (is_array($values) === false) {
             return [];
         }
