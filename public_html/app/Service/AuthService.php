@@ -69,7 +69,11 @@ class AuthService
             return null;
         }
 
-        $userService = new UserService($this->application);
+        $userService = $this->application->get('userService');
+        if (($userService instanceof UserService) === false) {
+            return null;
+        }
+
         return $userService->getUserById($userId);
     }
 
