@@ -35,7 +35,12 @@ class Account extends Controller
     {
         parent::__construct($application);
         $this->accountService = new AccountService($application);
-        $this->userService = new UserService($application);
+        $userService = $application->get('userService');
+        if (($userService instanceof UserService) === false) {
+            throw new \RuntimeException('userService service is not available.');
+        }
+
+        $this->userService = $userService;
         $mfaService = $application->get('mfaTotpService');
         if (($mfaService instanceof MFATOTPService) === false) {
             throw new \RuntimeException('mfaTotpService service is not available.');
