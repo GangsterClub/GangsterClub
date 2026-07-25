@@ -17,7 +17,6 @@ use src\Entity\User;
 
 class Account extends Controller
 {
-    private const USERNAME_PATTERN = '/^[A-Za-z0-9._-]{3,32}$/';
     private const EMAIL_CHANGE_TTL = 3600;
 
     private AccountService $accountService;
@@ -174,32 +173,26 @@ class Account extends Controller
             return $user;
         }
 
-        $username = trim((string) $request->post('username'));
-        if ((bool) preg_match(self::USERNAME_PATTERN, $username) === false) {
-            $this->accountMessages['errors'][] = __('account.username-invalid');
-            return $user;
-        }
+        $username = (string) $request->post('username');
+        $status = $this->accountService->changeUsername($user, $username);
 
-        if (strcasecmp($username, $user->getUsername()) === 0) {
-            $this->accountMessages['errors'][] = __('account.username-unchanged');
-            return $user;
-        }
-
-        if ($this->accountService->isUsernameTaken($username, $user->getId()) === true) {
-            $this->accountMessages['errors'][] = __('account.username-taken');
-            return $user;
-        }
-
-        $updated = $this->accountService->changeUsername($user->getId(), $username);
-        if ($updated === true) {
+        if ($status === AccountService::USERNAME_CHANGE_UPDATED) {
             $this->accountMessages['success'][] = __('account.username-updated');
             $refreshed = $this->userService->getUserById($user->getId());
             if ($refreshed instanceof User) {
                 return $refreshed;
             }
-        } else {
-            $this->accountMessages['errors'][] = __('account.username-error');
+
+            return $user;
         }
+
+        $messageKeys = [
+            AccountService::USERNAME_CHANGE_INVALID => 'account.username-invalid',
+            AccountService::USERNAME_CHANGE_UNCHANGED => 'account.username-unchanged',
+            AccountService::USERNAME_CHANGE_TAKEN => 'account.username-taken',
+            AccountService::USERNAME_CHANGE_ERROR => 'account.username-error',
+        ];
+        $this->accountMessages['errors'][] = __($messageKeys[$status] ?? 'account.username-error');
 
         return $user;
     }
