@@ -25,7 +25,11 @@ class AuthSessionJWT
             return $next($request);
         }
 
-        $jwtService = new JWTService($this->application);
+        $jwtService = $this->application->get('jwtService');
+        if (($jwtService instanceof JWTService) === false) {
+            throw new \RuntimeException('jwtService service is not available.');
+        }
+
         $authorizationResult = $jwtService->authorizeRequest($request);
         if ($authorizationResult instanceof Response) {
             return $authorizationResult;
