@@ -11,12 +11,12 @@ setLocale:
 
 login:
     path: /login
-    controller: Login
+    controller: AuthEntryController::login
     methods: ['GET', 'HEAD', 'POST']
 
 register:
     path: /register
-    controller: Register
+    controller: AuthEntryController::register
     methods: ['GET', 'HEAD', 'POST']
 
 account:
