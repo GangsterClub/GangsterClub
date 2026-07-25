@@ -13,6 +13,7 @@ class AuthEntryController extends Controller
 {
     private const MODE_LOGIN = 'login';
     private const MODE_REGISTER = 'register';
+    private const REGISTER_FORM_VALUES = 'register.form_values';
 
     private ?string $authorizationHeader = null;
 
@@ -42,7 +43,7 @@ class AuthEntryController extends Controller
         $response = Response::html(
             $this->twig->render(
                 $mode . '.twig',
-                array_merge($this->twigVariables, $this->buildTwigVariables($auth))
+                array_merge($this->twigVariables, $this->buildTwigVariables($auth, $mode))
             )
         );
 
@@ -90,14 +91,26 @@ class AuthEntryController extends Controller
             return null;
         }
 
-        return $this->mapFirstStepResult(
-            'register',
-            $this->authEntryService()->beginRegistration(
-                $auth,
-                (string) $request->post('username'),
-                (string) $request->post('email')
-            )
+        $username = (string) $request->post('username');
+        $email = (string) $request->post('email');
+
+        $result = $this->authEntryService()->beginRegistration(
+            $auth,
+            $username,
+            $email
         );
+
+        if (in_array(
+            $result['status'] ?? null,
+            [AuthEntryService::STATUS_VALIDATION_ERROR, AuthEntryService::STATUS_SEND_ERROR],
+            true
+        ) === true) {
+            $this->rememberRegisterFormValues($username, $email);
+        } else {
+            $this->forgetRegisterFormValues();
+        }
+
+        return $this->mapFirstStepResult('register', $result);
     }
 
     private function verify(Request $request, AuthService $auth, string $mode): ?Response
@@ -165,6 +178,41 @@ class AuthEntryController extends Controller
         };
     }
 
+
+    private function rememberRegisterFormValues(string $username, string $email): void
+    {
+        $this->application->get('sessionService')->set(
+            self::REGISTER_FORM_VALUES,
+            json_encode(['username' => $username, 'email' => $email], JSON_THROW_ON_ERROR)
+        );
+    }
+
+    private function consumeRegisterFormValues(): array
+    {
+        $session = $this->application->get('sessionService');
+        $storedValues = $session->get(self::REGISTER_FORM_VALUES, '');
+        $this->forgetRegisterFormValues();
+
+        if (is_string($storedValues) === false || $storedValues === '') {
+            return [];
+        }
+
+        $values = json_decode($storedValues, true);
+        if (is_array($values) === false) {
+            return [];
+        }
+
+        return [
+            'username' => is_string($values['username'] ?? null) ? $values['username'] : '',
+            'email' => is_string($values['email'] ?? null) ? $values['email'] : null,
+        ];
+    }
+
+    private function forgetRegisterFormValues(): void
+    {
+        $this->application->get('sessionService')->remove(self::REGISTER_FORM_VALUES);
+    }
+
     protected function authEntryService(): AuthEntryService
     {
         $authEntryService = $this->application->get('authEntryService');
@@ -184,13 +232,17 @@ class AuthEntryController extends Controller
         return __($key);
     }
 
-    private function buildTwigVariables(AuthService $auth): array
+    private function buildTwigVariables(AuthService $auth, string $mode): array
     {
         $loginTotp = $auth->getPendingLoginTotp();
         $pendingEmail = $auth->getPendingLoginEmail();
+        $registerValues = ($mode === self::MODE_REGISTER && $pendingEmail === null) ?
+            $this->consumeRegisterFormValues() :
+            [];
 
         return [
-            'email' => $pendingEmail,
+            'email' => $pendingEmail ?? ($registerValues['email'] ?? null),
+            'registerUsername' => $registerValues['username'] ?? '',
             'awaitingOtp' => $pendingEmail !== null,
             'uUID' => $auth->getPendingUserId(),
             'totp' => is_string($loginTotp) === true ? str_split($loginTotp) : [],

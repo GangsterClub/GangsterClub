@@ -43,7 +43,7 @@
                     {{ forms.otpInput(name, value, type, label, value) }}
                 {% else %}
                     {% if authEntry.mode == 'register' %}
-                        {% set name, value, type = 'username', '', 'text' %}
+                        {% set name, value, type = 'username', registerUsername|default(''), 'text' %}
                         {{ forms.textInput(name, value, type, authEntry.usernameLabel, authEntry.usernameInvalidText) }}
                     {% endif %}
                     {% set name, value, type, submitName = 'email', email, 'email', authEntry.firstStepSubmitName %}
