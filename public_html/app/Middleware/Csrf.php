@@ -22,8 +22,7 @@ class Csrf
     {
         $csrf = $this->application->get('csrfService');
         if ($csrf instanceof CsrfService === false) {
-            $csrf = new CsrfService($this->application->get('sessionService'));
-            $this->application->addService('csrfService', $csrf);
+            throw new \RuntimeException('The csrfService must be registered before the CSRF middleware runs.');
         }
 
         if ($csrf->isStateChangingMethod($request->getMethod()) === true && $csrf->isValidRequest($request) === false) {

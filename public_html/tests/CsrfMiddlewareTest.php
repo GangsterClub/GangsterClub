@@ -147,6 +147,18 @@ function assertSameValue(mixed $expected, mixed $actual, string $message): void
     }
 }
 
+function assertThrowsRuntimeException(callable $callback, string $expectedMessage, string $message): void
+{
+    try {
+        $callback();
+    } catch (RuntimeException $exception) {
+        assertSameValue($expectedMessage, $exception->getMessage(), $message);
+        return;
+    }
+
+    throw new RuntimeException($message . ' Expected RuntimeException to be thrown.');
+}
+
 function runThroughCsrf(CsrfTestApplication $application, Request $request): Response
 {
     $middleware = new Csrf($application);
@@ -169,6 +181,13 @@ $application = makeCsrfApplication($session);
 $response = runThroughCsrf($application, new CsrfTestRequest('GET'));
 assertSameValue(204, $response->getStatusCode(), 'Safe requests should pass without a token.');
 assertSameValue('passed', $response->getContent(), 'Safe requests should continue to the next handler.');
+
+$application = new CsrfTestApplication();
+assertThrowsRuntimeException(
+    static fn () => runThroughCsrf($application, new CsrfTestRequest('GET')),
+    'The csrfService must be registered before the CSRF middleware runs.',
+    'CSRF middleware should require the service registered by session middleware.'
+);
 
 $session = new CsrfTestSession();
 $application = makeCsrfApplication($session);
