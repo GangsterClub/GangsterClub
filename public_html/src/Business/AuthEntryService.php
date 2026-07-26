@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace src\Business;
 
-use app\Http\Response;
 use app\Service\AuthService;
 use app\Service\JWTService;
 use app\Service\SessionService;
@@ -195,9 +194,12 @@ class AuthEntryService
     {
         $storedToken = $auth->getStoredJwtToken();
         if (is_string($storedToken) === true && $storedToken !== '') {
-            $authorizationResult = $this->jwtService->authorize('Bearer ' . $storedToken);
-            if ($authorizationResult instanceof Response) {
-                return ['status' => self::STATUS_AUTHORIZATION_RESPONSE, 'response' => $authorizationResult];
+            $authorizationResult = $this->jwtService->authorize($storedToken);
+            if (($authorizationResult['status'] ?? null) === 'unauthorized') {
+                return [
+                    'status' => self::STATUS_AUTHORIZATION_RESPONSE,
+                    'description' => $authorizationResult['description'],
+                ];
             }
 
             if (is_array($authorizationResult) === true && isset($authorizationResult['token']) === true) {

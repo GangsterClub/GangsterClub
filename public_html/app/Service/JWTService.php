@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace app\Service;
 
-use app\Http\Request;
-use app\Http\Response;
 use Firebase\JWT\BeforeValidException;
 use Firebase\JWT\ExpiredException;
 use Firebase\JWT\SignatureInvalidException;
@@ -34,27 +32,25 @@ class JWTService
         return $this->jwt->issue($username);
     }
 
-    public function authorize(?string $authorization): Response|array
+    /**
+     * @return array{status: 'authorized', token: string, payload: object}|array{status: 'unauthorized', description: string}
+     */
+    public function authorize(string $jwtToken): array
     {
-        $jwtToken = $this->extractBearerToken($authorization);
-        if ($jwtToken instanceof Response) {
-            return $jwtToken;
-        }
-
         try {
             $payload = $this->jwt->decode($jwtToken);
         } catch (ExpiredException $e) {
             return $this->authorizeExpiredToken($e->getPayload());
         } catch (SignatureInvalidException $e) {
-            return $this->unauthorizedResponse('Signature verification failed');
+            return $this->unauthorizedResult('Signature verification failed');
         } catch (BeforeValidException $e) {
-            return $this->unauthorizedResponse('Token cannot yet be used');
+            return $this->unauthorizedResult('Token cannot yet be used');
         } catch (UnexpectedValueException $e) {
-            return $this->unauthorizedResponse('Invalid access token');
+            return $this->unauthorizedResult('Invalid access token');
         }
 
         $identityResponse = $this->authorizePayloadIdentity($payload);
-        if ($identityResponse instanceof Response) {
+        if ($identityResponse !== null) {
             return $identityResponse;
         }
 
@@ -63,9 +59,9 @@ class JWTService
         } catch (ExpiredException) {
             return $this->authorizeExpiredToken($payload);
         } catch (BeforeValidException) {
-            return $this->unauthorizedResponse('Token cannot yet be used');
+            return $this->unauthorizedResult('Token cannot yet be used');
         } catch (UnexpectedValueException) {
-            return $this->unauthorizedResponse('Invalid access token');
+            return $this->unauthorizedResult('Invalid access token');
         }
 
         try {
@@ -73,44 +69,38 @@ class JWTService
                 ? $this->jwt->refresh($payload)
                 : $jwtToken;
         } catch (UnexpectedValueException $e) {
-            return $this->unauthorizedResponse('Invalid access token');
+            return $this->unauthorizedResult('Invalid access token');
         }
 
         return [
+            'status' => 'authorized',
             'token' => $refreshedToken,
             'payload' => $payload,
         ];
     }
 
-    public function refresh(string $jwtToken): Response|string
+    /**
+     * @return array{status: 'authorized', token: string, payload: object}|array{status: 'unauthorized', description: string}
+     */
+    public function refresh(string $jwtToken): array
     {
         try {
             $payload = $this->jwt->decode($jwtToken, JWT::REFRESH_THRESHOLD);
             $this->jwt->validateClaims($payload);
-            return $this->jwt->refresh($payload);
+            return ['status' => 'authorized', 'token' => $this->jwt->refresh($payload), 'payload' => $payload];
         } catch (ExpiredException) {
-            return $this->unauthorizedResponse('Expired access token');
+            return $this->unauthorizedResult('Expired access token');
         } catch (SignatureInvalidException) {
-            return $this->unauthorizedResponse('Signature verification failed');
+            return $this->unauthorizedResult('Signature verification failed');
         } catch (BeforeValidException) {
-            return $this->unauthorizedResponse('Token cannot yet be used');
+            return $this->unauthorizedResult('Token cannot yet be used');
         } catch (UnexpectedValueException) {
-            return $this->unauthorizedResponse('Invalid access token');
+            return $this->unauthorizedResult('Invalid access token');
         }
     }
 
-    public function authorizeRequest(Request $request): Response|array
-    {
-        $authorizationHeader = $this->resolveAuthorizationHeader($request);
-        $authorizationResult = $this->authorize($authorizationHeader);
-        if (is_array($authorizationResult) === true && isset($authorizationResult['token']) === true) {
-            $this->authService->storeJwtToken($authorizationResult['token']);
-        }
-
-        return $authorizationResult;
-    }
-
-    private function authorizePayloadIdentity(object $payload): ?Response
+    /** @return null|array{status: 'unauthorized', description: string} */
+    private function authorizePayloadIdentity(object $payload): ?array
     {
         if ($this->authService->getAuthenticatedUserId() === null) {
             return null;
@@ -118,60 +108,31 @@ class JWTService
 
         $user = $this->getAuthenticatedUser();
         if ($user === null) {
-            return $this->unauthorizedResponse('Token identity does not match authenticated session');
+            return $this->unauthorizedResult('Token identity does not match authenticated session');
         }
 
         if (is_string($payload->userName ?? null) === false || hash_equals($user->getEmail(), $payload->userName) === false) {
-            return $this->unauthorizedResponse('Token identity does not match authenticated session');
+            return $this->unauthorizedResult('Token identity does not match authenticated session');
         }
 
         return null;
     }
 
-    private function resolveAuthorizationHeader(Request $request): ?string
-    {
-        $authorizationHeader = $request->getHeader('Authorization')
-            ?? $request->getHeader('authorization')
-            ?? $request->server('HTTP_AUTHORIZATION');
-
-        if ($authorizationHeader === null || trim((string) $authorizationHeader) === '') {
-            $storedToken = $this->authService->getStoredJwtToken();
-            if (is_string($storedToken) === true && $storedToken !== '') {
-                return 'Bearer ' . $storedToken;
-            }
-        }
-
-        return is_string($authorizationHeader) === true ? $authorizationHeader : null;
-    }
-
-    private function extractBearerToken(?string $authorization): Response|string
-    {
-        if ($authorization === null || trim($authorization) === '') {
-            return $this->tokenNotFoundResponse();
-        }
-
-        if (preg_match('/Bearer\s+(\S+)/', $authorization, $matches) === false || count($matches) < 2) {
-            return $this->tokenNotFoundResponse();
-        }
-
-        return $matches[1];
-    }
-
     /**
      * Attempt to re-authorize an expired JWT using the currently authenticated session.
      *
-     * @return Response|array{token: string, payload: object}
+     * @return array{status: 'authorized', token: string, payload: object}|array{status: 'unauthorized', description: string}
      */
-    private function authorizeExpiredToken(object $expiredPayload): Response|array
+    private function authorizeExpiredToken(object $expiredPayload): array
     {
         $identityResponse = $this->authorizePayloadIdentity($expiredPayload);
-        if ($identityResponse instanceof Response) {
+        if ($identityResponse !== null) {
             return $identityResponse;
         }
 
         $user = $this->getAuthenticatedUser();
         if ($user === null) {
-            return $this->unauthorizedResponse('Expired access token');
+            return $this->unauthorizedResult('Expired access token');
         }
 
         try {
@@ -179,10 +140,11 @@ class JWTService
             $payload = $this->jwt->decode($token);
             $this->jwt->validateClaims($payload);
         } catch (ExpiredException | SignatureInvalidException | BeforeValidException | UnexpectedValueException) {
-            return $this->unauthorizedResponse('Invalid access token');
+            return $this->unauthorizedResult('Invalid access token');
         }
 
         return [
+            'status' => 'authorized',
             'token' => $token,
             'payload' => $payload,
         ];
@@ -198,22 +160,9 @@ class JWTService
         return $this->userService->getUserById($userId);
     }
 
-    private function tokenNotFoundResponse(): Response
+    /** @return array{status: 'unauthorized', description: string} */
+    private function unauthorizedResult(string $description): array
     {
-        return new Response('Token not found in request', 400);
-    }
-
-    private function unauthorizedResponse(string $description): Response
-    {
-        $header = sprintf(
-            'WWW-Authenticate: Bearer realm="User Visible Realm", charset="UTF-8", error="invalid_token", error_description="%s"',
-            $description
-        );
-
-        return new Response(
-            sprintf('401 Unauthorized: %s', $description),
-            401,
-            [$header]
-        );
+        return ['status' => 'unauthorized', 'description' => $description];
     }
 }

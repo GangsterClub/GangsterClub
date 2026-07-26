@@ -163,7 +163,12 @@ class AuthEntryController extends Controller
     {
         switch ($result['status'] ?? null) {
             case AuthEntryService::STATUS_AUTHORIZATION_RESPONSE:
-                return $result['response'];
+                $description = (string) ($result['description'] ?? 'Invalid access token');
+                return new Response(
+                    sprintf('401 Unauthorized: %s', $description),
+                    401,
+                    [sprintf('WWW-Authenticate: Bearer realm="User Visible Realm", charset="UTF-8", error="invalid_token", error_description="%s"', $description)]
+                );
             case AuthEntryService::STATUS_AUTHENTICATED:
                 $jwtToken = (string) ($result['jwtToken'] ?? '');
                 if ($jwtToken !== '') {

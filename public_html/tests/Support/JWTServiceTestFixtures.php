@@ -84,10 +84,10 @@ function assertSameValue(mixed $expected, mixed $actual, string $message): void
     }
 }
 
-function assertAuthorizationSucceeded(Response|array $result, string $message): array
+function assertAuthorizationSucceeded(array $result, string $message): array
 {
-    if (is_array($result) === false) {
-        throw new RuntimeException($message . ' Got response status ' . $result->getStatusCode() . '.');
+    if (($result['status'] ?? null) !== 'authorized') {
+        throw new RuntimeException($message . ' Got ' . var_export($result, true) . '.');
     }
     return $result;
 }
