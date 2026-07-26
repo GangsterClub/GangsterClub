@@ -7,6 +7,10 @@ namespace app\Middleware;
 use app\Container\Application;
 use app\Http\Request;
 use app\Http\Response;
+use app\Service\AuthService;
+use app\Service\CsrfService;
+use app\Service\SessionService;
+use src\Business\UserService;
 
 class Session
 {
@@ -25,10 +29,15 @@ class Session
 
     public function handle(Request $request, callable $next): Response
     {
-        $session = new \app\Service\SessionService($request);
+        $session = new SessionService($request);
         $this->application->addService('sessionService', $session);
-        $this->application->addService('csrfService', new \app\Service\CsrfService($session));
-        $this->application->addService('authService', new \app\Service\AuthService($this->application));
+        $csrfService = new CsrfService($session);
+        $this->application->addService('csrfService', $csrfService);
+        $userService = $this->application->get('userService');
+        if (($userService instanceof UserService) === false) {
+            throw new \RuntimeException('userService service is not available.');
+        }
+        $this->application->addService('authService', new AuthService($session, $csrfService, $userService));
         ini_set('session.save_handler', 'files');
         session_set_save_handler($session, true);
         session_save_path($this->savePath);

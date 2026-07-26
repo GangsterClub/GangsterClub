@@ -34,7 +34,9 @@ use app\Container\Application;
 use app\Http\Request;
 use app\Http\Response;
 use app\Service\AuthService;
+use app\Service\CsrfService;
 use src\Business\AuthEntryService;
+use src\Business\UserService;
 use src\Controller\AuthEntryController;
 
 const APP_BASE = '';
@@ -61,8 +63,10 @@ require_once __DIR__ . '/../app/Http/Superglobal.php';
 require_once __DIR__ . '/../app/Http/Request.php';
 require_once __DIR__ . '/../app/Http/Response.php';
 require_once __DIR__ . '/../app/Service/SessionService.php';
+require_once __DIR__ . '/../app/Service/CsrfService.php';
 require_once __DIR__ . '/../app/Service/AuthSessionKeys.php';
 require_once __DIR__ . '/../app/Service/AuthService.php';
+require_once __DIR__ . '/../src/Business/UserService.php';
 require_once __DIR__ . '/../src/Controller/Controller.php';
 require_once __DIR__ . '/../src/Controller/AuthEntryController.php';
 require_once __DIR__ . '/../src/Business/AuthEntryService.php';
@@ -82,17 +86,23 @@ final class AuthEntryTestSession extends \app\Service\SessionService
 }
 
 final class AuthEntryTestTranslation { public function setFile(string $file): void {} }
-final class AuthEntryTestCsrf { public function rotateToken(): void {} }
+final class AuthEntryTestUserService extends UserService { public function __construct() {} }
 
 final class AuthEntryTestApplication extends Application
 {
     public AuthEntryTestSession $session;
+    public CsrfService $csrf;
     public AuthService $auth;
 
     public function __construct()
     {
         $this->session = new AuthEntryTestSession();
-        $this->auth = new AuthService($this);
+        $this->csrf = new CsrfService($this->session);
+        $this->auth = new AuthService(
+            $this->session,
+            $this->csrf,
+            new AuthEntryTestUserService()
+        );
     }
 
     public function get(string $name): ?object
@@ -102,7 +112,7 @@ final class AuthEntryTestApplication extends Application
             'authService' => $this->auth,
             'translationService' => new AuthEntryTestTranslation(),
             'twig' => new \Twig\Environment(new \Twig\Loader\ArrayLoader(['login.twig' => 'login', 'register.twig' => 'register'])),
-            'csrfService' => new AuthEntryTestCsrf(),
+            'csrfService' => $this->csrf,
             default => null,
         };
     }

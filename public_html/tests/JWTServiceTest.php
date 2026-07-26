@@ -7,6 +7,7 @@ use app\Http\Request;
 use app\Http\Response;
 use app\Service\AuthService;
 use app\Service\AuthSessionKeys;
+use app\Service\CsrfService;
 use app\Service\JWT;
 use app\Service\JWTService;
 use app\Service\SessionService;
@@ -76,13 +77,13 @@ final class JWTServiceTestApplication extends Application
 
 final class JWTServiceTestUserService extends UserService
 {
-    public function __construct(private readonly User $user)
+    public function __construct(private readonly ?User $user = null)
     {
     }
 
     public function getUserById(int $userId): ?User
     {
-        return $userId === $this->user->getId() ? $this->user : null;
+        return $this->user !== null && $userId === $this->user->getId() ? $this->user : null;
     }
 }
 
@@ -126,9 +127,9 @@ function assertAuthorizationSucceeded(Response|array $result, string $message): 
 function makeJWTServiceTestContext(?User $authenticatedUser = null): array
 {
     $session = new JWTServiceTestSession();
-    $userService = $authenticatedUser === null ? null : new JWTServiceTestUserService($authenticatedUser);
+    $userService = new JWTServiceTestUserService($authenticatedUser);
     $application = new JWTServiceTestApplication($session, $userService);
-    $authService = new AuthService($application);
+    $authService = new AuthService($session, new CsrfService($session), $userService);
     $jwt = new JWT();
 
     return [$session, $authService, $jwt, new JWTService($jwt, $authService)];

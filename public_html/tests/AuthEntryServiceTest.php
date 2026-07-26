@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use app\Container\Application;
 use app\Service\AuthService;
+use app\Service\CsrfService;
 use app\Service\JWTService;
 use src\Business\AuthEntryService;
 use src\Business\EmailService;
@@ -21,6 +22,7 @@ const MFA_TOTP_PERIOD = 30;
 require_once __DIR__ . '/../app/Container/Container.php';
 require_once __DIR__ . '/../app/Container/Application.php';
 require_once __DIR__ . '/../app/Service/SessionService.php';
+require_once __DIR__ . '/../app/Service/CsrfService.php';
 require_once __DIR__ . '/../app/Service/AuthSessionKeys.php';
 require_once __DIR__ . '/../app/Service/AuthService.php';
 require_once __DIR__ . '/../app/Service/JWTService.php';
@@ -41,12 +43,11 @@ final class AuthEntryServiceTestSession extends app\Service\SessionService
     public function remove(string $key): void { unset($this->values[$key]); }
     public function regenerate(): void {}
 }
-final class AuthEntryServiceTestCsrf { public function rotateToken(): void {} }
 final class AuthEntryServiceTestApplication extends Application
 {
     public AuthEntryServiceTestSession $session;
     public function __construct() { $this->session = new AuthEntryServiceTestSession(); }
-    public function get(string $name): ?object { return $name === 'sessionService' ? $this->session : ($name === 'csrfService' ? new AuthEntryServiceTestCsrf() : null); }
+    public function get(string $name): ?object { return $name === 'sessionService' ? $this->session : ($name === 'csrfService' ? new CsrfService($this->session) : null); }
 }
 final class FakeUserService extends UserService
 {
@@ -90,7 +91,7 @@ function assertSameValue(mixed $expected, mixed $actual, string $message): void 
 $app = new AuthEntryServiceTestApplication();
 $users = new FakeUserService();
 $svc = makeService($app->session, $users);
-$auth = new AuthService($app);
+$auth = new AuthService($app->session, new CsrfService($app->session), $users);
 $result = $svc->beginLogin($auth, 'new@example.test');
 assertSameValue(AuthEntryService::STATUS_EMAIL_OTP_SENT, $result['status'], 'Unknown login should send an email-only OTP.');
 assertSameValue(0, $users->createByEmailCalls, 'Unknown login must not create the user before TOTP verification.');
@@ -101,7 +102,7 @@ assertSameValue(1, $users->createByEmailCalls, 'Unknown login should create by e
 $app = new AuthEntryServiceTestApplication();
 $users = new FakeUserService();
 $svc = makeService($app->session, $users);
-$auth = new AuthService($app);
+$auth = new AuthService($app->session, new CsrfService($app->session), $users);
 $result = $svc->beginRegistration($auth, 'alice', 'alice@example.test');
 assertSameValue(AuthEntryService::STATUS_EMAIL_OTP_SENT, $result['status'], 'Registration should send an email-only OTP.');
 assertSameValue(0, $users->createUserCalls, 'Registration must not create the user before TOTP verification.');
@@ -115,7 +116,7 @@ $users->byEmail['known@example.test'] = makeUser(7, 'known', 'known@example.test
 $mfa = new FakeMfaService();
 $mfa->enabled = true;
 $svc = makeService($app->session, $users, $mfa);
-$result = $svc->beginLogin(new AuthService($app), 'known@example.test');
+$result = $svc->beginLogin(new AuthService($app->session, new CsrfService($app->session), $users), 'known@example.test');
 assertSameValue(AuthEntryService::STATUS_APP_MFA_REQUIRED, $result['status'], 'Existing app-MFA users should be routed to app verification.');
 
 fwrite(STDOUT, "AuthEntryService tests passed.\n");
