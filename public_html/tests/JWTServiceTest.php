@@ -131,7 +131,7 @@ function makeJWTServiceTestContext(?User $authenticatedUser = null): array
     $authService = new AuthService($application);
     $jwt = new JWT();
 
-    return [$session, $authService, $jwt, new JWTService($application, $jwt, $authService)];
+    return [$session, $authService, $jwt, new JWTService($jwt, $authService)];
 }
 
 function makeJWTServiceTestUser(int $id, string $email): User

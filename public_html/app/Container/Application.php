@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace app\Container;
 
 use app\Http\Router;
+use app\Service\AuthService;
+use app\Service\JWT;
 use app\Service\JWTService;
 use app\Service\SessionService;
 use src\Business\AccountService;
@@ -58,7 +60,11 @@ class Application extends Container
             $this->getRegisteredService('sessionService', SessionService::class)
         ));
         $this->addService('emailService', fn(): EmailService => new EmailService());
-        $this->addService('jwtService', fn(): JWTService => new JWTService($this));
+        $this->addService('jwt', fn(): JWT => new JWT());
+        $this->addService('jwtService', fn(): JWTService => new JWTService(
+            $this->getRegisteredService('jwt', JWT::class),
+            $this->getRegisteredService('authService', AuthService::class)
+        ));
         $this->addService('authEntryService', fn(): AuthEntryService => new AuthEntryService(
             $this->getRegisteredService('userService', UserService::class),
             $this->getRegisteredService('mfaTotpService', MFATOTPService::class),

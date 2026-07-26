@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace app\Service;
 
-use app\Container\Application;
 use app\Http\Request;
 use app\Http\Response;
 use Firebase\JWT\BeforeValidException;
@@ -14,17 +13,14 @@ use UnexpectedValueException;
 
 class JWTService
 {
-    private Application $application;
-
     private JWT $jwt;
 
     private AuthService $authService;
 
-    public function __construct(Application $application, ?JWT $jwt = null, ?AuthService $authService = null)
+    public function __construct(JWT $jwt, AuthService $authService)
     {
-        $this->application = $application;
-        $this->jwt = $jwt ?? new JWT();
-        $this->authService = $authService ?? $application->get('authService');
+        $this->jwt = $jwt;
+        $this->authService = $authService;
     }
 
     public function authenticate(string $username, bool $hasValidCredentials = false): string|false
