@@ -10,6 +10,8 @@ use src\Entity\User;
 
 class AccountService
 {
+    private const EMAIL_CHANGE_TTL = 3600;
+
     public const USERNAME_CHANGE_UPDATED = 'updated';
     public const USERNAME_CHANGE_INVALID = 'invalid';
     public const USERNAME_CHANGE_UNCHANGED = 'unchanged';
@@ -17,19 +19,30 @@ class AccountService
     public const USERNAME_CHANGE_ERROR = 'error';
 
     public const EMAIL_CHANGE_CONFIRMED = 'success';
+    public const EMAIL_CHANGE_REQUESTED = 'requested';
     public const EMAIL_CHANGE_INVALID = 'invalid';
+    public const EMAIL_CHANGE_SAME = 'same';
     public const EMAIL_CHANGE_EXPIRED = 'expired';
     public const EMAIL_CHANGE_CONFLICT = 'conflict';
+    public const EMAIL_CHANGE_ERROR = 'error';
 
     private UserRepository $userRepository;
 
     private UserEmailChangeRepository $emailChangeRepository;
+
+    private EmailService $emailService;
 
     public function __construct(\app\Container\Application $application)
     {
         $dbh = $application->get('dbh');
         $this->userRepository = new UserRepository($dbh);
         $this->emailChangeRepository = new UserEmailChangeRepository($dbh);
+        $emailService = $application->get('emailService');
+        if (($emailService instanceof EmailService) === false) {
+            throw new \RuntimeException('emailService service is not available.');
+        }
+
+        $this->emailService = $emailService;
     }
 
     public function changeUsername(User $user, string $username): string
@@ -57,6 +70,44 @@ class AccountService
     public function changeEmail(int $userId, string $email): bool
     {
         return $this->userRepository->updateEmail($userId, $email);
+    }
+
+    public function requestEmailChange(User $user, string $newEmail): string
+    {
+        $newEmail = trim($newEmail);
+        if (filter_var($newEmail, FILTER_VALIDATE_EMAIL) === false) {
+            return self::EMAIL_CHANGE_INVALID;
+        }
+
+        if (strcasecmp($newEmail, $user->getEmail()) === 0) {
+            return self::EMAIL_CHANGE_SAME;
+        }
+
+        if ($this->isEmailInUse($newEmail, $user->getId()) === true) {
+            return self::EMAIL_CHANGE_CONFLICT;
+        }
+
+        try {
+            $rawToken = bin2hex(random_bytes(32));
+        } catch (\Throwable $exception) {
+            return self::EMAIL_CHANGE_ERROR;
+        }
+
+        $tokenHash = hash('sha256', $rawToken);
+        $expiresAt = date('Y-m-d H:i:s', (time() + self::EMAIL_CHANGE_TTL));
+        $created = $this->createEmailChangeRequest($user->getId(), $newEmail, $tokenHash, $expiresAt);
+        if ($created === false) {
+            return self::EMAIL_CHANGE_ERROR;
+        }
+
+        $verificationUrl = WEB_ROOT . 'account/email/verify/' . $rawToken;
+        $emailSent = $this->emailService->sendEmailChangeVerification($user->getEmail(), $newEmail, $verificationUrl);
+        if ($emailSent === false) {
+            $this->deletePendingEmailChanges($user->getId());
+            return self::EMAIL_CHANGE_ERROR;
+        }
+
+        return self::EMAIL_CHANGE_REQUESTED;
     }
 
     public function isUsernameTaken(string $username, int $excludeUserId = 0): bool
