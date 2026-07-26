@@ -18,6 +18,7 @@ use src\Business\TOTPService;
 use src\Business\UserService;
 use src\Data\Connection;
 use src\Data\Repository\TOTPEmailRepository;
+use src\Data\Repository\UserRepository;
 use src\Data\Repository\UserMFATOTPRepository;
 
 class Application extends Container
@@ -42,7 +43,12 @@ class Application extends Container
         $this->addService('router', $this->router = new Router());
         $this->addService('translationService', new \app\Service\TranslationService());
         $this->addService('accountService', fn(): AccountService => new AccountService($this));
-        $this->addService('userService', fn(): UserService => new UserService($this));
+        $this->addService('userRepository', fn(): UserRepository => new UserRepository(
+            $this->getRegisteredService('dbh', Connection::class)
+        ));
+        $this->addService('userService', fn(): UserService => new UserService(
+            $this->getRegisteredService('userRepository', UserRepository::class)
+        ));
         $this->addService('totpService', fn(): TOTPService => new TOTPService());
         $this->addService('userMfaTotpRepository', fn(): UserMFATOTPRepository => new UserMFATOTPRepository(
             $this->getRegisteredService('dbh', Connection::class)

@@ -11,9 +11,9 @@ class UserService
 {
     protected UserRepository $userRepository;
 
-    public function __construct(\app\Container\Application $application)
+    public function __construct(UserRepository $userRepository)
     {
-        $this->userRepository = new UserRepository($application->get('dbh'));
+        $this->userRepository = $userRepository;
     }
 
     public function getUserByEmail(string $email): User|null
