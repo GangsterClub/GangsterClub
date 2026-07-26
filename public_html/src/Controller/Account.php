@@ -9,7 +9,6 @@ use app\Http\Request;
 use app\Http\Response;
 use app\Service\AuthService;
 use src\Business\AccountService;
-use src\Business\EmailService;
 use src\Business\MFATOTPService;
 use src\Business\TOTPEmailService;
 use src\Business\UserService;
@@ -17,8 +16,6 @@ use src\Entity\User;
 
 class Account extends Controller
 {
-    private const EMAIL_CHANGE_TTL = 3600;
-
     private AccountService $accountService;
 
     private UserService $userService;
@@ -204,53 +201,21 @@ class Account extends Controller
             return;
         }
 
-        $newEmail = trim((string) $request->post('new_email'));
-        if (filter_var($newEmail, FILTER_VALIDATE_EMAIL) === false) {
-            $this->accountMessages['errors'][] = __('account.email-change-invalid');
+        $newEmail = (string) $request->post('new_email');
+        $status = $this->accountService->requestEmailChange($user, $newEmail);
+
+        if ($status === AccountService::EMAIL_CHANGE_REQUESTED) {
+            $this->accountMessages['success'][] = __('account.email-change-requested');
             return;
         }
 
-        if (strcasecmp($newEmail, $user->getEmail()) === 0) {
-            $this->accountMessages['errors'][] = __('account.email-change-same');
-            return;
-        }
-
-        if ($this->accountService->isEmailInUse($newEmail, $user->getId()) === true) {
-            $this->accountMessages['errors'][] = __('account.email-change-conflict');
-            return;
-        }
-
-        try {
-            $rawToken = bin2hex(random_bytes(32));
-        } catch (\Throwable $exception) {
-            $this->accountMessages['errors'][] = __('account.email-change-error');
-            return;
-        }
-
-        $tokenHash = hash('sha256', $rawToken);
-        $expiresAt = date('Y-m-d H:i:s', (time() + self::EMAIL_CHANGE_TTL));
-        $created = $this->accountService->createEmailChangeRequest($user->getId(), $newEmail, $tokenHash, $expiresAt);
-        if ($created === false) {
-            $this->accountMessages['errors'][] = __('account.email-change-error');
-            return;
-        }
-
-        $verificationUrl = WEB_ROOT . 'account/email/verify/' . $rawToken;
-        $emailService = $this->application->get('emailService');
-        if (($emailService instanceof EmailService) === false) {
-            $this->accountService->deletePendingEmailChanges($user->getId());
-            $this->accountMessages['errors'][] = __('account.email-change-error');
-            return;
-        }
-
-        $emailSent = $emailService->sendEmailChangeVerification($user->getEmail(), $newEmail, $verificationUrl);
-        if ($emailSent === false) {
-            $this->accountService->deletePendingEmailChanges($user->getId());
-            $this->accountMessages['errors'][] = __('account.email-change-error');
-            return;
-        }
-
-        $this->accountMessages['success'][] = __('account.email-change-requested');
+        $messageKeys = [
+            AccountService::EMAIL_CHANGE_INVALID => 'account.email-change-invalid',
+            AccountService::EMAIL_CHANGE_SAME => 'account.email-change-same',
+            AccountService::EMAIL_CHANGE_CONFLICT => 'account.email-change-conflict',
+            AccountService::EMAIL_CHANGE_ERROR => 'account.email-change-error',
+        ];
+        $this->accountMessages['errors'][] = __($messageKeys[$status] ?? 'account.email-change-error');
     }
 
     private function getTotpEmailService(): TOTPEmailService
