@@ -65,6 +65,7 @@ class UserService
 
     public function createUserByEmail(string $email, string $ipAddress, ?User $user = null): User|null
     {
+        $created = false;
         $data = $this->userRepository->findByEmail($email);
         if ($data === false) {
             $username = bin2hex(openssl_random_pseudo_bytes(16));
