@@ -7,6 +7,7 @@ namespace app\Container;
 use app\Http\Router;
 use app\Service\JWTService;
 use app\Service\SessionService;
+use src\Business\AccountService;
 use src\Business\AuthEntryService;
 use src\Business\EmailService;
 use src\Business\MFATOTPService;
@@ -38,6 +39,7 @@ class Application extends Container
         $this->addService('dbh', fn(): Connection => new Connection());
         $this->addService('router', $this->router = new Router());
         $this->addService('translationService', new \app\Service\TranslationService());
+        $this->addService('accountService', fn(): AccountService => new AccountService($this));
         $this->addService('userService', fn(): UserService => new UserService($this));
         $this->addService('totpService', fn(): TOTPService => new TOTPService());
         $this->addService('userMfaTotpRepository', fn(): UserMFATOTPRepository => new UserMFATOTPRepository(

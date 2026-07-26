@@ -31,7 +31,12 @@ class Account extends Controller
     public function __construct(Application $application)
     {
         parent::__construct($application);
-        $this->accountService = new AccountService($application);
+        $accountService = $application->get('accountService');
+        if (($accountService instanceof AccountService) === false) {
+            throw new \RuntimeException('accountService service is not available.');
+        }
+
+        $this->accountService = $accountService;
         $userService = $application->get('userService');
         if (($userService instanceof UserService) === false) {
             throw new \RuntimeException('userService service is not available.');
