@@ -86,10 +86,8 @@ function assertHeaderContains(Response $response, string $expectedHeader, string
 
 $account = (new ReflectionClass(Account::class))->newInstanceWithoutConstructor();
 $applicationProperty = new ReflectionProperty(Account::class, 'application');
-$applicationProperty->setAccessible(true);
 $applicationProperty->setValue($account, new AccountRedirectTestApplication());
 $redirectToLogin = new ReflectionMethod(Account::class, 'redirectToLogin');
-$redirectToLogin->setAccessible(true);
 
 $getResponse = $redirectToLogin->invoke($account, new AccountRedirectTestRequest('GET'));
 assertSameValue(302, $getResponse->getStatusCode(), 'Unauthenticated GET navigation to account should use a temporary 302 redirect.');
