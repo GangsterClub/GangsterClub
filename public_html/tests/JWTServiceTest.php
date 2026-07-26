@@ -10,6 +10,9 @@ use app\Service\AuthSessionKeys;
 use app\Service\JWT;
 use app\Service\JWTService;
 use app\Service\SessionService;
+use Firebase\JWT\JWT as FirebaseJWT;
+use src\Business\UserService;
+use src\Entity\User;
 
 if (defined('REQUEST_METHOD') === false) {
     define('REQUEST_METHOD', 'GET');
@@ -57,12 +60,29 @@ final class JWTServiceTestApplication extends Application
 {
     public function __construct(
         private readonly JWTServiceTestSession $session,
+        private readonly ?UserService $userService = null,
     ) {
     }
 
     public function get(string $name): ?object
     {
-        return $name === 'sessionService' ? $this->session : null;
+        return match ($name) {
+            'sessionService' => $this->session,
+            'userService' => $this->userService,
+            default => null,
+        };
+    }
+}
+
+final class JWTServiceTestUserService extends UserService
+{
+    public function __construct(private readonly User $user)
+    {
+    }
+
+    public function getUserById(int $userId): ?User
+    {
+        return $userId === $this->user->getId() ? $this->user : null;
     }
 }
 
@@ -103,18 +123,38 @@ function assertAuthorizationSucceeded(Response|array $result, string $message): 
     return $result;
 }
 
-function makeJWTServiceTestContext(): array
+function makeJWTServiceTestContext(?User $authenticatedUser = null): array
 {
     $session = new JWTServiceTestSession();
-    $application = new JWTServiceTestApplication($session);
+    $userService = $authenticatedUser === null ? null : new JWTServiceTestUserService($authenticatedUser);
+    $application = new JWTServiceTestApplication($session, $userService);
     $authService = new AuthService($application);
     $jwt = new JWT();
 
     return [$session, $authService, $jwt, new JWTService($application, $jwt, $authService)];
 }
 
+function makeJWTServiceTestUser(int $id, string $email): User
+{
+    return new User($id, 'test-user', $email, '127.0.0.1', new DateTime(), new DateTime(), new DateTime());
+}
+
+function makeExpiredJWTServiceTestToken(string $identity): string
+{
+    $now = time();
+
+    return FirebaseJWT::encode([
+        'iat' => $now - 120,
+        'iss' => APP_DOMAIN,
+        'nbf' => $now - 120,
+        'exp' => $now - 60,
+        'userName' => $identity,
+    ], JWT_SECRET, 'HS512');
+}
+
 // authorizeRequest_uses_session_jwt_when_authorization_header_is_missing
-[$session, $authService, $jwt, $service] = makeJWTServiceTestContext();
+[$session, $authService, $jwt, $service] = makeJWTServiceTestContext(makeJWTServiceTestUser(1, 'Alice'));
+$session->set(AuthSessionKeys::AUTHENTICATED_USER_ID, 1);
 $storedToken = $jwt->issue('Alice');
 $authService->storeJwtToken($storedToken);
 $result = assertAuthorizationSucceeded($service->authorizeRequest(new JWTServiceTestRequest()), 'A stored JWT should authorize a request without an Authorization header.');
@@ -146,18 +186,84 @@ assertSameValue(400, $result->getStatusCode(), 'A missing JWT should return stat
 assertSameValue('Token not found in request', $result->getContent(), 'A missing JWT should return the current error body.');
 assertSameValue([], $result->getHeaders(), 'A missing JWT response should have no additional headers.');
 
-// authorizeRequest_identity_mismatch_currently_authorizes_bob_token_while_session_remains_alice_known_security_defect
-// SECURITY CHARACTERIZATION: this is a known identity-mismatch defect, not desired behavior.
-// This expectation is intended to change in the follow-up security fix.
-[$session, $authService, $jwt, $service] = makeJWTServiceTestContext();
+// authorizeRequest_rejects_explicit_token_when_identity_does_not_match_authenticated_session
+[$session, $authService, $jwt, $service] = makeJWTServiceTestContext(makeJWTServiceTestUser(1, 'Alice'));
 $session->set(AuthSessionKeys::AUTHENTICATED_USER_ID, 1);
 $aliceToken = $jwt->issue('Alice');
 $authService->storeJwtToken($aliceToken);
 $bobToken = $jwt->issue('Bob');
-$result = assertAuthorizationSucceeded($service->authorizeRequest(new JWTServiceTestRequest(['Authorization' => 'Bearer ' . $bobToken])), 'The current identity-mismatch defect accepts Bob\'s valid token in Alice\'s authenticated session.');
-assertSameValue($bobToken, $result['token'], 'The current defect should authorize Bob\'s supplied token.');
-assertSameValue('Bob', $result['payload']->userName ?? null, 'The authorized payload should remain Bob.');
+$result = $service->authorizeRequest(new JWTServiceTestRequest(['Authorization' => 'Bearer ' . $bobToken]));
+if (($result instanceof Response) === false) {
+    throw new RuntimeException('A token for a different identity should be rejected.');
+}
+assertSameValue(401, $result->getStatusCode(), 'An identity mismatch should follow the unauthorized response convention.');
+assertSameValue('401 Unauthorized: Token identity does not match authenticated session', $result->getContent(), 'An identity mismatch should explain the rejection.');
+assertSameValue(['WWW-Authenticate: Bearer realm="User Visible Realm", charset="UTF-8", error="invalid_token", error_description="Token identity does not match authenticated session"'], $result->getHeaders(), 'An identity mismatch should include the Bearer challenge.');
 assertSameValue(1, $authService->getAuthenticatedUserId(), 'The authenticated session should remain Alice.');
-assertSameValue($bobToken, $authService->getStoredJwtToken(), 'Bob\'s token should become the stored session JWT.');
+assertSameValue($aliceToken, $authService->getStoredJwtToken(), 'A rejected token must not replace the stored session JWT.');
+
+// authorizeRequest_rejects_stored_token_when_identity_does_not_match_authenticated_session
+[$session, $authService, $jwt, $service] = makeJWTServiceTestContext(makeJWTServiceTestUser(1, 'Alice'));
+$session->set(AuthSessionKeys::AUTHENTICATED_USER_ID, 1);
+$bobToken = $jwt->issue('Bob');
+$authService->storeJwtToken($bobToken);
+$result = $service->authorizeRequest(new JWTServiceTestRequest());
+if (($result instanceof Response) === false) {
+    throw new RuntimeException('A stored token for a different identity should be rejected.');
+}
+assertSameValue(401, $result->getStatusCode(), 'A stored-token identity mismatch should return an unauthorized response.');
+assertSameValue($bobToken, $authService->getStoredJwtToken(), 'Rejecting a mismatched stored token must not alter it.');
+
+// authorizeRequest_rejects_explicit_token_when_authenticated_user_cannot_be_resolved
+[$session, $authService, $jwt, $service] = makeJWTServiceTestContext();
+$session->set(AuthSessionKeys::AUTHENTICATED_USER_ID, 1);
+$storedToken = $jwt->issue('Alice');
+$authService->storeJwtToken($storedToken);
+$matchingToken = $jwt->issue('Alice');
+$result = $service->authorizeRequest(new JWTServiceTestRequest(['Authorization' => 'Bearer ' . $matchingToken]));
+if (($result instanceof Response) === false) {
+    throw new RuntimeException('An explicit token should be rejected when the authenticated user cannot be resolved.');
+}
+assertSameValue(401, $result->getStatusCode(), 'An unresolved authenticated user should fail closed with an unauthorized response.');
+assertSameValue('401 Unauthorized: Token identity does not match authenticated session', $result->getContent(), 'An unresolved authenticated user should use the identity-mismatch response.');
+assertSameValue(1, $authService->getAuthenticatedUserId(), 'Rejecting an unresolved authenticated user must not alter the session user ID.');
+assertSameValue($storedToken, $authService->getStoredJwtToken(), 'An unresolved authenticated user must leave the stored JWT unchanged.');
+
+// authorizeRequest_replaces_expired_stored_token_when_identity_matches_authenticated_session
+[$session, $authService, $jwt, $service] = makeJWTServiceTestContext(makeJWTServiceTestUser(1, 'Alice'));
+$session->set(AuthSessionKeys::AUTHENTICATED_USER_ID, 1);
+$expiredAliceToken = makeExpiredJWTServiceTestToken('Alice');
+$authService->storeJwtToken($expiredAliceToken);
+$result = assertAuthorizationSucceeded($service->authorizeRequest(new JWTServiceTestRequest()), 'An expired stored token matching the authenticated session should be replaced.');
+assertSameValue('Alice', $result['payload']->userName ?? null, 'The expired matching token replacement should retain Alice\'s identity.');
+if ($result['token'] === $expiredAliceToken) {
+    throw new RuntimeException('An expired matching token should be replaced with a fresh token.');
+}
+assertSameValue($result['token'], $authService->getStoredJwtToken(), 'The matching expired token replacement should be stored.');
+
+// authorizeRequest_rejects_expired_explicit_token_for_different_identity
+[$session, $authService, $jwt, $service] = makeJWTServiceTestContext(makeJWTServiceTestUser(1, 'Alice'));
+$session->set(AuthSessionKeys::AUTHENTICATED_USER_ID, 1);
+$aliceToken = $jwt->issue('Alice');
+$authService->storeJwtToken($aliceToken);
+$expiredBobToken = makeExpiredJWTServiceTestToken('Bob');
+$result = $service->authorizeRequest(new JWTServiceTestRequest(['Authorization' => 'Bearer ' . $expiredBobToken]));
+if (($result instanceof Response) === false) {
+    throw new RuntimeException('An expired token for a different identity should be rejected before its replacement is accepted.');
+}
+assertSameValue(401, $result->getStatusCode(), 'An expired token identity mismatch should return an unauthorized response.');
+assertSameValue('401 Unauthorized: Token identity does not match authenticated session', $result->getContent(), 'The original expired token identity should determine the rejection.');
+assertSameValue(1, $authService->getAuthenticatedUserId(), 'Rejecting an expired mismatched token must not alter the session user ID.');
+assertSameValue($aliceToken, $authService->getStoredJwtToken(), 'An expired mismatched token must not replace the stored session JWT.');
+
+// authorizeRequest_accepts_explicit_token_when_identity_matches_authenticated_session
+[$session, $authService, $jwt, $service] = makeJWTServiceTestContext(makeJWTServiceTestUser(1, 'Alice'));
+$session->set(AuthSessionKeys::AUTHENTICATED_USER_ID, 1);
+$storedToken = $jwt->issue('Alice', ['source' => 'stored']);
+$authService->storeJwtToken($storedToken);
+$matchingToken = $jwt->issue('Alice', ['source' => 'explicit']);
+$result = assertAuthorizationSucceeded($service->authorizeRequest(new JWTServiceTestRequest(['Authorization' => 'Bearer ' . $matchingToken])), 'A token matching the authenticated session identity should authorize successfully.');
+assertSameValue('Alice', $result['payload']->userName ?? null, 'The matching explicit token payload should be returned.');
+assertSameValue($matchingToken, $authService->getStoredJwtToken(), 'A matching explicit token should replace the stored JWT as before.');
 
 fwrite(STDOUT, "JWTService tests passed.\n");
