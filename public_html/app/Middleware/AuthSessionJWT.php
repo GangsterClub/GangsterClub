@@ -35,7 +35,7 @@ class AuthSessionJWT
             ?? $request->server('HTTP_AUTHORIZATION');
         if ($authorizationHeader === null || trim((string) $authorizationHeader) === '') {
             $authorizationHeader = $auth->getStoredJwtToken();
-            $authorizationHeader = is_string($authorizationHeader) && $authorizationHeader !== ''
+            $authorizationHeader = is_string($authorizationHeader) === true && $authorizationHeader !== ''
                 ? 'Bearer ' . $authorizationHeader
                 : null;
         }
