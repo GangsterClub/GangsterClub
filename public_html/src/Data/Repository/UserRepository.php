@@ -49,13 +49,7 @@ class UserRepository
 
     public function createUserByEmail(string $email, string $ipAddress, string $username): bool
     {
-        $userRecord = [
-            'username' => $username,
-            'email' => $email,
-            'ip_address' => $ipAddress,
-        ];
-
-        return $this->dbh->table('user')->insert($userRecord);
+        return $this->createUser($username, $email, $ipAddress);
     }
 
     public function updateUsername(int $userId, string $username): bool
