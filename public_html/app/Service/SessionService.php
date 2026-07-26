@@ -16,13 +16,14 @@ class SessionService extends \SessionHandler
     public function __construct(Request $request)
     {
         $this->request = $request;
-        $production = (bool) strtolower(ENVIRONMENT) === 'production';
-        $development = (bool) DEVELOPMENT === true;
-        $ipFilters = ($production === true && $development === false) ?
-            (FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === true :
-            (FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6) === true;
+        $production = strtolower(ENVIRONMENT) === 'production';
+        $development = DEVELOPMENT === true;
 
-        $ipFilters |= FILTER_NULL_ON_FAILURE === true;
+        $ipFilters = ($production === true && $development === false)
+            ? FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+            : FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6;
+
+        $ipFilters |= FILTER_NULL_ON_FAILURE;
         $this->ipAddress = filter_var($request->server('REMOTE_ADDR'), FILTER_VALIDATE_IP, $ipFilters);
         $this->userAgent = (filter_var($request->server('HTTP_USER_AGENT'), 515) ?? 'Undefined');
     }
