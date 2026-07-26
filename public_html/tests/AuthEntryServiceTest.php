@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use app\Container\Application;
 use app\Service\AuthService;
 use app\Service\CsrfService;
 use app\Service\JWTService;
@@ -43,12 +42,6 @@ final class AuthEntryServiceTestSession extends app\Service\SessionService
     public function remove(string $key): void { unset($this->values[$key]); }
     public function regenerate(): void {}
 }
-final class AuthEntryServiceTestApplication extends Application
-{
-    public AuthEntryServiceTestSession $session;
-    public function __construct() { $this->session = new AuthEntryServiceTestSession(); }
-    public function get(string $name): ?object { return $name === 'sessionService' ? $this->session : ($name === 'csrfService' ? new CsrfService($this->session) : null); }
-}
 final class FakeUserService extends UserService
 {
     public array $byEmail = [];
@@ -88,10 +81,10 @@ function makeService(
 function makeUser(int $id, string $username, string $email): User { return new User($id, $username, $email, '127.0.0.1', new DateTime(), new DateTime(), new DateTime('0000-00-00 00:00:00')); }
 function assertSameValue(mixed $expected, mixed $actual, string $message): void { if ($expected !== $actual) { throw new RuntimeException($message . ' Expected ' . var_export($expected, true) . ', got ' . var_export($actual, true)); } }
 
-$app = new AuthEntryServiceTestApplication();
+$session = new AuthEntryServiceTestSession();
 $users = new FakeUserService();
-$svc = makeService($app->session, $users);
-$auth = new AuthService($app->session, new CsrfService($app->session), $users);
+$svc = makeService($session, $users);
+$auth = new AuthService($session, new CsrfService($session), $users);
 $result = $svc->beginLogin($auth, 'new@example.test');
 assertSameValue(AuthEntryService::STATUS_EMAIL_OTP_SENT, $result['status'], 'Unknown login should send an email-only OTP.');
 assertSameValue(0, $users->createByEmailCalls, 'Unknown login must not create the user before TOTP verification.');
@@ -99,10 +92,10 @@ $result = $svc->verify($auth, AuthEntryService::MODE_LOGIN, '222222');
 assertSameValue(AuthEntryService::STATUS_AUTHENTICATED, $result['status'], 'Unknown login should authenticate after first email TOTP verification.');
 assertSameValue(1, $users->createByEmailCalls, 'Unknown login should create by email only after verification.');
 
-$app = new AuthEntryServiceTestApplication();
+$session = new AuthEntryServiceTestSession();
 $users = new FakeUserService();
-$svc = makeService($app->session, $users);
-$auth = new AuthService($app->session, new CsrfService($app->session), $users);
+$svc = makeService($session, $users);
+$auth = new AuthService($session, new CsrfService($session), $users);
 $result = $svc->beginRegistration($auth, 'alice', 'alice@example.test');
 assertSameValue(AuthEntryService::STATUS_EMAIL_OTP_SENT, $result['status'], 'Registration should send an email-only OTP.');
 assertSameValue(0, $users->createUserCalls, 'Registration must not create the user before TOTP verification.');
@@ -110,13 +103,13 @@ $result = $svc->verify($auth, AuthEntryService::MODE_REGISTER, '222222');
 assertSameValue(AuthEntryService::STATUS_AUTHENTICATED, $result['status'], 'Registration should authenticate after email TOTP verification.');
 assertSameValue(1, $users->createUserCalls, 'Registration should create the user only after verification.');
 
-$app = new AuthEntryServiceTestApplication();
+$session = new AuthEntryServiceTestSession();
 $users = new FakeUserService();
 $users->byEmail['known@example.test'] = makeUser(7, 'known', 'known@example.test');
 $mfa = new FakeMfaService();
 $mfa->enabled = true;
-$svc = makeService($app->session, $users, $mfa);
-$result = $svc->beginLogin(new AuthService($app->session, new CsrfService($app->session), $users), 'known@example.test');
+$svc = makeService($session, $users, $mfa);
+$result = $svc->beginLogin(new AuthService($session, new CsrfService($session), $users), 'known@example.test');
 assertSameValue(AuthEntryService::STATUS_APP_MFA_REQUIRED, $result['status'], 'Existing app-MFA users should be routed to app verification.');
 
 fwrite(STDOUT, "AuthEntryService tests passed.\n");

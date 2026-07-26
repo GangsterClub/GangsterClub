@@ -229,12 +229,6 @@ $auth = new AuthService($session, $csrf, new CsrfTestUserService());
 $auth->setPendingLoginEmail('immediate@example.test');
 assertSameValue('immediate@example.test', $auth->getPendingLoginEmail(), 'AuthService should work immediately without later container registration.');
 
-$application = new CsrfTestApplication();
-$application->addService('sessionService', $session);
-$application->addService('csrfService', $csrf);
-$application->addService('authService', $auth);
-$application->addService('translationService', new CsrfTestTranslationService());
-assertTrue($application->get('csrfService') === $csrf, 'Session middleware wiring should register the same CSRF service instance passed to AuthService.');
 $tokenBeforeLogin = $csrf->getToken();
 $auth->loginUser(123);
 assertSameValue(1, $session->regenerateCount, 'Successful login should regenerate the session ID.');

@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use app\Container\Application;
 use app\Http\Request;
 use app\Http\Response;
 use app\Service\AuthService;
@@ -54,24 +53,6 @@ final class JWTServiceTestSession extends SessionService
 
     public function regenerate(): void
     {
-    }
-}
-
-final class JWTServiceTestApplication extends Application
-{
-    public function __construct(
-        private readonly JWTServiceTestSession $session,
-        private readonly ?UserService $userService = null,
-    ) {
-    }
-
-    public function get(string $name): ?object
-    {
-        return match ($name) {
-            'sessionService' => $this->session,
-            'userService' => $this->userService,
-            default => null,
-        };
     }
 }
 
@@ -128,7 +109,6 @@ function makeJWTServiceTestContext(?User $authenticatedUser = null): array
 {
     $session = new JWTServiceTestSession();
     $userService = new JWTServiceTestUserService($authenticatedUser);
-    $application = new JWTServiceTestApplication($session, $userService);
     $authService = new AuthService($session, new CsrfService($session), $userService);
     $jwt = new JWT();
 
