@@ -111,3 +111,5 @@ foreach ($redirectScanRoots as $root) {
         }
     }
 }
+
+fwrite(STDOUT, "Account redirect status tests passed.\n");

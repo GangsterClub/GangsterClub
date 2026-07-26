@@ -190,3 +190,5 @@ foreach ($enabledCases as $name => [$fields, $messages, $mfaCalls, $emailTotpCal
     assertMfaSame($emailCalls, $result['emailCalls'], "Enabled plus pending {$name} should not unexpectedly send email.");
     assertMfaSame($rotations, $result['csrfRotations'], "Enabled plus pending {$name} should rotate CSRF only when characterized.");
 }
+
+fwrite(STDOUT, "Account MFA characterization tests passed.\n");
