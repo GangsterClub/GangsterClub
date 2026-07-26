@@ -32,6 +32,7 @@
     },
     "scripts": {
         "test": [
+            "php tests/AccountMfaCharacterizationTest.php",
             "php tests/AccountRedirectStatusTest.php",
             "php tests/AuthEntryControllerTest.php",
             "php tests/AuthEntryServiceTest.php",
