@@ -197,7 +197,7 @@ class AuthEntryService
             $authorizationResult = $this->jwtService->authorize($storedToken);
             if (($authorizationResult['status'] ?? null) === 'unauthorized') {
                 return [
-                    'status' => self::STATUS_AUTHORIZATION_RESPONSE,
+                    'status' => self::STATUS_AUTHORIZATION_REJECTED,
                     'description' => $authorizationResult['description'],
                 ];
             }
