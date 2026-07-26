@@ -4,15 +4,11 @@ declare(strict_types=1);
 
 namespace app\Service;
 
-use src\Business\UserService;
-use src\Entity\User;
-
 class AuthService
 {
     public function __construct(
         private readonly SessionService $sessionService,
-        private readonly CsrfService $csrfService,
-        private readonly UserService $userService
+        private readonly CsrfService $csrfService
     ) {
     }
 
@@ -61,16 +57,6 @@ class AuthService
 
         $userId = (int) $userId;
         return $userId > 0 ? $userId : null;
-    }
-
-    public function getAuthenticatedUser(): ?User
-    {
-        $userId = $this->getAuthenticatedUserId();
-        if ($userId === null) {
-            return null;
-        }
-
-        return $this->userService->getUserById($userId);
     }
 
     public function setPendingLoginEmail(?string $email): void

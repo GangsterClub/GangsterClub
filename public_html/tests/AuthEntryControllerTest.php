@@ -36,7 +36,6 @@ use app\Http\Response;
 use app\Service\AuthService;
 use app\Service\CsrfService;
 use src\Business\AuthEntryService;
-use src\Business\UserService;
 use src\Controller\AuthEntryController;
 
 const APP_BASE = '';
@@ -66,7 +65,6 @@ require_once __DIR__ . '/../app/Service/SessionService.php';
 require_once __DIR__ . '/../app/Service/CsrfService.php';
 require_once __DIR__ . '/../app/Service/AuthSessionKeys.php';
 require_once __DIR__ . '/../app/Service/AuthService.php';
-require_once __DIR__ . '/../src/Business/UserService.php';
 require_once __DIR__ . '/../src/Controller/Controller.php';
 require_once __DIR__ . '/../src/Controller/AuthEntryController.php';
 require_once __DIR__ . '/../src/Business/AuthEntryService.php';
@@ -86,8 +84,6 @@ final class AuthEntryTestSession extends \app\Service\SessionService
 }
 
 final class AuthEntryTestTranslation { public function setFile(string $file): void {} }
-final class AuthEntryTestUserService extends UserService { public function __construct() {} }
-
 final class AuthEntryTestApplication extends Application
 {
     public AuthEntryTestSession $session;
@@ -100,8 +96,7 @@ final class AuthEntryTestApplication extends Application
         $this->csrf = new CsrfService($this->session);
         $this->auth = new AuthService(
             $this->session,
-            $this->csrf,
-            new AuthEntryTestUserService()
+            $this->csrf
         );
     }
 

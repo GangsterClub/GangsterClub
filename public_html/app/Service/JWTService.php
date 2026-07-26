@@ -9,6 +9,8 @@ use app\Http\Response;
 use Firebase\JWT\BeforeValidException;
 use Firebase\JWT\ExpiredException;
 use Firebase\JWT\SignatureInvalidException;
+use src\Business\UserService;
+use src\Entity\User;
 use UnexpectedValueException;
 
 class JWTService
@@ -17,7 +19,7 @@ class JWTService
 
     private AuthService $authService;
 
-    public function __construct(JWT $jwt, AuthService $authService)
+    public function __construct(JWT $jwt, AuthService $authService, private readonly UserService $userService)
     {
         $this->jwt = $jwt;
         $this->authService = $authService;
@@ -114,7 +116,7 @@ class JWTService
             return null;
         }
 
-        $user = $this->authService->getAuthenticatedUser();
+        $user = $this->getAuthenticatedUser();
         if ($user === null) {
             return $this->unauthorizedResponse('Token identity does not match authenticated session');
         }
@@ -167,7 +169,7 @@ class JWTService
             return $identityResponse;
         }
 
-        $user = $this->authService->getAuthenticatedUser();
+        $user = $this->getAuthenticatedUser();
         if ($user === null) {
             return $this->unauthorizedResponse('Expired access token');
         }
@@ -184,6 +186,16 @@ class JWTService
             'token' => $token,
             'payload' => $payload,
         ];
+    }
+
+    private function getAuthenticatedUser(): ?User
+    {
+        $userId = $this->authService->getAuthenticatedUserId();
+        if ($userId === null) {
+            return null;
+        }
+
+        return $this->userService->getUserById($userId);
     }
 
     private function tokenNotFoundResponse(): Response

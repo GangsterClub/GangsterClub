@@ -77,7 +77,8 @@ class Application extends Container
         $this->addService('jwt', fn(): JWT => new JWT());
         $this->addService('jwtService', fn(): JWTService => new JWTService(
             $this->getRegisteredService('jwt', JWT::class),
-            $this->getRegisteredService('authService', AuthService::class)
+            $this->getRegisteredService('authService', AuthService::class),
+            $this->getRegisteredService('userService', UserService::class)
         ));
         $this->addService('authEntryService', fn(): AuthEntryService => new AuthEntryService(
             $this->getRegisteredService('userService', UserService::class),

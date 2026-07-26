@@ -10,7 +10,6 @@ use app\Http\Response;
 use app\Service\AuthService;
 use app\Service\CsrfService;
 use app\Service\SessionService;
-use src\Business\UserService;
 
 class Session
 {
@@ -33,11 +32,7 @@ class Session
         $this->application->addService('sessionService', $session);
         $csrfService = new CsrfService($session);
         $this->application->addService('csrfService', $csrfService);
-        $userService = $this->application->get('userService');
-        if (($userService instanceof UserService) === false) {
-            throw new \RuntimeException('userService service is not available.');
-        }
-        $this->application->addService('authService', new AuthService($session, $csrfService, $userService));
+        $this->application->addService('authService', new AuthService($session, $csrfService));
         ini_set('session.save_handler', 'files');
         session_set_save_handler($session, true);
         session_save_path($this->savePath);

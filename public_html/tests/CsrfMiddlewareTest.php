@@ -9,7 +9,6 @@ use app\Middleware\Csrf;
 use app\Service\AuthService;
 use app\Service\CsrfService;
 use app\Service\SessionService;
-use src\Business\UserService;
 
 if (defined('DOC_ROOT') === false) {
     define('DOC_ROOT', dirname(__DIR__));
@@ -29,7 +28,6 @@ require __DIR__ . '/../app/Service/AuthSessionKeys.php';
 require __DIR__ . '/../app/Service/AuthService.php';
 require __DIR__ . '/../app/Service/CsrfService.php';
 require __DIR__ . '/../app/Middleware/Csrf.php';
-require __DIR__ . '/../src/Business/UserService.php';
 
 final class CsrfTestSession extends SessionService
 {
@@ -59,11 +57,6 @@ final class CsrfTestSession extends SessionService
     {
         $this->regenerateCount++;
     }
-}
-
-final class CsrfTestUserService extends UserService
-{
-    public function __construct() {}
 }
 
 final class CsrfTestRequest extends Request
@@ -225,7 +218,7 @@ assertSameValue(204, $response->getStatusCode(), 'Valid X-CSRF-Token headers sho
 
 $session = new CsrfTestSession();
 $csrf = new CsrfService($session);
-$auth = new AuthService($session, $csrf, new CsrfTestUserService());
+$auth = new AuthService($session, $csrf);
 $auth->setPendingLoginEmail('immediate@example.test');
 assertSameValue('immediate@example.test', $auth->getPendingLoginEmail(), 'AuthService should work immediately without later container registration.');
 

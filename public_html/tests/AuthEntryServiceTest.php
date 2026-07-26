@@ -84,7 +84,7 @@ function assertSameValue(mixed $expected, mixed $actual, string $message): void 
 $session = new AuthEntryServiceTestSession();
 $users = new FakeUserService();
 $svc = makeService($session, $users);
-$auth = new AuthService($session, new CsrfService($session), $users);
+$auth = new AuthService($session, new CsrfService($session));
 $result = $svc->beginLogin($auth, 'new@example.test');
 assertSameValue(AuthEntryService::STATUS_EMAIL_OTP_SENT, $result['status'], 'Unknown login should send an email-only OTP.');
 assertSameValue(0, $users->createByEmailCalls, 'Unknown login must not create the user before TOTP verification.');
@@ -95,7 +95,7 @@ assertSameValue(1, $users->createByEmailCalls, 'Unknown login should create by e
 $session = new AuthEntryServiceTestSession();
 $users = new FakeUserService();
 $svc = makeService($session, $users);
-$auth = new AuthService($session, new CsrfService($session), $users);
+$auth = new AuthService($session, new CsrfService($session));
 $result = $svc->beginRegistration($auth, 'alice', 'alice@example.test');
 assertSameValue(AuthEntryService::STATUS_EMAIL_OTP_SENT, $result['status'], 'Registration should send an email-only OTP.');
 assertSameValue(0, $users->createUserCalls, 'Registration must not create the user before TOTP verification.');
@@ -109,7 +109,7 @@ $users->byEmail['known@example.test'] = makeUser(7, 'known', 'known@example.test
 $mfa = new FakeMfaService();
 $mfa->enabled = true;
 $svc = makeService($session, $users, $mfa);
-$result = $svc->beginLogin(new AuthService($session, new CsrfService($session), $users), 'known@example.test');
+$result = $svc->beginLogin(new AuthService($session, new CsrfService($session)), 'known@example.test');
 assertSameValue(AuthEntryService::STATUS_APP_MFA_REQUIRED, $result['status'], 'Existing app-MFA users should be routed to app verification.');
 
 fwrite(STDOUT, "AuthEntryService tests passed.\n");
