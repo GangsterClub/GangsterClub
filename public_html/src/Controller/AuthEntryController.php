@@ -162,7 +162,7 @@ class AuthEntryController extends Controller
     private function mapVerifyResult(string $mode, array $result): Response
     {
         switch ($result['status'] ?? null) {
-            case AuthEntryService::STATUS_AUTHORIZATION_RESPONSE:
+            case AuthEntryService::STATUS_AUTHORIZATION_REJECTED:
                 $description = (string) ($result['description'] ?? 'Invalid access token');
                 return new Response(
                     sprintf('401 Unauthorized: %s', $description),

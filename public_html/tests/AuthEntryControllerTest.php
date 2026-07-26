@@ -252,7 +252,7 @@ assertSameValue([['verify', 'login', '123456']], $calls, 'Verify should concaten
 assertContainsValue('success-authenticated', $flashes['account']['success'] ?? [], 'Verify success should flash account success.');
 
 [$response] = runController('login', ['submit_totp' => '1', 'totp' => ['0','0','0','0','0','0']], [
-    'status' => AuthEntryService::STATUS_AUTHORIZATION_RESPONSE,
+    'status' => AuthEntryService::STATUS_AUTHORIZATION_REJECTED,
     'description' => 'Invalid access token',
 ]);
 assertSameValue(401, $response->getStatusCode(), 'A rejected stored token on invalid OTP should retain the current 401 status.');

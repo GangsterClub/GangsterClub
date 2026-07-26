@@ -19,7 +19,7 @@ class AuthEntryService
     public const STATUS_SEND_ERROR = 'send_error';
     public const STATUS_INVALID_OTP = 'invalid_otp';
     public const STATUS_AUTHENTICATED = 'authenticated';
-    public const STATUS_AUTHORIZATION_RESPONSE = 'authorization_response';
+    public const STATUS_AUTHORIZATION_REJECTED = 'authorization_response';
 
     private const PENDING_REGISTRATION_USERNAME = 'PENDING_REGISTRATION_USERNAME';
     private const PENDING_CREATE_BY_EMAIL = 'PENDING_CREATE_BY_EMAIL';
