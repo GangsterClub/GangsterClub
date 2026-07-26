@@ -9,6 +9,7 @@ use app\Http\Request;
 use app\Http\Response;
 use app\Service\AuthService;
 use src\Business\AccountService;
+use src\Business\EmailService;
 use src\Business\MFATOTPService;
 use src\Business\TOTPEmailService;
 use src\Business\UserService;
@@ -248,7 +249,12 @@ class Account extends Controller
             $totpEmailService = $this->getTotpEmailService();
             $emailCode = $totpEmailService->generateEmailTOTPForSession($userId, $auth->getMfaSetupEmailSessionKey());
 
-            $emailService = new EmailService();
+            $emailService = $this->application->get('emailService');
+            if (($emailService instanceof EmailService) === false) {
+                $this->accountMessages['errors'][] = __('account.mfa-email-code-send-error');
+                return;
+            }
+
             $emailSent = $emailService->sendTOTPEmail($user->getEmail(), $emailCode);
             if ($emailSent === false) {
                 $this->accountMessages['errors'][] = __('account.mfa-email-code-send-error');
