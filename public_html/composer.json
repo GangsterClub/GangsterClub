@@ -39,7 +39,9 @@
             "php tests/CsrfMiddlewareTest.php",
             "php tests/JWTServiceTest.php",
             "php tests/QueryBuilderSqlGenerationTest.php",
-            "php tests/SessionServiceConstructorTest.php"
+            "php tests/SessionServiceConstructorProductionTest.php",
+            "php tests/SessionServiceConstructorNonProductionTest.php",
+            "php tests/SessionServiceConstructorDevelopmentTest.php"
         ],
         "check": [
             "@test"

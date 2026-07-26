@@ -64,7 +64,7 @@ final class JWTServiceTestUserService extends UserService
 
     public function getUserById(int $userId): ?User
     {
-        return $this->user !== null && $userId === $this->user->getId() ? $this->user : null;
+        return ($this->user !== null && $userId === $this->user->getId()) === true ? $this->user : null;
     }
 }
 
@@ -80,7 +80,7 @@ final class JWTServiceTestRequest extends Request
     {
         $value = $this->testHeaders[$name] ?? null;
 
-        return is_string($value) ? $value : null;
+        return is_string($value) === true ? $value : null;
     }
 
     public function getServer(): array
