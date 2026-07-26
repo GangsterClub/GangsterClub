@@ -32,16 +32,13 @@ class AccountService
 
     private EmailService $emailService;
 
-    public function __construct(\app\Container\Application $application)
-    {
-        $dbh = $application->get('dbh');
-        $this->userRepository = new UserRepository($dbh);
-        $this->emailChangeRepository = new UserEmailChangeRepository($dbh);
-        $emailService = $application->get('emailService');
-        if (($emailService instanceof EmailService) === false) {
-            throw new \RuntimeException('emailService service is not available.');
-        }
-
+    public function __construct(
+        UserRepository $userRepository,
+        UserEmailChangeRepository $emailChangeRepository,
+        EmailService $emailService
+    ) {
+        $this->userRepository = $userRepository;
+        $this->emailChangeRepository = $emailChangeRepository;
         $this->emailService = $emailService;
     }
 

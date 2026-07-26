@@ -18,6 +18,7 @@ use src\Business\TOTPService;
 use src\Business\UserService;
 use src\Data\Connection;
 use src\Data\Repository\TOTPEmailRepository;
+use src\Data\Repository\UserEmailChangeRepository;
 use src\Data\Repository\UserRepository;
 use src\Data\Repository\UserMFATOTPRepository;
 
@@ -42,9 +43,17 @@ class Application extends Container
         $this->addService('dbh', fn(): Connection => new Connection());
         $this->addService('router', $this->router = new Router());
         $this->addService('translationService', new \app\Service\TranslationService());
-        $this->addService('accountService', fn(): AccountService => new AccountService($this));
         $this->addService('userRepository', fn(): UserRepository => new UserRepository(
             $this->getRegisteredService('dbh', Connection::class)
+        ));
+        $this->addService('userEmailChangeRepository', fn(): UserEmailChangeRepository => new UserEmailChangeRepository(
+            $this->getRegisteredService('dbh', Connection::class)
+        ));
+        $this->addService('emailService', fn(): EmailService => new EmailService());
+        $this->addService('accountService', fn(): AccountService => new AccountService(
+            $this->getRegisteredService('userRepository', UserRepository::class),
+            $this->getRegisteredService('userEmailChangeRepository', UserEmailChangeRepository::class),
+            $this->getRegisteredService('emailService', EmailService::class)
         ));
         $this->addService('userService', fn(): UserService => new UserService(
             $this->getRegisteredService('userRepository', UserRepository::class)
@@ -65,7 +74,6 @@ class Application extends Container
             $this->getRegisteredService('totpEmailRepository', TOTPEmailRepository::class),
             $this->getRegisteredService('sessionService', SessionService::class)
         ));
-        $this->addService('emailService', fn(): EmailService => new EmailService());
         $this->addService('jwt', fn(): JWT => new JWT());
         $this->addService('jwtService', fn(): JWTService => new JWTService(
             $this->getRegisteredService('jwt', JWT::class),
