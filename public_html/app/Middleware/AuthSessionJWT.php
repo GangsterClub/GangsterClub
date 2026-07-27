@@ -52,7 +52,6 @@ class AuthSessionJWT
             );
         }
 
-        $auth->storeJwtToken($authorizationResult['token']);
         return $next($request);
     }
 }

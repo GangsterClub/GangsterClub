@@ -20,12 +20,6 @@ class AuthService
         $this->rotateCsrfToken();
     }
 
-    public function loginUserWithToken(int $userId, string $jwtToken): void
-    {
-        $this->loginUser($userId);
-        $this->storeJwtToken($jwtToken);
-    }
-
     public function logoutUser(bool $regenerateSession = true): void
     {
         foreach ([
@@ -124,16 +118,6 @@ class AuthService
     {
         $this->sessionService->remove(AuthSessionKeys::PENDING_MFA_SECRET);
         $this->sessionService->remove(AuthSessionKeys::MFA_SETUP_EMAIL_SECRET);
-    }
-
-    public function storeJwtToken(?string $token): void
-    {
-        $this->setStringValue(AuthSessionKeys::JWT_TOKEN, $token);
-    }
-
-    public function getStoredJwtToken(): ?string
-    {
-        return $this->getStringValue(AuthSessionKeys::JWT_TOKEN);
     }
 
     public function getMfaSetupEmailSessionKey(): string
