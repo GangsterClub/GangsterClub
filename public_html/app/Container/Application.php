@@ -86,7 +86,6 @@ class Application extends Container
             $this->getRegisteredService('totpEmailService', TOTPEmailService::class),
             $this->getRegisteredService('totpService', TOTPService::class),
             $this->getRegisteredService('emailService', EmailService::class),
-            $this->getRegisteredService('jwtService', JWTService::class),
             $this->getRegisteredService('sessionService', SessionService::class)
         ));
     }

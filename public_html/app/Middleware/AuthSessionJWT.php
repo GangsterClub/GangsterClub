@@ -25,16 +25,16 @@ class AuthSessionJWT
             return $next($request);
         }
 
-        $jwtService = $this->application->get('jwtService');
-        if (($jwtService instanceof JWTService) === false) {
-            throw new \RuntimeException('jwtService service is not available.');
-        }
-
         $authorizationHeader = $request->getHeader('Authorization')
             ?? $request->getHeader('authorization')
             ?? $request->server('HTTP_AUTHORIZATION');
         if ($authorizationHeader === null || trim((string) $authorizationHeader) === '') {
             return $next($request);
+        }
+
+        $jwtService = $this->application->get('jwtService');
+        if (($jwtService instanceof JWTService) === false) {
+            throw new \RuntimeException('jwtService service is not available.');
         }
 
         if (preg_match('/Bearer\s+(\S+)/', $authorizationHeader, $matches) === false

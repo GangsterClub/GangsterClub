@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace src\Business;
 
 use app\Service\AuthService;
-use app\Service\JWTService;
 use app\Service\SessionService;
 use src\Entity\User;
 
@@ -30,7 +29,6 @@ class AuthEntryService
         private readonly TOTPEmailService $totpEmailService,
         private readonly TOTPService $totpService,
         private readonly EmailService $emailService,
-        private readonly JWTService $jwtService,
         private readonly SessionService $sessionService
     ) {
     }
