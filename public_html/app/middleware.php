@@ -31,10 +31,3 @@ $kernel->addMiddleware(
         return $csrfMiddleware->handle($request, $next);
     }
 );
-
-$kernel->addMiddleware(
-    function ($request, $next) use ($app) {
-        $authSessionJwtMiddleware = $app->make(\app\Middleware\AuthSessionJWT::class);
-        return $authSessionJwtMiddleware->handle($request, $next);
-    }
-);
