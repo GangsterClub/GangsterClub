@@ -124,13 +124,9 @@ class AuthEntryService
             $auth->setPendingUserId($userId);
         }
 
-        $jwtToken = $this->jwtService->authenticate($email, true);
-        if ($jwtToken === false) {
-            return ['status' => self::STATUS_INVALID_OTP];
-        }
+        $auth->loginUser($userId);
 
-        $auth->loginUserWithToken($userId, $jwtToken);
-        return ['status' => self::STATUS_AUTHENTICATED, 'userId' => $userId, 'jwtToken' => $jwtToken];
+        return ['status' => self::STATUS_AUTHENTICATED, 'userId' => $userId];
     }
 
     private function createPendingUser(string $mode, string $email): ?User

@@ -34,14 +34,10 @@ class AuthSessionJWT
             ?? $request->getHeader('authorization')
             ?? $request->server('HTTP_AUTHORIZATION');
         if ($authorizationHeader === null || trim((string) $authorizationHeader) === '') {
-            $authorizationHeader = $auth->getStoredJwtToken();
-            $authorizationHeader = is_string($authorizationHeader) === true && $authorizationHeader !== ''
-                ? 'Bearer ' . $authorizationHeader
-                : null;
+            return $next($request);
         }
 
-        if (is_string($authorizationHeader) === false
-            || preg_match('/Bearer\s+(\S+)/', $authorizationHeader, $matches) === false
+        if (preg_match('/Bearer\s+(\S+)/', $authorizationHeader, $matches) === false
             || count($matches) < 2) {
             return new Response('Token not found in request', 400);
         }

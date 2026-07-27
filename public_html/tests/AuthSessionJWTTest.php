@@ -107,11 +107,11 @@ foreach ([
     assertSameValue($stored, $auth->getStoredJwtToken(), 'A rejected token must not replace the stored token.');
 }
 
-foreach ([[], ['Authorization' => 'Bearer']] as $headers) {
+foreach ([['Authorization' => 'Bearer']] as $headers) {
     [$application] = makeMiddlewareContext();
     $calls = 0;
     $response = runMiddleware($application, new JWTServiceTestRequest($headers), $calls);
-    assertFailure($response, $calls, 400, 'Token not found in request', [], 'Missing or malformed Bearer input');
+    assertFailure($response, $calls, 400, 'Token not found in request', [], 'Malformed Bearer input');
 }
 
 [$application, $auth, $jwt] = makeMiddlewareContext();
