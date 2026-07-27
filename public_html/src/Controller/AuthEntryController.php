@@ -15,8 +15,6 @@ class AuthEntryController extends Controller
     private const MODE_REGISTER = 'register';
     private const REGISTER_FORM_VALUES = 'register.form_values';
 
-    private ?string $authorizationHeader = null;
-
     public function login(Request $request): Response
     {
         return $this->handle($request, self::MODE_LOGIN);
@@ -56,10 +54,6 @@ class AuthEntryController extends Controller
                 array_merge($this->twigVariables, $this->buildTwigVariables($auth, $mode))
             )
         );
-
-        if (is_string($this->authorizationHeader) === true && $this->authorizationHeader !== '') {
-            return $response->withHeader($this->authorizationHeader);
-        }
 
         return $response;
     }
@@ -162,18 +156,7 @@ class AuthEntryController extends Controller
     private function mapVerifyResult(string $mode, array $result): Response
     {
         switch ($result['status'] ?? null) {
-            case AuthEntryService::STATUS_AUTHORIZATION_REJECTED:
-                $description = (string) ($result['description'] ?? 'Invalid access token');
-                return new Response(
-                    sprintf('401 Unauthorized: %s', $description),
-                    401,
-                    [sprintf('WWW-Authenticate: Bearer realm="User Visible Realm", charset="UTF-8", error="invalid_token", error_description="%s"', $description)]
-                );
             case AuthEntryService::STATUS_AUTHENTICATED:
-                $jwtToken = (string) ($result['jwtToken'] ?? '');
-                if ($jwtToken !== '') {
-                    $this->authorizationHeader = 'Authorization: Bearer ' . $jwtToken;
-                }
                 $this->flash('account', 'success', $this->translateForMode($mode, 'success-authenticated'));
                 return Response::redirect(APP_BASE . '/account', 303);
             default:

@@ -19,7 +19,6 @@ class AuthEntryService
     public const STATUS_SEND_ERROR = 'send_error';
     public const STATUS_INVALID_OTP = 'invalid_otp';
     public const STATUS_AUTHENTICATED = 'authenticated';
-    public const STATUS_AUTHORIZATION_REJECTED = 'authorization_response';
 
     private const PENDING_REGISTRATION_USERNAME = 'PENDING_REGISTRATION_USERNAME';
     private const PENDING_CREATE_BY_EMAIL = 'PENDING_CREATE_BY_EMAIL';
@@ -108,7 +107,7 @@ class AuthEntryService
         }
 
         if ($isValid !== true) {
-            return $this->refreshStoredJwtOrInvalid($auth);
+            return ['status' => self::STATUS_INVALID_OTP];
         }
 
         $email = $auth->getPendingLoginEmail();
@@ -188,25 +187,5 @@ class AuthEntryService
         }
 
         return $isValid;
-    }
-
-    private function refreshStoredJwtOrInvalid(AuthService $auth): array
-    {
-        $storedToken = $auth->getStoredJwtToken();
-        if (is_string($storedToken) === true && $storedToken !== '') {
-            $authorizationResult = $this->jwtService->authorize($storedToken);
-            if (($authorizationResult['status'] ?? null) === 'unauthorized') {
-                return [
-                    'status' => self::STATUS_AUTHORIZATION_REJECTED,
-                    'description' => $authorizationResult['description'],
-                ];
-            }
-
-            if (is_array($authorizationResult) === true && isset($authorizationResult['token']) === true) {
-                $auth->storeJwtToken($authorizationResult['token']);
-            }
-        }
-
-        return ['status' => self::STATUS_INVALID_OTP];
     }
 }

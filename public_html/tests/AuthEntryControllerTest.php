@@ -251,18 +251,6 @@ assertSameValue('Location: /account', $response->getHeaders()[0] ?? null, 'Verif
 assertSameValue([['verify', 'login', '123456']], $calls, 'Verify should concatenate OTP digits and delegate JWT issuing to the service.');
 assertContainsValue('success-authenticated', $flashes['account']['success'] ?? [], 'Verify success should flash account success.');
 
-[$response] = runController('login', ['submit_totp' => '1', 'totp' => ['0','0','0','0','0','0']], [
-    'status' => AuthEntryService::STATUS_AUTHORIZATION_REJECTED,
-    'description' => 'Invalid access token',
-]);
-assertSameValue(401, $response->getStatusCode(), 'A rejected stored token on invalid OTP should retain the current 401 status.');
-assertSameValue('401 Unauthorized: Invalid access token', $response->getContent(), 'A rejected stored token on invalid OTP should retain the current body.');
-assertSameValue(
-    ['WWW-Authenticate: Bearer realm="User Visible Realm", charset="UTF-8", error="invalid_token", error_description="Invalid access token"'],
-    $response->getHeaders(),
-    'A rejected stored token on invalid OTP should retain the current Bearer challenge.'
-);
-
 fwrite(STDOUT, "AuthEntryController tests passed.\n");
 
 }
