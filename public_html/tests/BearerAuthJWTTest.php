@@ -7,7 +7,6 @@ use app\Container\Container;
 use app\Http\Request;
 use app\Http\Response;
 use app\Middleware\BearerAuthJWT;
-use app\Service\AuthSessionKeys;
 
 if (defined('REQUEST_METHOD') === false) {
     define('REQUEST_METHOD', 'GET');
@@ -22,20 +21,17 @@ if (defined('APP_DOMAIN') === false) {
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/Support/JWTServiceTestFixtures.php';
 
-function makeMiddlewareContext(bool $authenticated = true): array
+function makeMiddlewareContext(): array
 {
-    [$session, $auth, $jwt, $jwtService] = makeJWTServiceTestContext(
+    [, , $jwt, $jwtService] = makeJWTServiceTestContext(
         makeJWTServiceTestUser(42, 'alice@example.test')
     );
-    if ($authenticated === true) {
-        $session->set(AuthSessionKeys::AUTHENTICATED_USER_ID, 42);
-    }
 
     $application = (new ReflectionClass(Application::class))->newInstanceWithoutConstructor();
     (new ReflectionMethod(Container::class, '__construct'))->invoke($application);
-    $application->addService('authService', $auth);
     $application->addService('jwtService', $jwtService);
-    return [$application, $auth, $jwt];
+
+    return [$application, $jwt];
 }
 
 function runMiddleware(Application $application, Request $request, int &$calls, ?callable $atNext = null): Response
@@ -78,7 +74,7 @@ $validSources = [
     ],
 ];
 foreach ($validSources as $message => $headersFor) {
-    [$application, $auth, $jwt] = makeMiddlewareContext();
+    [$application, $jwt] = makeMiddlewareContext();
     [$headers, $server, $selected] = $headersFor($jwt);
     $calls = 0;
     $response = runMiddleware($application, new JWTServiceTestRequest($headers, $server), $calls);
@@ -111,7 +107,7 @@ foreach ([['Authorization' => 'Bearer']] as $headers) {
     assertFailure($response, $calls, 401, '401 Unauthorized: Bearer token required', $missingTokenChallenge, 'Malformed Bearer input');
 }
 
-[$application, $auth, $jwt] = makeMiddlewareContext();
+[$application, $jwt] = makeMiddlewareContext();
 $token = $jwt->issue('alice@example.test');
 $calls = 0;
 $response = runMiddleware($application, new JWTServiceTestRequest(['Authorization' => 'Bearer ' . $token]), $calls);
