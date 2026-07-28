@@ -1,5 +1,5 @@
 {
-    "name": "gangsterclub/gc-online",
+    "name": "gangsterclub/gco",
     "type": "project",
     "description": "GangsterClub is a free text based online role playing game. Can you manage becoming the best gangster?",
     "keywords": [
@@ -7,8 +7,8 @@
         "mysql",
         "twig"
     ],
-    "homepage": "https://gcov1.gangsterclub.nl",
-    "license": "proprietary",
+    "homepage": "https://gcov0.gangsterclub.com",
+    "license": "MIT",
     "authors": [
         {
             "name": "Michael Carrein",
