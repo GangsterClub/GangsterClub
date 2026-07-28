@@ -6,7 +6,7 @@ use app\Container\Application;
 use app\Container\Container;
 use app\Http\Request;
 use app\Http\Response;
-use app\Middleware\AuthSessionJWT;
+use app\Middleware\BearerAuthJWT;
 use app\Service\AuthSessionKeys;
 
 if (defined('REQUEST_METHOD') === false) {
@@ -40,7 +40,7 @@ function makeMiddlewareContext(bool $authenticated = true): array
 
 function runMiddleware(Application $application, Request $request, int &$calls, ?callable $atNext = null): Response
 {
-    return (new AuthSessionJWT($application))->handle(
+    return (new BearerAuthJWT($application))->handle(
         $request,
         static function () use (&$calls, $atNext): Response {
             $calls++;
@@ -85,11 +85,20 @@ foreach ($validSources as $message => $headersFor) {
     assertSuccess($response, $calls, $message);
 }
 
+$challenge = ['WWW-Authenticate: Bearer realm="User Visible Realm", charset="UTF-8"'];
+
 foreach ([[], ['Authorization' => '   ']] as $headers) {
     [$application] = makeMiddlewareContext();
     $calls = 0;
     $response = runMiddleware($application, new JWTServiceTestRequest($headers), $calls);
-    assertSuccess($response, $calls, 'Missing Bearer input');
+    assertFailure(
+        $response,
+        $calls,
+        401,
+        '401 Unauthorized: Bearer token required',
+        $challenge,
+        'Missing Bearer input'
+    );
 }
 
 $challenge = ['WWW-Authenticate: Bearer realm="User Visible Realm", charset="UTF-8", error="invalid_token", error_description="Invalid access token"'];
@@ -116,11 +125,4 @@ $calls = 0;
 $response = runMiddleware($application, new JWTServiceTestRequest(['Authorization' => 'Bearer ' . $token]), $calls);
 assertSuccess($response, $calls, 'Successful authorization');
 
-[$application] = makeMiddlewareContext(false);
-$application->addService('jwtService', null);
-$calls = 0;
-$response = runMiddleware($application, new JWTServiceTestRequest(['Authorization' => 'Bearer invalid']), $calls);
-assertSameValue(209, $response->getStatusCode(), 'Unauthenticated requests should bypass JWT authorization.');
-assertSameValue(1, $calls, 'Unauthenticated requests should call next exactly once.');
-
-fwrite(STDOUT, "AuthSessionJWT middleware tests passed.\n");
+fwrite(STDOUT, "BearerAuthJWT middleware tests passed.\n");

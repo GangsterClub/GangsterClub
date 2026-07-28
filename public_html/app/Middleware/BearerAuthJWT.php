@@ -9,7 +9,7 @@ use app\Http\Request;
 use app\Http\Response;
 use app\Service\JWTService;
 
-class AuthSessionJWT
+class BearerAuthJWT
 {
     protected Application $application;
 
@@ -20,16 +20,15 @@ class AuthSessionJWT
 
     public function handle(Request $request, callable $next): Response
     {
-        $auth = $this->application->get('authService');
-        if ($auth->getAuthenticatedUserId() === null) {
-            return $next($request);
-        }
-
         $authorizationHeader = $request->getHeader('Authorization')
             ?? $request->getHeader('authorization')
             ?? $request->server('HTTP_AUTHORIZATION');
         if ($authorizationHeader === null || trim((string) $authorizationHeader) === '') {
-            return $next($request);
+            return new Response(
+                '401 Unauthorized: Bearer token required',
+                401,
+                ['WWW-Authenticate: Bearer realm="User Visible Realm", charset="UTF-8"']
+            );
         }
 
         $jwtService = $this->application->get('jwtService');

@@ -36,7 +36,7 @@
             "php tests/AccountRedirectStatusTest.php",
             "php tests/AuthEntryControllerTest.php",
             "php tests/AuthEntryServiceTest.php",
-            "php tests/AuthSessionJWTTest.php",
+            "php tests/BearerAuthJWTTest.php",
             "php tests/CsrfMiddlewareTest.php",
             "php tests/JWTServiceTest.php",
             "php tests/QueryBuilderSqlGenerationTest.php",
