@@ -85,25 +85,17 @@ foreach ($validSources as $message => $headersFor) {
     assertSuccess($response, $calls, $message);
 }
 
-$challenge = ['WWW-Authenticate: Bearer realm="User Visible Realm", charset="UTF-8"'];
-
+$missingTokenChallenge = ['WWW-Authenticate: Bearer realm="User Visible Realm", charset="UTF-8"'];
 foreach ([[], ['Authorization' => '   ']] as $headers) {
     [$application] = makeMiddlewareContext();
     $calls = 0;
     $response = runMiddleware($application, new JWTServiceTestRequest($headers), $calls);
-    assertFailure(
-        $response,
-        $calls,
-        401,
-        '401 Unauthorized: Bearer token required',
-        $challenge,
-        'Missing Bearer input'
-    );
+    assertFailure($response, $calls, 401, '401 Unauthorized: Bearer token required', $missingTokenChallenge, 'Missing Bearer input');
 }
 
 $challenge = ['WWW-Authenticate: Bearer realm="User Visible Realm", charset="UTF-8", error="invalid_token", error_description="Invalid access token"'];
 foreach ([
-    ['Basic credentials', 400, 'Token not found in request', []],
+    ['Basic credentials', 401, '401 Unauthorized: Bearer token required', $missingTokenChallenge],
     ['Bearer not-a-jwt', 401, '401 Unauthorized: Invalid access token', $challenge],
 ] as [$header, $status, $body, $responseHeaders]) {
     [$application] = makeMiddlewareContext();
@@ -116,7 +108,7 @@ foreach ([['Authorization' => 'Bearer']] as $headers) {
     [$application] = makeMiddlewareContext();
     $calls = 0;
     $response = runMiddleware($application, new JWTServiceTestRequest($headers), $calls);
-    assertFailure($response, $calls, 400, 'Token not found in request', [], 'Malformed Bearer input');
+    assertFailure($response, $calls, 401, '401 Unauthorized: Bearer token required', $missingTokenChallenge, 'Malformed Bearer input');
 }
 
 [$application, $auth, $jwt] = makeMiddlewareContext();

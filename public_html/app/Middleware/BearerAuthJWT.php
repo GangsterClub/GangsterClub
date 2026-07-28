@@ -24,11 +24,7 @@ class BearerAuthJWT
             ?? $request->getHeader('authorization')
             ?? $request->server('HTTP_AUTHORIZATION');
         if ($authorizationHeader === null || trim((string) $authorizationHeader) === '') {
-            return new Response(
-                '401 Unauthorized: Bearer token required',
-                401,
-                ['WWW-Authenticate: Bearer realm="User Visible Realm", charset="UTF-8"']
-            );
+            return new Response('401 Unauthorized: Bearer token required', 401, ['WWW-Authenticate: Bearer realm="User Visible Realm", charset="UTF-8"']);
         }
 
         $jwtService = $this->application->get('jwtService');
@@ -38,7 +34,7 @@ class BearerAuthJWT
 
         if (preg_match('/Bearer\s+(\S+)/', $authorizationHeader, $matches) === false
             || count($matches) < 2) {
-            return new Response('Token not found in request', 400);
+            return new Response('401 Unauthorized: Bearer token required', 401, ['WWW-Authenticate: Bearer realm="User Visible Realm", charset="UTF-8"']);
         }
 
         $authorizationResult = $jwtService->authorize($matches[1]);
