@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace app\Middleware;
 
 use app\Container\Application;
+use app\Service\TranslationService;
 use app\Http\Request;
 use app\Http\Response;
 
@@ -19,19 +20,27 @@ class Twig
 
     public function handle(Request $request, callable $next): Response
     {
-        $loader = new \Twig\Loader\FilesystemLoader(DOC_ROOT . '/src/View/');
+        $cache = (strtolower(ENVIRONMENT) === 'production' && DEVELOPMENT === false)
+            ? DOC_ROOT.'/app/cache/TwigCompilation'
+            : false;
         $assetVersion = $this->getAssetVersion(
             DOC_ROOT . '/web/cache/tailwind.css',
             DOC_ROOT . '/web/css/style.css'
         );
-        $twig = new \Twig\Environment(
-            $loader,
-            [
-                'cache' => false // DOC_ROOT.'/app/cache/TwigCompilation',
-            ]
-        );
+
+        $loader = new \Twig\Loader\FilesystemLoader(DOC_ROOT . '/src/View/');
+        $twig = new \Twig\Environment($loader, ['cache' => $cache]);
+        $translation = $this->application->get('translationService');
+
+        if (($translation instanceof TranslationService) === false) {
+            throw new \RuntimeException(
+                'translationService service is not available.'
+            );
+        }
+
         $twig->addGlobal('docRoot', WEB_ROOT);
         $twig->addGlobal('assetVersion', $assetVersion);
+        $twig->addGlobal('translation', $translation);
         $twig->addExtension(new \app\Twig\TranslationExtension());
         $twig->addExtension(new \app\Twig\CsrfExtension($this->application->get('csrfService')));
         $this->application->addService('twig', $twig);

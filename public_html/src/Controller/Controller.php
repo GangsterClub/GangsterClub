@@ -21,9 +21,6 @@ class Controller
     {
         $this->application = $application;
         $this->twig = $this->application->get('twig');
-        $this->twigVariables = [
-            'translation' => $this->application->get('translationService'),
-        ];
     }
 
     public function __destruct()
