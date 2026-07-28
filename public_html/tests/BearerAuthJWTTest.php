@@ -2,8 +2,7 @@
 
 declare(strict_types=1);
 
-use app\Container\Application;
-use app\Container\Container;
+use app\Service\JWTService;
 use app\Http\Request;
 use app\Http\Response;
 use app\Middleware\BearerAuthJWT;
@@ -27,16 +26,12 @@ function makeMiddlewareContext(): array
         makeJWTServiceTestUser(42, 'alice@example.test')
     );
 
-    $application = (new ReflectionClass(Application::class))->newInstanceWithoutConstructor();
-    (new ReflectionMethod(Container::class, '__construct'))->invoke($application);
-    $application->addService('jwtService', $jwtService);
-
-    return [$application, $jwt];
+    return [$jwtService, $jwt];
 }
 
-function runMiddleware(Application $application, Request $request, int &$calls, ?callable $atNext = null): Response
+function runMiddleware(JWTService $jwtService, Request $request, int &$calls, ?callable $atNext = null): Response
 {
-    return (new BearerAuthJWT($application))->handle(
+    return (new BearerAuthJWT($jwtService))->handle(
         $request,
         static function () use (&$calls, $atNext): Response {
             $calls++;
@@ -74,18 +69,18 @@ $validSources = [
     ],
 ];
 foreach ($validSources as $message => $headersFor) {
-    [$application, $jwt] = makeMiddlewareContext();
+    [$jwtService, $jwt] = makeMiddlewareContext();
     [$headers, $server, $selected] = $headersFor($jwt);
     $calls = 0;
-    $response = runMiddleware($application, new JWTServiceTestRequest($headers, $server), $calls);
+    $response = runMiddleware($jwtService, new JWTServiceTestRequest($headers, $server), $calls);
     assertSuccess($response, $calls, $message);
 }
 
 $missingTokenChallenge = ['WWW-Authenticate: Bearer realm="User Visible Realm", charset="UTF-8"'];
 foreach ([[], ['Authorization' => '   ']] as $headers) {
-    [$application] = makeMiddlewareContext();
+    [$jwtService] = makeMiddlewareContext();
     $calls = 0;
-    $response = runMiddleware($application, new JWTServiceTestRequest($headers), $calls);
+    $response = runMiddleware($jwtService, new JWTServiceTestRequest($headers), $calls);
     assertFailure($response, $calls, 401, '401 Unauthorized: Bearer token required', $missingTokenChallenge, 'Missing Bearer input');
 }
 
@@ -94,23 +89,23 @@ foreach ([
     ['Basic credentials', 401, '401 Unauthorized: Bearer token required', $missingTokenChallenge],
     ['Bearer not-a-jwt', 401, '401 Unauthorized: Invalid access token', $challenge],
 ] as [$header, $status, $body, $responseHeaders]) {
-    [$application] = makeMiddlewareContext();
+    [$jwtService] = makeMiddlewareContext();
     $calls = 0;
-    $response = runMiddleware($application, new JWTServiceTestRequest(['Authorization' => $header]), $calls);
+    $response = runMiddleware($jwtService, new JWTServiceTestRequest(['Authorization' => $header]), $calls);
     assertFailure($response, $calls, $status, $body, $responseHeaders, 'Explicit nonblank header');
 }
 
 foreach ([['Authorization' => 'Bearer']] as $headers) {
-    [$application] = makeMiddlewareContext();
+    [$jwtService] = makeMiddlewareContext();
     $calls = 0;
-    $response = runMiddleware($application, new JWTServiceTestRequest($headers), $calls);
+    $response = runMiddleware($jwtService, new JWTServiceTestRequest($headers), $calls);
     assertFailure($response, $calls, 401, '401 Unauthorized: Bearer token required', $missingTokenChallenge, 'Malformed Bearer input');
 }
 
-[$application, $jwt] = makeMiddlewareContext();
+[$jwtService, $jwt] = makeMiddlewareContext();
 $token = $jwt->issue('alice@example.test');
 $calls = 0;
-$response = runMiddleware($application, new JWTServiceTestRequest(['Authorization' => 'Bearer ' . $token]), $calls);
+$response = runMiddleware($jwtService, new JWTServiceTestRequest(['Authorization' => 'Bearer ' . $token]), $calls);
 assertSuccess($response, $calls, 'Successful authorization');
 
 fwrite(STDOUT, "BearerAuthJWT middleware tests passed.\n");

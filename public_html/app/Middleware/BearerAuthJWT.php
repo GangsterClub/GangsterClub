@@ -4,18 +4,14 @@ declare(strict_types=1);
 
 namespace app\Middleware;
 
-use app\Container\Application;
 use app\Http\Request;
 use app\Http\Response;
 use app\Service\JWTService;
 
 class BearerAuthJWT
 {
-    protected Application $application;
-
-    public function __construct(Application $application)
+    public function __construct(private readonly JWTService $jwtService)
     {
-        $this->application = $application;
     }
 
     public function handle(Request $request, callable $next): Response
@@ -27,17 +23,12 @@ class BearerAuthJWT
             return new Response('401 Unauthorized: Bearer token required', 401, ['WWW-Authenticate: Bearer realm="User Visible Realm", charset="UTF-8"']);
         }
 
-        $jwtService = $this->application->get('jwtService');
-        if (($jwtService instanceof JWTService) === false) {
-            throw new \RuntimeException('jwtService service is not available.');
-        }
-
         if (preg_match('/Bearer\s+(\S+)/', $authorizationHeader, $matches) === false
             || count($matches) < 2) {
             return new Response('401 Unauthorized: Bearer token required', 401, ['WWW-Authenticate: Bearer realm="User Visible Realm", charset="UTF-8"']);
         }
 
-        $authorizationResult = $jwtService->authorize($matches[1]);
+        $authorizationResult = $this->jwtService->authorize($matches[1]);
         if (($authorizationResult['status'] ?? null) === 'unauthorized') {
             $description = $authorizationResult['description'];
             return new Response(
