@@ -77,118 +77,118 @@
         <div class="panel mt-8">
             <div class="flex justify-between items-start flex-col gap-2 md:flex-row md:items-center">
                 <div>
-                    <h2 class="text-xl font-semibold">{{ __('account.mfa-title') }}</h2>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('account.mfa-instructions', { 'digits': mfa.digits, 'period': mfa.period }) }}</p>
+                    <h2 class="text-xl font-semibold">{{ __('account.authenticator-title') }}</h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('account.authenticator-instructions', { 'digits': authenticator.digits, 'period': authenticator.period }) }}</p>
                     <p class="text-sm text-gray-500 dark:text-gray-400">
-                        {{ mfa.enabled ? __('account.mfa-description-enabled') : __('account.mfa-description-disabled', { 'digits': mfa.digits, 'period': mfa.period }) }}
+                        {{ authenticator.enabled ? __('account.authenticator-description-enabled') : __('account.authenticator-description-disabled', { 'digits': authenticator.digits, 'period': authenticator.period }) }}
                     </p>
                 </div>
                 <span class="text-sm font-semibold">
-                    {{ mfa.enabled ? __('account.mfa-status-enabled') : __('account.mfa-status-disabled') }}
+                    {{ authenticator.enabled ? __('account.authenticator-status-enabled') : __('account.authenticator-status-disabled') }}
                 </span>
             </div>
 
             <div class="mt-4 space-y-4">
-                {% if not mfa.enabled %}
+                {% if not authenticator.enabled %}
                     <form method="POST">
                         {{ csrf_field() }}
-                        <button type="submit" name="submit_mfa_setup" value="1"
+                        <button type="submit" name="submit_authenticator_setup" value="1"
                             class="btn-secondary">
-                            {{ __('account.mfa-start') }}
+                            {{ __('account.authenticator-start') }}
                         </button>
                     </form>
                 {% else %}
-                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('account.mfa-setup-blocked-while-enabled') }}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('account.authenticator-setup-blocked-while-enabled') }}</p>
                 {% endif %}
 
-                {% if mfa.pendingSecret %}
+                {% if authenticator.pendingSecret %}
                     <div class="border border-dashed border-gray-400 dark:border-gray-600 rounded p-4 space-y-3">
-                        {% if mfa.qrCodeUrl %}
+                        {% if authenticator.qrCodeUrl %}
                             <div>
-                                <img src="{{ mfa.qrCodeUrl }}" alt="TOTP QR code" class="w-48 h-48 rounded bg-white p-2" />
+                                <img src="{{ authenticator.qrCodeUrl }}" alt="TOTP QR code" class="w-48 h-48 rounded bg-white p-2" />
                             </div>
                         {% endif %}
-                        <p class="text-sm">{{ __('account.mfa-secret-label') }}:<br><code class="text-lg font-mono">{{ mfa.pendingSecret }}</code></p>
-                        {% if mfa.otpauth %}
-                            <p class="text-sm break-all">{{ __('account.mfa-otpauth-label') }}:<br><code class="font-mono">{{ mfa.otpauth|raw }}</code></p>
+                        <p class="text-sm">{{ __('account.authenticator-secret-label') }}:<br><code class="text-lg font-mono">{{ authenticator.pendingSecret }}</code></p>
+                        {% if authenticator.otpauth %}
+                            <p class="text-sm break-all">{{ __('account.authenticator-otpauth-label') }}:<br><code class="font-mono">{{ authenticator.otpauth|raw }}</code></p>
                         {% endif %}
                         <form method="POST" class="grid gap-4 md:grid-cols-2">
                             {{ csrf_field() }}
                             <div>
-                                <label for="mfa_code" class="block text-sm font-medium">{{ __('account.mfa-code-label') }}</label>
-                                <input type="text" name="mfa_code" id="mfa_code" inputmode="numeric" pattern="\d*" maxlength="{{ mfa.digits }}"
+                                <label for="authenticator_code" class="block text-sm font-medium">{{ __('account.authenticator-code-label') }}</label>
+                                <input type="text" name="authenticator_code" id="authenticator_code" inputmode="numeric" pattern="\d*" maxlength="{{ authenticator.digits }}"
                                     class="field-input"
                                     autocomplete="off" />
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('account.mfa-code-help') }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('account.authenticator-code-help') }}</p>
                             </div>
                             <div>
-                                <label for="mfa_email_code" class="block text-sm font-medium">{{ __('account.mfa-email-code-label') }}</label>
-                                <input type="text" name="mfa_email_code" id="mfa_email_code" inputmode="numeric" pattern="\d*" maxlength="{{ mfa.emailDigits }}"
+                                <label for="authenticator_email_code" class="block text-sm font-medium">{{ __('account.authenticator-email-code-label') }}</label>
+                                <input type="text" name="authenticator_email_code" id="authenticator_email_code" inputmode="numeric" pattern="\d*" maxlength="{{ authenticator.emailDigits }}"
                                     class="field-input"
                                     autocomplete="one-time-code" />
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('account.mfa-email-code-help', { 'digits': mfa.emailDigits, 'period': mfa.emailPeriod, 'email': user.email }) }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('account.authenticator-email-code-help', { 'digits': authenticator.emailDigits, 'period': authenticator.emailPeriod, 'email': user.email }) }}</p>
                             </div>
                             <div class="md:col-span-2 flex flex-wrap items-end gap-2">
-                                <button type="submit" name="submit_mfa_confirm" value="1"
+                                <button type="submit" name="submit_authenticator_confirm" value="1"
                                     class="btn-primary flex-1">
-                                    {{ __('account.mfa-verify') }}
+                                    {{ __('account.authenticator-verify') }}
                                 </button>
-                                <button type="submit" name="submit_mfa_setup" value="1"
+                                <button type="submit" name="submit_authenticator_setup" value="1"
                                     class="btn-secondary">
-                                    {{ __('account.mfa-email-code-resend') }}
+                                    {{ __('account.authenticator-email-code-resend') }}
                                 </button>
-                                <button type="submit" name="submit_mfa_cancel" value="1"
+                                <button type="submit" name="submit_authenticator_cancel" value="1"
                                     class="btn-secondary">
-                                    {{ __('account.mfa-cancel') }}
+                                    {{ __('account.authenticator-cancel') }}
                                 </button>
                             </div>
                         </form>
                     </div>
                 {% endif %}
 
-                {% if mfa.enabled %}
+                {% if authenticator.enabled %}
                     <div class="rounded-lg border border-red-200 dark:border-red-900/60 bg-red-50/80 dark:bg-red-950/30 p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div>
-                            <p class="font-semibold text-red-700 dark:text-red-300">{{ __('account.mfa-disable-title') }}</p>
-                            <p class="text-sm text-red-700/80 dark:text-red-200/80">{{ __('account.mfa-disable-help', { 'digits': mfa.digits }) }}</p>
-                            <p class="text-xs text-red-700/70 dark:text-red-200/70 mt-2">{{ __('account.mfa-disable-recovery-note') }}</p>
+                            <p class="font-semibold text-red-700 dark:text-red-300">{{ __('account.authenticator-disable-title') }}</p>
+                            <p class="text-sm text-red-700/80 dark:text-red-200/80">{{ __('account.authenticator-disable-help', { 'digits': authenticator.digits }) }}</p>
+                            <p class="text-xs text-red-700/70 dark:text-red-200/70 mt-2">{{ __('account.authenticator-disable-recovery-note') }}</p>
                         </div>
                         <button type="button"
                             class="inline-flex justify-center items-center px-4 py-2 rounded border border-red-500 text-red-600 font-semibold"
-                            onclick="document.getElementById('mfa-disable-modal').showModal()">
-                            {{ __('account.mfa-disable') }}
+                            onclick="document.getElementById('authenticator-disable-modal').showModal()">
+                            {{ __('account.authenticator-disable') }}
                         </button>
                     </div>
 
-                    <dialog id="mfa-disable-modal" class="modal-dialog backdrop:bg-black/60">
+                    <dialog id="authenticator-disable-modal" class="modal-dialog backdrop:bg-black/60">
                         <div class="modal-panel">
                             <div class="flex items-start justify-between gap-4 mb-4">
                                 <div>
-                                    <h3 class="text-gray-700 dark:text-gray-200 text-lg font-semibold">{{ __('account.mfa-disable-modal-title') }}</h3>
-                                    <p class="text-sm mt-1">{{ __('account.mfa-disable-modal-body', { 'digits': mfa.digits }) }}</p>
+                                    <h3 class="text-gray-700 dark:text-gray-200 text-lg font-semibold">{{ __('account.authenticator-disable-modal-title') }}</h3>
+                                    <p class="text-sm mt-1">{{ __('account.authenticator-disable-modal-body', { 'digits': authenticator.digits }) }}</p>
                                 </div>
                                 <form method="dialog">
-                                    <button type="submit" class="text-gray-700 dark:text-gray-200 text-sm font-semibold underline">{{ __('account.mfa-modal-close') }}</button>
+                                    <button type="submit" class="text-gray-700 dark:text-gray-200 text-sm font-semibold underline">{{ __('account.authenticator-modal-close') }}</button>
                                 </form>
                             </div>
 
                             <form method="POST" class="space-y-4">
                                 {{ csrf_field() }}
                                 <div>
-                                    <label for="mfa_disable_code" class="block text-sm font-medium">{{ __('account.mfa-disable-code-label') }}</label>
-                                    <input type="text" name="mfa_disable_code" id="mfa_disable_code" inputmode="numeric" pattern="\d*" maxlength="{{ mfa.digits }}"
+                                    <label for="authenticator_disable_code" class="block text-sm font-medium">{{ __('account.authenticator-disable-code-label') }}</label>
+                                    <input type="text" name="authenticator_disable_code" id="authenticator_disable_code" inputmode="numeric" pattern="\d*" maxlength="{{ authenticator.digits }}"
                                         class="field-input focus:ring-red-500"
                                         autocomplete="one-time-code" required />
-                                    <p class="text-xs mt-1">{{ __('account.mfa-disable-code-help') }}</p>
+                                    <p class="text-xs mt-1">{{ __('account.authenticator-disable-code-help') }}</p>
                                 </div>
 
                                 <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                                    <button type="button" onclick="document.getElementById('mfa-disable-modal').close()" class="btn-secondary w-full text-gray-700 dark:text-gray-200 sm:w-auto">
-                                        {{ __('account.mfa-cancel') }}
+                                    <button type="button" onclick="document.getElementById('authenticator-disable-modal').close()" class="btn-secondary w-full text-gray-700 dark:text-gray-200 sm:w-auto">
+                                        {{ __('account.authenticator-cancel') }}
                                     </button>
-                                    <button type="submit" name="submit_mfa_disable" value="1"
+                                    <button type="submit" name="submit_authenticator_disable" value="1"
                                         class="inline-flex justify-center items-center px-4 py-2 rounded bg-red-600 text-white font-semibold w-full sm:w-auto">
-                                        {{ __('account.mfa-disable-confirm') }}
+                                        {{ __('account.authenticator-disable-confirm') }}
                                     </button>
                                 </div>
                             </form>

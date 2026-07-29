@@ -8,13 +8,10 @@
 # Src caches
 /src/cache/*
 
-# Web assets
-/web/downloads/*
-/web/vendor/*
+# Web caches and assets
 /web/cache/*
 /web/images/*
-/web/composer.json_
-/web/composer.lock
+/web/favicon.ico
 
 # Runtime storage
 /app/storage/tmp/migrations/*.json

@@ -13,7 +13,7 @@ class AuthEntryService
     public const MODE_LOGIN = 'login';
     public const MODE_REGISTER = 'register';
     public const STATUS_EMAIL_OTP_SENT = 'email_otp_sent';
-    public const STATUS_APP_MFA_REQUIRED = 'app_mfa_required';
+    public const STATUS_AUTHENTICATOR_CODE_REQUIRED = 'authenticator_code_required';
     public const STATUS_VALIDATION_ERROR = 'validation_error';
     public const STATUS_SEND_ERROR = 'send_error';
     public const STATUS_INVALID_OTP = 'invalid_otp';
@@ -25,8 +25,8 @@ class AuthEntryService
 
     public function __construct(
         private readonly UserService $userService,
-        private readonly MFATOTPService $mfaService,
-        private readonly TOTPEmailService $totpEmailService,
+        private readonly AuthenticatorTOTPService $authenticatorService,
+        private readonly EmailTOTPService $emailTotpService,
         private readonly TOTPService $totpService,
         private readonly EmailService $emailService,
         private readonly SessionService $sessionService
@@ -40,16 +40,16 @@ class AuthEntryService
 
         $auth->setPendingLoginEmail($email);
         $auth->setPendingLoginTotp(null);
-        $auth->setLoginMfaRequired(false);
+        $auth->setLoginAuthenticatorRequired(false);
 
         if ($user !== null) {
             $userId = (int) $user->getId();
             $auth->setPendingUserId($userId);
             $this->sessionService->remove(self::PENDING_CREATE_BY_EMAIL);
 
-            if ($this->mfaService->hasEnabledMfa($userId) === true) {
-                $auth->setLoginMfaRequired(true);
-                return ['status' => self::STATUS_APP_MFA_REQUIRED];
+            if ($this->authenticatorService->hasEnabledAuthenticator($userId) === true) {
+                $auth->setLoginAuthenticatorRequired(true);
+                return ['status' => self::STATUS_AUTHENTICATOR_CODE_REQUIRED];
             }
 
             return $this->sendPersistedEmailOtp($userId, $email);
@@ -84,7 +84,7 @@ class AuthEntryService
         $auth->setPendingLoginEmail($email);
         $auth->setPendingLoginTotp(null);
         $auth->setPendingUserId(null);
-        $auth->setLoginMfaRequired(false);
+        $auth->setLoginAuthenticatorRequired(false);
         $this->sessionService->set(self::PENDING_REGISTRATION_USERNAME, $username);
         $this->sessionService->set(self::PENDING_CREATE_BY_EMAIL, false);
 
@@ -96,10 +96,10 @@ class AuthEntryService
         $auth->setPendingLoginTotp($otp);
         $userId = $auth->getPendingUserId();
 
-        if ($userId !== null && $auth->isLoginMfaRequired() === true) {
-            $isValid = $this->mfaService->verifyCode($userId, $otp);
+        if ($userId !== null && $auth->isLoginAuthenticatorRequired() === true) {
+            $isValid = $this->authenticatorService->verifyCode($userId, $otp);
         } elseif ($userId !== null) {
-            $isValid = $this->totpEmailService->verifyEmailTOTP($userId, $otp);
+            $isValid = $this->emailTotpService->verifyEmailTOTP($userId, $otp);
         } else {
             $isValid = $this->verifyEmailOnlyOtp($otp);
         }
@@ -147,7 +147,7 @@ class AuthEntryService
 
     private function sendPersistedEmailOtp(int $userId, string $email): array
     {
-        $otp = $this->totpEmailService->generateEmailTOTP($userId);
+        $otp = $this->emailTotpService->generateEmailTOTP($userId);
         return $this->sendOtpEmail($email, $otp);
     }
 
@@ -161,7 +161,7 @@ class AuthEntryService
 
     private function sendOtpEmail(string $email, string $otp): array
     {
-        if ($this->emailService->sendTOTPEmail($email, $otp) === true) {
+        if ($this->emailService->sendEmailTOTP($email, $otp) === true) {
             return ['status' => self::STATUS_EMAIL_OTP_SENT];
         }
 

@@ -14,7 +14,7 @@ class TOTPService
      * @param int $period
      * @return string
      */
-    public function generateSecret(int $digits = MFA_TOTP_DIGITS, int $period = MFA_TOTP_PERIOD): string
+    public function generateSecret(int $digits = AUTHENTICATOR_TOTP_DIGITS, int $period = AUTHENTICATOR_TOTP_PERIOD): string
     {
         $totp = TOTP::generate();
         $totp->setDigits($digits);
@@ -30,7 +30,7 @@ class TOTPService
      * @param ?int $period The time period for the TOTP (default 30 seconds).
      * @return string The 6-digit TOTP code.
      */
-    public function generateTOTP(?string $secret = null, ?int $digits = MFA_TOTP_DIGITS, ?int $period = MFA_TOTP_PERIOD): string
+    public function generateTOTP(?string $secret = null, ?int $digits = AUTHENTICATOR_TOTP_DIGITS, ?int $period = AUTHENTICATOR_TOTP_PERIOD): string
     {
         $totp = TOTP::create($secret ?? $this->generateSecret(), $period);
         $totp->setDigits($digits);
@@ -41,8 +41,8 @@ class TOTPService
         string $secret,
         string $label = APP_NAME,
         string $issuer = APP_NAME,
-        int $digits = MFA_TOTP_DIGITS,
-        int $period = MFA_TOTP_PERIOD
+        int $digits = AUTHENTICATOR_TOTP_DIGITS,
+        int $period = AUTHENTICATOR_TOTP_PERIOD
     ): string
     {
         $totp = TOTP::create($secret, $period);
@@ -57,8 +57,8 @@ class TOTPService
         string $secret,
         string $label = APP_NAME,
         string $issuer = APP_NAME,
-        int $digits = MFA_TOTP_DIGITS,
-        int $period = MFA_TOTP_PERIOD
+        int $digits = AUTHENTICATOR_TOTP_DIGITS,
+        int $period = AUTHENTICATOR_TOTP_PERIOD
     ): string
     {
         $qrCodeUrl = $this->generateProvisioningUri($secret, $label, $issuer, $digits, $period);
@@ -73,7 +73,7 @@ class TOTPService
         return $sanitized === '' ? APP_NAME : $sanitized;
     }
 
-    public function verifyTOTP(string $secret, string $code, int $digits = MFA_TOTP_DIGITS, int $period = MFA_TOTP_PERIOD): bool
+    public function verifyTOTP(string $secret, string $code, int $digits = AUTHENTICATOR_TOTP_DIGITS, int $period = AUTHENTICATOR_TOTP_PERIOD): bool
     {
         $totp = TOTP::create($secret, $period);
         $totp->setDigits($digits);

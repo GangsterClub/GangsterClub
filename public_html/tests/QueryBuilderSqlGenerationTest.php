@@ -68,13 +68,13 @@ assertSameValue('SELECT * FROM user WHERE username = ? AND id >= ?', $pdo->lastQ
 assertSameValue(['alice', 5], $pdo->lastStatement->bindings, 'where() should bind values.');
 
 $pdo = new RecordingPdo();
-(new QueryBuilder($pdo, 'totp_email'))->where('id', 'IN', [1, 2])->where('deleted_at', 'IS', null)->get();
-assertSameValue('SELECT * FROM totp_email WHERE id IN (?, ?) AND deleted_at IS NULL', $pdo->lastQuery, 'where() should support IN and IS NULL.');
+(new QueryBuilder($pdo, 'email_totp'))->where('id', 'IN', [1, 2])->where('deleted_at', 'IS', null)->get();
+assertSameValue('SELECT * FROM email_totp WHERE id IN (?, ?) AND deleted_at IS NULL', $pdo->lastQuery, 'where() should support IN and IS NULL.');
 assertSameValue([1, 2], $pdo->lastStatement->bindings, 'IN should bind each value.');
 
 $pdo = new RecordingPdo();
-(new QueryBuilder($pdo, 'totp_email'))->orderBy('created_at', 'DESC')->limit(10)->get();
-assertSameValue('SELECT * FROM totp_email ORDER BY created_at DESC LIMIT 10', $pdo->lastQuery, 'orderBy() and limit() should generate safe SQL.');
+(new QueryBuilder($pdo, 'email_totp'))->orderBy('created_at', 'DESC')->limit(10)->get();
+assertSameValue('SELECT * FROM email_totp ORDER BY created_at DESC LIMIT 10', $pdo->lastQuery, 'orderBy() and limit() should generate safe SQL.');
 assertSameValue([], $pdo->lastStatement->bindings, 'limit() should be constrained before interpolation, not string-bound through execute().');
 
 $pdo = new RecordingPdo();

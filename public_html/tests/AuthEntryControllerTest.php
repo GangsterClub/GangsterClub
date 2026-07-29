@@ -39,8 +39,8 @@ use src\Business\AuthEntryService;
 use src\Controller\AuthEntryController;
 
 const APP_BASE = '';
-const MFA_TOTP_DIGITS = 6;
-const MFA_TOTP_PERIOD = 30;
+const AUTHENTICATOR_TOTP_DIGITS = 6;
+const AUTHENTICATOR_TOTP_PERIOD = 30;
 const REQUEST_URI = '/login';
 const REQUEST_METHOD = 'POST';
 const SRC_CONTROLLER = 'src\\Controller\\';
@@ -242,8 +242,8 @@ $response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->han
 assertSameValue(200, $response->getStatusCode(), 'Anonymous login page should render successfully.');
 assertResponseNotContains($response, 'Logout', 'Anonymous auth entry pages should not show the logout control.');
 
-[$response, $flashes, $calls] = runController('login', ['submit_login' => '1', 'email' => 'mfa@example.test'], ['status' => AuthEntryService::STATUS_APP_MFA_REQUIRED]);
-assertContainsValue('login.mfa-app-instructions digits=6 period=30', $flashes['login']['success'] ?? [], 'App MFA should map to app authenticator instructions.');
+[$response, $flashes, $calls] = runController('login', ['submit_login' => '1', 'email' => 'authenticator@example.test'], ['status' => AuthEntryService::STATUS_AUTHENTICATOR_CODE_REQUIRED]);
+assertContainsValue('login.authenticator-app-instructions digits=6 period=30', $flashes['login']['success'] ?? [], 'App authenticator should map to app authenticator instructions.');
 
 [$response, $flashes, $calls] = runController('login', ['submit_totp' => '1', 'totp' => ['1','2','3','4','5','6']], ['status' => AuthEntryService::STATUS_AUTHENTICATED, 'jwtToken' => 'jwt']);
 assertSameValue(303, $response->getStatusCode(), 'Verify success should redirect to account.');

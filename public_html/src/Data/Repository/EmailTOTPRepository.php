@@ -6,7 +6,7 @@ namespace src\Data\Repository;
 
 use src\Data\Connection;
 
-class TOTPEmailRepository
+class EmailTOTPRepository
 {
     private Connection $dbh;
 
@@ -31,7 +31,7 @@ class TOTPEmailRepository
             'expires_at' => $expiresAt,
         ];
 
-        $this->dbh->table('totp_email')->insert($totpRecord);
+        $this->dbh->table('email_totp')->insert($totpRecord);
     }
 
     /**
@@ -43,7 +43,7 @@ class TOTPEmailRepository
      */
     public function findValidTOTP(int $userId, string $secret): object|false
     {
-        return $this->dbh->table('totp_email')
+        return $this->dbh->table('email_totp')
             ->where('user_id', $userId)
             ->where('totp_secret', $secret)
             ->where('expires_at', '>=', date('Y-m-d H:i:s'))
@@ -58,7 +58,7 @@ class TOTPEmailRepository
      */
     public function findAllValidTOTPs(int $userId): array
     {
-        return $this->dbh->table('totp_email')
+        return $this->dbh->table('email_totp')
             ->where('user_id', $userId)
             ->where('expires_at', '>=', date('Y-m-d H:i:s'))
             ->orderBy('created_at', 'DESC')
@@ -73,7 +73,7 @@ class TOTPEmailRepository
      */
     public function deleteTOTP(int $totpId): void
     {
-        $this->dbh->table('totp_email')
+        $this->dbh->table('email_totp')
             ->where('id', $totpId)
             ->delete();
     }

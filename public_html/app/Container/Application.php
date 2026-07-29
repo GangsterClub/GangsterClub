@@ -12,15 +12,15 @@ use app\Service\SessionService;
 use src\Business\AccountService;
 use src\Business\AuthEntryService;
 use src\Business\EmailService;
-use src\Business\MFATOTPService;
-use src\Business\TOTPEmailService;
+use src\Business\AuthenticatorTOTPService;
+use src\Business\EmailTOTPService;
 use src\Business\TOTPService;
 use src\Business\UserService;
 use src\Data\Connection;
-use src\Data\Repository\TOTPEmailRepository;
+use src\Data\Repository\EmailTOTPRepository;
 use src\Data\Repository\UserEmailChangeRepository;
 use src\Data\Repository\UserRepository;
-use src\Data\Repository\UserMFATOTPRepository;
+use src\Data\Repository\UserAuthenticatorTOTPRepository;
 
 class Application extends Container
 {
@@ -59,19 +59,19 @@ class Application extends Container
             $this->getRegisteredService('userRepository', UserRepository::class)
         ));
         $this->addService('totpService', fn(): TOTPService => new TOTPService());
-        $this->addService('userMfaTotpRepository', fn(): UserMFATOTPRepository => new UserMFATOTPRepository(
+        $this->addService('userAuthenticatorTotpRepository', fn(): UserAuthenticatorTOTPRepository => new UserAuthenticatorTOTPRepository(
             $this->getRegisteredService('dbh', Connection::class)
         ));
-        $this->addService('totpEmailRepository', fn(): TOTPEmailRepository => new TOTPEmailRepository(
+        $this->addService('emailTotpRepository', fn(): EmailTOTPRepository => new EmailTOTPRepository(
             $this->getRegisteredService('dbh', Connection::class)
         ));
-        $this->addService('mfaTotpService', fn(): MFATOTPService => new MFATOTPService(
+        $this->addService('authenticatorTotpService', fn(): AuthenticatorTOTPService => new AuthenticatorTOTPService(
             $this->getRegisteredService('totpService', TOTPService::class),
-            $this->getRegisteredService('userMfaTotpRepository', UserMFATOTPRepository::class)
+            $this->getRegisteredService('userAuthenticatorTotpRepository', UserAuthenticatorTOTPRepository::class)
         ));
-        $this->addService('totpEmailService', fn(): TOTPEmailService => new TOTPEmailService(
+        $this->addService('emailTotpService', fn(): EmailTOTPService => new EmailTOTPService(
             $this->getRegisteredService('totpService', TOTPService::class),
-            $this->getRegisteredService('totpEmailRepository', TOTPEmailRepository::class),
+            $this->getRegisteredService('emailTotpRepository', EmailTOTPRepository::class),
             $this->getRegisteredService('sessionService', SessionService::class)
         ));
         $this->addService('jwt', fn(): JWT => new JWT());
@@ -82,8 +82,8 @@ class Application extends Container
         ));
         $this->addService('authEntryService', fn(): AuthEntryService => new AuthEntryService(
             $this->getRegisteredService('userService', UserService::class),
-            $this->getRegisteredService('mfaTotpService', MFATOTPService::class),
-            $this->getRegisteredService('totpEmailService', TOTPEmailService::class),
+            $this->getRegisteredService('authenticatorTotpService', AuthenticatorTOTPService::class),
+            $this->getRegisteredService('emailTotpService', EmailTOTPService::class),
             $this->getRegisteredService('totpService', TOTPService::class),
             $this->getRegisteredService('emailService', EmailService::class),
             $this->getRegisteredService('sessionService', SessionService::class)

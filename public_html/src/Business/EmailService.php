@@ -41,7 +41,7 @@ class EmailService
         }
     }
 
-    public function sendTOTPEmail(string $toEmail, string $totp): bool
+    public function sendEmailTOTP(string $toEmail, string $totp): bool
     {
         try {
             $this->mailer->clearAddresses();

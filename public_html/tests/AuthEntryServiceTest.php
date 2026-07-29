@@ -7,16 +7,16 @@ use app\Service\CsrfService;
 use app\Service\JWTService;
 use src\Business\AuthEntryService;
 use src\Business\EmailService;
-use src\Business\MFATOTPService;
-use src\Business\TOTPEmailService;
+use src\Business\AuthenticatorTOTPService;
+use src\Business\EmailTOTPService;
 use src\Business\TOTPService;
 use src\Business\UserService;
 use src\Entity\User;
 
 const TOTP_DIGITS = 6;
 const TOTP_PERIOD = 30;
-const MFA_TOTP_DIGITS = 6;
-const MFA_TOTP_PERIOD = 30;
+const AUTHENTICATOR_TOTP_DIGITS = 6;
+const AUTHENTICATOR_TOTP_PERIOD = 30;
 
 require_once __DIR__ . '/../app/Container/Container.php';
 require_once __DIR__ . '/../app/Container/Application.php';
@@ -28,8 +28,8 @@ require_once __DIR__ . '/../app/Service/JWTService.php';
 require_once __DIR__ . '/../src/Entity/User.php';
 require_once __DIR__ . '/../src/Business/UserService.php';
 require_once __DIR__ . '/../src/Business/TOTPService.php';
-require_once __DIR__ . '/../src/Business/TOTPEmailService.php';
-require_once __DIR__ . '/../src/Business/MFATOTPService.php';
+require_once __DIR__ . '/../src/Business/EmailTOTPService.php';
+require_once __DIR__ . '/../src/Business/AuthenticatorTOTPService.php';
 require_once __DIR__ . '/../src/Business/EmailService.php';
 require_once __DIR__ . '/../src/Business/AuthEntryService.php';
 
@@ -54,22 +54,22 @@ final class FakeUserService extends UserService
     public function createUserByEmail(string $email, string $ipAddress, ?User $user = null): ?User { $this->createByEmailCalls++; return $this->byEmail[$email] = makeUser(42, $email, $email); }
     public function createUser(string $username, string $email, string $ipAddress): ?User { $this->createUserCalls++; return $this->byEmail[$email] = makeUser(43, $username, $email); }
 }
-final class FakeMfaService extends MFATOTPService { public bool $enabled=false; public bool $valid=false; public function __construct() {} public function hasEnabledMfa(int $userId): bool { return $this->enabled; } public function verifyCode(int $userId, string $code): bool { return $this->valid; } }
-final class FakeTotpEmailService extends TOTPEmailService { public bool $valid=true; public function __construct() {} public function generateEmailTOTP(int $userId): string { return '111111'; } public function verifyEmailTOTP(int $userId, string $totp): bool { return $this->valid; } }
-final class FakeTotpService extends TOTPService { public function generateSecret(int $digits = TOTP_DIGITS, int $period = TOTP_PERIOD): string { return 'secret'; } public function generateTOTP(?string $secret = null, ?int $digits = MFA_TOTP_DIGITS, ?int $period = MFA_TOTP_PERIOD): string { return '222222'; } public function verifyTOTP(string $secret, string $totp, int $digits = TOTP_DIGITS, int $period = TOTP_PERIOD): bool { return $secret === 'secret' && $totp === '222222'; } }
-final class FakeEmailService extends EmailService { public array $sent=[]; public function __construct() {} public function sendTOTPEmail(string $toEmail, string $totp): bool { $this->sent[] = [$toEmail, $totp]; return true; } }
+final class FakeAuthenticatorService extends AuthenticatorTOTPService { public bool $enabled=false; public bool $valid=false; public function __construct() {} public function hasEnabledAuthenticator(int $userId): bool { return $this->enabled; } public function verifyCode(int $userId, string $code): bool { return $this->valid; } }
+final class FakeEmailTOTPService extends EmailTOTPService { public bool $valid=true; public function __construct() {} public function generateEmailTOTP(int $userId): string { return '111111'; } public function verifyEmailTOTP(int $userId, string $totp): bool { return $this->valid; } }
+final class FakeTotpService extends TOTPService { public function generateSecret(int $digits = TOTP_DIGITS, int $period = TOTP_PERIOD): string { return 'secret'; } public function generateTOTP(?string $secret = null, ?int $digits = AUTHENTICATOR_TOTP_DIGITS, ?int $period = AUTHENTICATOR_TOTP_PERIOD): string { return '222222'; } public function verifyTOTP(string $secret, string $totp, int $digits = TOTP_DIGITS, int $period = TOTP_PERIOD): bool { return $secret === 'secret' && $totp === '222222'; } }
+final class FakeEmailService extends EmailService { public array $sent=[]; public function __construct() {} public function sendEmailTOTP(string $toEmail, string $totp): bool { $this->sent[] = [$toEmail, $totp]; return true; } }
 function makeService(
     AuthEntryServiceTestSession $session,
     FakeUserService $users,
-    ?FakeMfaService $mfa = null,
-    ?FakeTotpEmailService $emailTotp = null,
+    ?FakeAuthenticatorService $authenticator = null,
+    ?FakeEmailTOTPService $emailTotp = null,
     ?FakeTotpService $totp = null,
     ?FakeEmailService $email = null,
 ): AuthEntryService {
     return new AuthEntryService(
         $users,
-        $mfa ?? new FakeMfaService(),
-        $emailTotp ?? new FakeTotpEmailService(),
+        $authenticator ?? new FakeAuthenticatorService(),
+        $emailTotp ?? new FakeEmailTOTPService(),
         $totp ?? new FakeTotpService(),
         $email ?? new FakeEmailService(),
         $session
@@ -103,10 +103,10 @@ assertSameValue(1, $users->createUserCalls, 'Registration should create the user
 $session = new AuthEntryServiceTestSession();
 $users = new FakeUserService();
 $users->byEmail['known@example.test'] = makeUser(7, 'known', 'known@example.test');
-$mfa = new FakeMfaService();
-$mfa->enabled = true;
-$svc = makeService($session, $users, $mfa);
+$authenticator = new FakeAuthenticatorService();
+$authenticator->enabled = true;
+$svc = makeService($session, $users, $authenticator);
 $result = $svc->beginLogin(new AuthService($session, new CsrfService($session)), 'known@example.test');
-assertSameValue(AuthEntryService::STATUS_APP_MFA_REQUIRED, $result['status'], 'Existing app-MFA users should be routed to app verification.');
+assertSameValue(AuthEntryService::STATUS_AUTHENTICATOR_CODE_REQUIRED, $result['status'], 'Existing app-authenticator users should be routed to app verification.');
 
 fwrite(STDOUT, "AuthEntryService tests passed.\n");

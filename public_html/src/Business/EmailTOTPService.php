@@ -4,26 +4,26 @@ declare(strict_types=1);
 
 namespace src\Business;
 
-use src\Data\Repository\TOTPEmailRepository;
+use src\Data\Repository\EmailTOTPRepository;
 use app\Service\SessionService;
 
-class TOTPEmailService
+class EmailTOTPService
 {
     private const DEFAULT_SESSION_KEY = 'TOTP_SECRET';
 
     protected TOTPService $totp;
 
-    protected TOTPEmailRepository $totpEmailRepository;
+    protected EmailTOTPRepository $emailTotpRepository;
 
     protected SessionService $sessionService;
 
     public function __construct(
         TOTPService $totp,
-        TOTPEmailRepository $totpEmailRepository,
+        EmailTOTPRepository $emailTotpRepository,
         SessionService $sessionService
     ) {
         $this->totp = $totp;
-        $this->totpEmailRepository = $totpEmailRepository;
+        $this->emailTotpRepository = $emailTotpRepository;
         $this->sessionService = $sessionService;
     }
 
@@ -42,7 +42,7 @@ class TOTPEmailService
     {
         $secret = $this->totp->generateSecret(TOTP_DIGITS, TOTP_PERIOD);
         $this->sessionService->set($sessionKey, $secret);
-        $this->totpEmailRepository->storeTOTP(
+        $this->emailTotpRepository->storeTOTP(
             $userId,
             $secret,
             date('Y-m-d H:i:s', (time() + TOTP_PERIOD))
@@ -68,11 +68,11 @@ class TOTPEmailService
         string $totp,
         string $sessionKey
     ): bool {
-        $candidates = $this->totpEmailRepository->findAllValidTOTPs($userId);
+        $candidates = $this->emailTotpRepository->findAllValidTOTPs($userId);
 
         $secret = $this->sessionService->get($sessionKey);
         if (is_string($secret) === true && $secret !== '') {
-            $totpRecord = $this->totpEmailRepository->findValidTOTP($userId, $secret);
+            $totpRecord = $this->emailTotpRepository->findValidTOTP($userId, $secret);
 
             if ($totpRecord !== false) {
                 $candidates = array_merge(
@@ -92,7 +92,7 @@ class TOTPEmailService
 
             $isValid = $this->totp->verifyTOTP($totpRecord->totp_secret, $totp, TOTP_DIGITS, TOTP_PERIOD);
             if ((bool) $isValid === true) {
-                $this->totpEmailRepository->deleteTOTP((int) $totpRecord->id);
+                $this->emailTotpRepository->deleteTOTP((int) $totpRecord->id);
                 $this->sessionService->remove($sessionKey);
                 return true;
             }

@@ -6,7 +6,7 @@ namespace src\Data\Repository;
 
 use src\Data\Connection;
 
-class UserMFATOTPRepository
+class UserAuthenticatorTOTPRepository
 {
     private Connection $dbh;
 
@@ -17,7 +17,7 @@ class UserMFATOTPRepository
 
     public function findByUserId(int $userId): object|false
     {
-        return $this->dbh->table('user_mfa_totp')
+        return $this->dbh->table('user_authenticator_totp')
             ->where('user_id', $userId)
             ->first();
     }
@@ -35,24 +35,24 @@ class UserMFATOTPRepository
 
         if ($existing === false) {
             $record['user_id'] = $userId;
-            return $this->dbh->table('user_mfa_totp')->insert($record);
+            return $this->dbh->table('user_authenticator_totp')->insert($record);
         }
 
-        return $this->dbh->table('user_mfa_totp')
+        return $this->dbh->table('user_authenticator_totp')
             ->where('user_id', $userId)
             ->update($record);
     }
 
     public function deleteByUserId(int $userId): bool
     {
-        return $this->dbh->table('user_mfa_totp')
+        return $this->dbh->table('user_authenticator_totp')
             ->where('user_id', $userId)
             ->delete();
     }
 
     public function touchLastVerified(int $userId): bool
     {
-        return $this->dbh->table('user_mfa_totp')
+        return $this->dbh->table('user_authenticator_totp')
             ->where('user_id', $userId)
             ->update([
                 'last_verified_at' => date('Y-m-d H:i:s'),

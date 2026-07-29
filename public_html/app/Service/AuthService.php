@@ -27,9 +27,9 @@ class AuthService
             AuthSessionKeys::PENDING_USER_ID,
             AuthSessionKeys::PENDING_LOGIN_EMAIL,
             AuthSessionKeys::PENDING_LOGIN_TOTP,
-            AuthSessionKeys::LOGIN_MFA_REQUIRED,
-            AuthSessionKeys::PENDING_MFA_SECRET,
-            AuthSessionKeys::MFA_SETUP_EMAIL_SECRET,
+            AuthSessionKeys::LOGIN_AUTHENTICATOR_REQUIRED,
+            AuthSessionKeys::PENDING_AUTHENTICATOR_SECRET,
+            AuthSessionKeys::AUTHENTICATOR_SETUP_EMAIL_SECRET,
             AuthSessionKeys::JWT_TOKEN,
         ] as $key) {
             $this->sessionService->remove($key);
@@ -94,35 +94,35 @@ class AuthService
         return $userId > 0 ? $userId : null;
     }
 
-    public function setLoginMfaRequired(bool $required): void
+    public function setLoginAuthenticatorRequired(bool $required): void
     {
-        $this->sessionService->set(AuthSessionKeys::LOGIN_MFA_REQUIRED, $required);
+        $this->sessionService->set(AuthSessionKeys::LOGIN_AUTHENTICATOR_REQUIRED, $required);
     }
 
-    public function isLoginMfaRequired(): bool
+    public function isLoginAuthenticatorRequired(): bool
     {
-        return (bool) $this->sessionService->get(AuthSessionKeys::LOGIN_MFA_REQUIRED, false);
+        return (bool) $this->sessionService->get(AuthSessionKeys::LOGIN_AUTHENTICATOR_REQUIRED, false);
     }
 
-    public function setPendingMfaSecret(?string $secret): void
+    public function setPendingAuthenticatorSecret(?string $secret): void
     {
-        $this->setStringValue(AuthSessionKeys::PENDING_MFA_SECRET, $secret);
+        $this->setStringValue(AuthSessionKeys::PENDING_AUTHENTICATOR_SECRET, $secret);
     }
 
-    public function getPendingMfaSecret(): ?string
+    public function getPendingAuthenticatorSecret(): ?string
     {
-        return $this->getStringValue(AuthSessionKeys::PENDING_MFA_SECRET);
+        return $this->getStringValue(AuthSessionKeys::PENDING_AUTHENTICATOR_SECRET);
     }
 
-    public function clearPendingMfaSetup(): void
+    public function clearPendingAuthenticatorSetup(): void
     {
-        $this->sessionService->remove(AuthSessionKeys::PENDING_MFA_SECRET);
-        $this->sessionService->remove(AuthSessionKeys::MFA_SETUP_EMAIL_SECRET);
+        $this->sessionService->remove(AuthSessionKeys::PENDING_AUTHENTICATOR_SECRET);
+        $this->sessionService->remove(AuthSessionKeys::AUTHENTICATOR_SETUP_EMAIL_SECRET);
     }
 
-    public function getMfaSetupEmailSessionKey(): string
+    public function getAuthenticatorSetupEmailSessionKey(): string
     {
-        return AuthSessionKeys::MFA_SETUP_EMAIL_SECRET;
+        return AuthSessionKeys::AUTHENTICATOR_SETUP_EMAIL_SECRET;
     }
 
     private function setAuthenticatedUserId(int $userId): void
@@ -135,7 +135,7 @@ class AuthService
         $this->sessionService->remove(AuthSessionKeys::PENDING_USER_ID);
         $this->sessionService->remove(AuthSessionKeys::PENDING_LOGIN_EMAIL);
         $this->sessionService->remove(AuthSessionKeys::PENDING_LOGIN_TOTP);
-        $this->sessionService->remove(AuthSessionKeys::LOGIN_MFA_REQUIRED);
+        $this->sessionService->remove(AuthSessionKeys::LOGIN_AUTHENTICATOR_REQUIRED);
     }
 
     private function setStringValue(string $key, ?string $value): void

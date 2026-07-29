@@ -133,10 +133,10 @@ class AuthEntryController extends Controller
     private function mapFirstStepResult(string $mode, array $result): Response
     {
         switch ($result['status'] ?? null) {
-            case AuthEntryService::STATUS_APP_MFA_REQUIRED:
-                $this->flash('login', 'success', __('login.mfa-app-instructions', [
-                    'digits' => (string) MFA_TOTP_DIGITS,
-                    'period' => (string) MFA_TOTP_PERIOD,
+            case AuthEntryService::STATUS_AUTHENTICATOR_CODE_REQUIRED:
+                $this->flash('login', 'success', __('login.authenticator-app-instructions', [
+                    'digits' => (string) AUTHENTICATOR_TOTP_DIGITS,
+                    'period' => (string) AUTHENTICATOR_TOTP_PERIOD,
                 ]));
                 break;
             case AuthEntryService::STATUS_EMAIL_OTP_SENT:

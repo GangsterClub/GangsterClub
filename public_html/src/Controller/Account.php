@@ -10,8 +10,8 @@ use app\Http\Response;
 use app\Service\AuthService;
 use src\Business\AccountService;
 use src\Business\EmailService;
-use src\Business\MFATOTPService;
-use src\Business\TOTPEmailService;
+use src\Business\AuthenticatorTOTPService;
+use src\Business\EmailTOTPService;
 use src\Business\UserService;
 use src\Entity\User;
 
@@ -21,7 +21,7 @@ class Account extends Controller
 
     private UserService $userService;
 
-    private MFATOTPService $mfaService;
+    private AuthenticatorTOTPService $authenticatorService;
 
     private array $accountMessages = [
         'errors' => [],
@@ -43,12 +43,12 @@ class Account extends Controller
         }
 
         $this->userService = $userService;
-        $mfaService = $application->get('mfaTotpService');
-        if (($mfaService instanceof MFATOTPService) === false) {
-            throw new \RuntimeException('mfaTotpService service is not available.');
+        $authenticatorService = $application->get('authenticatorTotpService');
+        if (($authenticatorService instanceof AuthenticatorTOTPService) === false) {
+            throw new \RuntimeException('authenticatorTotpService service is not available.');
         }
 
-        $this->mfaService = $mfaService;
+        $this->authenticatorService = $authenticatorService;
     }
 
     public function __invoke(Request $request): Response
@@ -75,7 +75,7 @@ class Account extends Controller
 
         $user = $this->handleUsernameChange($request, $user);
         $this->handleEmailChange($request, $user);
-        $this->handleMfa($request, $user, $auth);
+        $this->handleAuthenticator($request, $user, $auth);
 
         if ($request->getMethod() === 'POST') {
             foreach ($this->accountMessages['errors'] as $message) {
@@ -90,14 +90,14 @@ class Account extends Controller
         }
 
         $pendingEmailChange = $this->formatPendingEmailChange($user->getId());
-        $pendingSecret = $auth->getPendingMfaSecret();
-        $mfaEnabled = $this->mfaService->hasEnabledMfa($user->getId());
-        $mfaLabel = APP_NAME . ':' . $user->getEmail();
+        $pendingSecret = $auth->getPendingAuthenticatorSecret();
+        $authenticatorEnabled = $this->authenticatorService->hasEnabledAuthenticator($user->getId());
+        $authenticatorLabel = APP_NAME . ':' . $user->getEmail();
         $otpauth = (is_string($pendingSecret) === true && $pendingSecret !== '')
-            ? $this->mfaService->generateProvisioningUri($pendingSecret, $mfaLabel)
+            ? $this->authenticatorService->generateProvisioningUri($pendingSecret, $authenticatorLabel)
             : null;
         $qrCodeUrl = (is_string($pendingSecret) === true && $pendingSecret !== '')
-            ? $this->mfaService->generateQRCode($pendingSecret, $mfaLabel)
+            ? $this->authenticatorService->generateQRCode($pendingSecret, $authenticatorLabel)
             : null;
 
         return Response::html(
@@ -109,13 +109,13 @@ class Account extends Controller
                         'user' => $user,
                         'account' => $this->accountMessages,
                         'pendingEmailChange' => $pendingEmailChange,
-                        'mfa' => [
-                            'enabled' => $mfaEnabled,
+                        'authenticator' => [
+                            'enabled' => $authenticatorEnabled,
                             'pendingSecret' => $pendingSecret,
                             'otpauth' => $otpauth,
                             'qrCodeUrl' => $qrCodeUrl,
-                            'digits' => (int) MFA_TOTP_DIGITS,
-                            'period' => (int) MFA_TOTP_PERIOD,
+                            'digits' => (int) AUTHENTICATOR_TOTP_DIGITS,
+                            'period' => (int) AUTHENTICATOR_TOTP_PERIOD,
                             'emailDigits' => (int) TOTP_DIGITS,
                             'emailPeriod' => (int) TOTP_PERIOD,
                         ],
@@ -224,165 +224,165 @@ class Account extends Controller
         $this->accountMessages['errors'][] = __($messageKeys[$status] ?? 'account.email-change-error');
     }
 
-    private function getTotpEmailService(): TOTPEmailService
+    private function getEmailTOTPService(): EmailTOTPService
     {
-        $totpEmailService = $this->application->get('totpEmailService');
-        if (($totpEmailService instanceof TOTPEmailService) === false) {
-            throw new \RuntimeException('totpEmailService service is not available.');
+        $emailTotpService = $this->application->get('emailTotpService');
+        if (($emailTotpService instanceof EmailTOTPService) === false) {
+            throw new \RuntimeException('emailTotpService service is not available.');
         }
 
-        return $totpEmailService;
+        return $emailTotpService;
     }
 
-    private function handleMfa(Request $request, User $user, AuthService $auth): void
+    private function handleAuthenticator(Request $request, User $user, AuthService $auth): void
     {
         $userId = $user->getId();
-        $isEnabled = $this->mfaService->hasEnabledMfa($userId);
-        $pendingSecret = $auth->getPendingMfaSecret();
+        $isEnabled = $this->authenticatorService->hasEnabledAuthenticator($userId);
+        $pendingSecret = $auth->getPendingAuthenticatorSecret();
         $hasPendingSetup = is_string($pendingSecret) && $pendingSecret !== '';
 
-        if ($request->post('submit_mfa_setup') !== null) {
-            $this->handleMfaSetup($user, $auth, $userId, $isEnabled, $hasPendingSetup);
+        if ($request->post('submit_authenticator_setup') !== null) {
+            $this->handleAuthenticatorSetup($user, $auth, $userId, $isEnabled, $hasPendingSetup);
             return;
         }
 
-        if ($request->post('submit_mfa_cancel') !== null) {
-            $this->handleMfaCancel($auth, $isEnabled, $hasPendingSetup);
+        if ($request->post('submit_authenticator_cancel') !== null) {
+            $this->handleAuthenticatorCancel($auth, $isEnabled, $hasPendingSetup);
             return;
         }
 
-        if ($request->post('submit_mfa_confirm') !== null) {
-            $this->handleMfaConfirm($request, $auth, $userId, $isEnabled, $pendingSecret, $hasPendingSetup);
+        if ($request->post('submit_authenticator_confirm') !== null) {
+            $this->handleAuthenticatorConfirm($request, $auth, $userId, $isEnabled, $pendingSecret, $hasPendingSetup);
             return;
         }
 
-        if ($request->post('submit_mfa_disable') !== null) {
-            $this->handleMfaDisable($request, $auth, $userId, $isEnabled, $hasPendingSetup);
+        if ($request->post('submit_authenticator_disable') !== null) {
+            $this->handleAuthenticatorDisable($request, $auth, $userId, $isEnabled, $hasPendingSetup);
         }
     }
 
-    private function handleMfaSetup(User $user, AuthService $auth, int $userId, bool $isEnabled, bool $hasPendingSetup): void
+    private function handleAuthenticatorSetup(User $user, AuthService $auth, int $userId, bool $isEnabled, bool $hasPendingSetup): void
     {
         if ($isEnabled === true) {
-            $this->accountMessages['errors'][] = __('account.mfa-setup-already-enabled');
+            $this->accountMessages['errors'][] = __('account.authenticator-setup-already-enabled');
             return;
         }
 
         if ($hasPendingSetup === false) {
-            $auth->setPendingMfaSecret($this->mfaService->generateSecret());
+            $auth->setPendingAuthenticatorSecret($this->authenticatorService->generateSecret());
         }
 
-        $totpEmailService = $this->getTotpEmailService();
-        $emailCode = $totpEmailService->generateEmailTOTPForSession($userId, $auth->getMfaSetupEmailSessionKey());
+        $emailTotpService = $this->getEmailTOTPService();
+        $emailCode = $emailTotpService->generateEmailTOTPForSession($userId, $auth->getAuthenticatorSetupEmailSessionKey());
 
         $emailService = $this->application->get('emailService');
         if (($emailService instanceof EmailService) === false) {
-            $this->accountMessages['errors'][] = __('account.mfa-email-code-send-error');
+            $this->accountMessages['errors'][] = __('account.authenticator-email-code-send-error');
             return;
         }
 
-        $emailSent = $emailService->sendTOTPEmail($user->getEmail(), $emailCode);
+        $emailSent = $emailService->sendEmailTOTP($user->getEmail(), $emailCode);
         if ($emailSent === false) {
-            $this->accountMessages['errors'][] = __('account.mfa-email-code-send-error');
+            $this->accountMessages['errors'][] = __('account.authenticator-email-code-send-error');
             return;
         }
 
-        $this->accountMessages['success'][] = __('account.mfa-secret-generated');
-        $this->accountMessages['success'][] = __('account.mfa-email-code-sent');
+        $this->accountMessages['success'][] = __('account.authenticator-secret-generated');
+        $this->accountMessages['success'][] = __('account.authenticator-email-code-sent');
     }
 
-    private function handleMfaCancel(AuthService $auth, bool $isEnabled, bool $hasPendingSetup): void
+    private function handleAuthenticatorCancel(AuthService $auth, bool $isEnabled, bool $hasPendingSetup): void
     {
         if ($isEnabled === false && $hasPendingSetup === true) {
-            $auth->clearPendingMfaSetup();
-            $this->accountMessages['success'][] = __('account.mfa-secret-cleared');
+            $auth->clearPendingAuthenticatorSetup();
+            $this->accountMessages['success'][] = __('account.authenticator-secret-cleared');
             return;
         }
 
         if ($isEnabled === true) {
-            $this->accountMessages['errors'][] = __('account.mfa-disable-requires-verification');
+            $this->accountMessages['errors'][] = __('account.authenticator-disable-requires-verification');
             return;
         }
 
-        $this->accountMessages['errors'][] = __('account.mfa-requires-secret');
+        $this->accountMessages['errors'][] = __('account.authenticator-requires-secret');
     }
 
-    private function handleMfaConfirm(Request $request, AuthService $auth, int $userId, bool $isEnabled, ?string $pendingSecret, bool $hasPendingSetup): void
+    private function handleAuthenticatorConfirm(Request $request, AuthService $auth, int $userId, bool $isEnabled, ?string $pendingSecret, bool $hasPendingSetup): void
     {
         if ($isEnabled === true) {
-            $this->accountMessages['errors'][] = __('account.mfa-setup-already-enabled');
+            $this->accountMessages['errors'][] = __('account.authenticator-setup-already-enabled');
             return;
         }
 
         if ($hasPendingSetup === false) {
-            $this->accountMessages['errors'][] = __('account.mfa-requires-secret');
+            $this->accountMessages['errors'][] = __('account.authenticator-requires-secret');
             return;
         }
 
-        $code = $this->normalizeOtpCode((string) $request->post('mfa_code'));
-        if ($this->isValidNumericCodeFormat($code, (int) MFA_TOTP_DIGITS) === false) {
-            $this->accountMessages['errors'][] = __('account.mfa-invalid-code');
+        $code = $this->normalizeOtpCode((string) $request->post('authenticator_code'));
+        if ($this->isValidNumericCodeFormat($code, (int) AUTHENTICATOR_TOTP_DIGITS) === false) {
+            $this->accountMessages['errors'][] = __('account.authenticator-invalid-code');
             return;
         }
 
-        $emailCode = $this->normalizeOtpCode((string) $request->post('mfa_email_code'));
+        $emailCode = $this->normalizeOtpCode((string) $request->post('authenticator_email_code'));
         if ($this->isValidNumericCodeFormat($emailCode, (int) TOTP_DIGITS) === false) {
-            $this->accountMessages['errors'][] = __('account.mfa-email-code-required');
+            $this->accountMessages['errors'][] = __('account.authenticator-email-code-required');
             return;
         }
 
-        if ($this->mfaService->verifySecret($pendingSecret, $code) === false) {
-            $this->accountMessages['errors'][] = __('account.mfa-invalid-code');
+        if ($this->authenticatorService->verifySecret($pendingSecret, $code) === false) {
+            $this->accountMessages['errors'][] = __('account.authenticator-invalid-code');
             return;
         }
 
-        $totpEmailService = $this->getTotpEmailService();
-        if ($totpEmailService->verifyEmailTOTPForSession($userId, $emailCode, $auth->getMfaSetupEmailSessionKey()) === false) {
-            $this->accountMessages['errors'][] = __('account.mfa-email-code-invalid');
+        $emailTotpService = $this->getEmailTOTPService();
+        if ($emailTotpService->verifyEmailTOTPForSession($userId, $emailCode, $auth->getAuthenticatorSetupEmailSessionKey()) === false) {
+            $this->accountMessages['errors'][] = __('account.authenticator-email-code-invalid');
             return;
         }
 
-        $enabled = $this->mfaService->enableMfa($userId, $pendingSecret);
+        $enabled = $this->authenticatorService->enableAuthenticator($userId, $pendingSecret);
         if ($enabled === true) {
-            $auth->clearPendingMfaSetup();
+            $auth->clearPendingAuthenticatorSetup();
             $auth->rotateCsrfToken();
-            $this->accountMessages['success'][] = __('account.mfa-enabled');
+            $this->accountMessages['success'][] = __('account.authenticator-enabled');
         } else {
-            $this->accountMessages['errors'][] = __('account.mfa-enable-error');
+            $this->accountMessages['errors'][] = __('account.authenticator-enable-error');
         }
     }
 
-    private function handleMfaDisable(Request $request, AuthService $auth, int $userId, bool $isEnabled, bool $hasPendingSetup): void
+    private function handleAuthenticatorDisable(Request $request, AuthService $auth, int $userId, bool $isEnabled, bool $hasPendingSetup): void
     {
         if ($isEnabled === false) {
             if ($hasPendingSetup === true) {
-                $auth->clearPendingMfaSetup();
-                $this->accountMessages['success'][] = __('account.mfa-secret-cleared');
+                $auth->clearPendingAuthenticatorSetup();
+                $this->accountMessages['success'][] = __('account.authenticator-secret-cleared');
             } else {
-                $this->accountMessages['errors'][] = __('account.mfa-disable-not-enabled');
+                $this->accountMessages['errors'][] = __('account.authenticator-disable-not-enabled');
             }
 
             return;
         }
 
-        $code = $this->normalizeOtpCode((string) $request->post('mfa_disable_code'));
-        if ($this->isValidNumericCodeFormat($code, (int) MFA_TOTP_DIGITS) === false) {
-            $this->accountMessages['errors'][] = __('account.mfa-disable-code-required');
+        $code = $this->normalizeOtpCode((string) $request->post('authenticator_disable_code'));
+        if ($this->isValidNumericCodeFormat($code, (int) AUTHENTICATOR_TOTP_DIGITS) === false) {
+            $this->accountMessages['errors'][] = __('account.authenticator-disable-code-required');
             return;
         }
 
-        if ($this->mfaService->verifyEnabledSecret($userId, $code) === false) {
-            $this->accountMessages['errors'][] = __('account.mfa-disable-invalid-code');
+        if ($this->authenticatorService->verifyEnabledSecret($userId, $code) === false) {
+            $this->accountMessages['errors'][] = __('account.authenticator-disable-invalid-code');
             return;
         }
 
-        $disabled = $this->mfaService->disableMfa($userId);
+        $disabled = $this->authenticatorService->disableAuthenticator($userId);
         if ($disabled === true) {
-            $auth->setPendingMfaSecret(null);
+            $auth->setPendingAuthenticatorSecret(null);
             $auth->rotateCsrfToken();
-            $this->accountMessages['success'][] = __('account.mfa-disabled');
+            $this->accountMessages['success'][] = __('account.authenticator-disabled');
         } else {
-            $this->accountMessages['errors'][] = __('account.mfa-disable-error');
+            $this->accountMessages['errors'][] = __('account.authenticator-disable-error');
         }
     }
 
