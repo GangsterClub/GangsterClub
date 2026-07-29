@@ -13,6 +13,10 @@ $migrationManager->addMigration(new \src\Migration\CreateUser($dbh));
 $migrationManager->addMigration(new \src\Migration\CreateEmailTOTP($dbh));
 $migrationManager->addMigration(new \src\Migration\CreateUserAuthenticatorTOTP($dbh));
 $migrationManager->addMigration(new \src\Migration\CreateUserEmailChange($dbh));
+$migrationManager->addMigration(new \src\Migration\CreateAuthenticationChallenge($dbh));
+$migrationManager->addMigration(new \src\Migration\CreateAuthenticationRateLimit($dbh));
+$migrationManager->addMigration(new \src\Migration\CreateSecurityAuditEvent($dbh));
+$migrationManager->addMigration(new \src\Migration\CreateRecoveryCodes($dbh));
 
 $allowedArgs = ['--migrate', '--rollback', '-m', '-r'];
 if (isset($argv[1]) === false || in_array($argv[1], $allowedArgs) === false) {

@@ -33,9 +33,16 @@ cp .env.example .env   # or copy on Windows
 composer install
 tailwindcss -i web/css/tailwind.css -o web/cache/tailwind.css --minify
 
-# Configure your database connection in .env
+# Generate three independent security peppers (run this command three times)
+php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"
+
+# Configure your database connection and paste one different generated value
+# into each of AUTH_CHALLENGE_PEPPER, AUTH_RATE_LIMIT_PEPPER, and
+# RECOVERY_CODE_PEPPER in .env
 php run.php --migrate
 ```
+
+Store generated secrets only in your local/deployment `.env` or secret manager. Do not put real secret values in `.env.example` or commit them to version control.
 
 > **Note:** Configure your web server's document root to point to the `public_html` directory.
 

@@ -16,6 +16,7 @@
         }
     ],
     "require": {
+        "php": "^8.2",
         "firebase/php-jwt": "^7.1",
         "phpmailer/phpmailer": "^7.1.1",
         "spomky-labs/otphp": "^11.5.0",
@@ -34,12 +35,15 @@
         "test": [
             "php tests/AccountAuthenticatorCharacterizationTest.php",
             "php tests/AccountRedirectStatusTest.php",
+            "php tests/AuthenticationRateLimitServiceTest.php",
             "php tests/AuthEntryControllerTest.php",
             "php tests/AuthEntryServiceTest.php",
             "php tests/BearerAuthJWTTest.php",
             "php tests/CsrfMiddlewareTest.php",
             "php tests/JWTServiceTest.php",
             "php tests/QueryBuilderSqlGenerationTest.php",
+            "php tests/SecurityFoundationTest.php",
+            "php tests/SecurityMigrationTest.php",
             "php tests/SessionServiceConstructorProductionTest.php",
             "php tests/SessionServiceConstructorNonProductionTest.php",
             "php tests/SessionServiceConstructorDevelopmentTest.php"

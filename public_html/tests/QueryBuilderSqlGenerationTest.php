@@ -25,6 +25,16 @@ final class RecordingStatement extends PDOStatement
     {
         return [];
     }
+
+    public function fetchColumn(int $column = 0): mixed
+    {
+        return 3;
+    }
+
+    public function rowCount(): int
+    {
+        return 1;
+    }
 }
 
 final class RecordingPdo extends PDO
@@ -41,6 +51,16 @@ final class RecordingPdo extends PDO
         $this->lastQuery = $query;
         $this->lastStatement = new RecordingStatement();
         return $this->lastStatement;
+    }
+
+    public function getAttribute(int $attribute): mixed
+    {
+        return $attribute === PDO::ATTR_DRIVER_NAME ? 'mysql' : null;
+    }
+
+    public function lastInsertId(?string $name = null): string|false
+    {
+        return '17';
     }
 }
 
@@ -86,6 +106,23 @@ $pdo = new RecordingPdo();
 (new QueryBuilder($pdo, 'user'))->where('id', 7)->update(['email' => 'new@example.com']);
 assertSameValue('UPDATE user SET email = ? WHERE id = ?', $pdo->lastQuery, 'update() should generate safe SQL.');
 assertSameValue(['new@example.com', 7], $pdo->lastStatement->bindings, 'update() should bind values.');
+
+$pdo = new RecordingPdo();
+$affected = (new QueryBuilder($pdo, 'user'))->where('id', 7)->updateAffected(['email' => 'new@example.com']);
+assertSameValue(1, $affected, 'updateAffected() should return the affected-row count.');
+
+$pdo = new RecordingPdo();
+$insertedId = (new QueryBuilder($pdo, 'user'))->insertGetId(['username' => 'alice']);
+assertSameValue(17, $insertedId, 'insertGetId() should return the generated identifier.');
+
+$pdo = new RecordingPdo();
+$count = (new QueryBuilder($pdo, 'user'))->where('deleted_at', 'IS', null)->count();
+assertSameValue('SELECT COUNT(*) FROM user WHERE deleted_at IS NULL', $pdo->lastQuery, 'count() should honor safe where clauses.');
+assertSameValue(3, $count, 'count() should return the aggregate value.');
+
+$pdo = new RecordingPdo();
+(new QueryBuilder($pdo, 'user'))->where('id', 7)->lockForUpdate()->first();
+assertSameValue('SELECT * FROM user WHERE id = ? LIMIT 1 FOR UPDATE', $pdo->lastQuery, 'lockForUpdate() should append a row lock after LIMIT.');
 
 $pdo = new RecordingPdo();
 (new QueryBuilder($pdo, 'user'))->where('id', 7)->delete();

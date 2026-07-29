@@ -22,6 +22,7 @@ class QueryBuilder
     protected ?int $limit = null;
     protected array $orderBys = [];
     protected ?array $updates = null;
+    protected bool $forUpdate = false;
 
     public function __construct(\PDO $connection, string $table)
     {
@@ -98,6 +99,12 @@ class QueryBuilder
         return $this;
     }
 
+    public function lockForUpdate(): self
+    {
+        $this->forUpdate = true;
+        return $this;
+    }
+
     /**
      * Fetch the first record
      *
@@ -108,6 +115,7 @@ class QueryBuilder
         $bindings = [];
         $query = $this->buildSelectQuery($bindings);
         $query .= " LIMIT 1";
+        $query .= $this->buildLockClause();
 
         $stmt = $this->connection->prepare($query);
         $stmt->execute($bindings);
@@ -127,6 +135,7 @@ class QueryBuilder
         if ($this->limit !== null) {
             $query .= " LIMIT {$this->limit}";
         }
+        $query .= $this->buildLockClause();
 
         $stmt = $this->connection->prepare($query);
         $stmt->execute($bindings);
@@ -141,18 +150,16 @@ class QueryBuilder
      */
     public function insert(array $data): bool
     {
-        $columns = array_map(function ($column): string {
-            return self::validateIdentifier((string) $column, 'column');
-        }, array_keys($data));
+        return $this->executeInsert($data);
+    }
 
-        if ($columns === []) {
-            throw new InvalidArgumentException('Insert data cannot be empty.');
+    public function insertGetId(array $data): int
+    {
+        if ($this->executeInsert($data) === false) {
+            return 0;
         }
 
-        $placeholders = implode(', ', array_fill(0, count($data), '?'));
-        $query = "INSERT INTO {$this->table} (" . implode(', ', $columns) . ") VALUES ({$placeholders})";
-        $stmt = $this->connection->prepare($query);
-        return (bool) $stmt->execute(array_values($data));
+        return (int) $this->connection->lastInsertId();
     }
 
     /**
@@ -162,6 +169,11 @@ class QueryBuilder
      * @return bool
      */
     public function update(array $data): bool
+    {
+        return $this->updateAffected($data) >= 0;
+    }
+
+    public function updateAffected(array $data): int
     {
         if ($data === []) {
             throw new InvalidArgumentException('Update data cannot be empty.');
@@ -175,7 +187,11 @@ class QueryBuilder
         $query .= $this->buildWhereClause($bindings);
 
         $stmt = $this->connection->prepare($query);
-        return (bool) $stmt->execute($bindings);
+        if ($stmt->execute($bindings) === false) {
+            return -1;
+        }
+
+        return $stmt->rowCount();
     }
 
     /**
@@ -185,12 +201,33 @@ class QueryBuilder
      */
     public function delete(): bool
     {
+        return $this->deleteAffected() >= 0;
+    }
+
+    public function deleteAffected(): int
+    {
         $query = "DELETE FROM {$this->table}";
         $bindings = [];
         $query .= $this->buildWhereClause($bindings);
 
         $stmt = $this->connection->prepare($query);
-        return (bool) $stmt->execute($bindings);
+        if ($stmt->execute($bindings) === false) {
+            return -1;
+        }
+
+        return $stmt->rowCount();
+    }
+
+    public function count(): int
+    {
+        $bindings = [];
+        $query = "SELECT COUNT(*) FROM {$this->table}";
+        $query .= $this->buildWhereClause($bindings);
+
+        $stmt = $this->connection->prepare($query);
+        $stmt->execute($bindings);
+
+        return (int) $stmt->fetchColumn();
     }
 
     private static function validateIdentifier(string $identifier, string $type): string
@@ -250,5 +287,36 @@ class QueryBuilder
 
             return $where[0];
         }, $this->wheres));
+    }
+
+    private function executeInsert(array $data): bool
+    {
+        $columns = array_map(function ($column): string {
+            return self::validateIdentifier((string) $column, 'column');
+        }, array_keys($data));
+
+        if ($columns === []) {
+            throw new InvalidArgumentException('Insert data cannot be empty.');
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($data), '?'));
+        $query = "INSERT INTO {$this->table} (" . implode(', ', $columns) . ") VALUES ({$placeholders})";
+        $stmt = $this->connection->prepare($query);
+        return (bool) $stmt->execute(array_values($data));
+    }
+
+    private function buildLockClause(): string
+    {
+        if ($this->forUpdate === false) {
+            return '';
+        }
+
+        try {
+            $driver = $this->connection->getAttribute(\PDO::ATTR_DRIVER_NAME);
+        } catch (\Throwable) {
+            $driver = null;
+        }
+
+        return $driver === 'sqlite' ? '' : ' FOR UPDATE';
     }
 }
