@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace app\Service;
 
+use src\Data\Repository\UserRepository;
+
 class AuthService
 {
     public function __construct(
         private readonly SessionService $sessionService,
-        private readonly CsrfService $csrfService
+        private readonly CsrfService $csrfService,
+        private readonly ?UserRepository $userRepository = null
     ) {
     }
 
@@ -16,6 +19,7 @@ class AuthService
     {
         $this->sessionService->regenerate();
         $this->setAuthenticatedUserId($userId);
+        $this->storeCurrentBrowserSessionVersion($userId);
         $this->clearPendingAuthentication();
         $this->rotateCsrfToken();
     }
@@ -30,6 +34,13 @@ class AuthService
             AuthSessionKeys::LOGIN_AUTHENTICATOR_REQUIRED,
             AuthSessionKeys::PENDING_AUTHENTICATOR_SECRET,
             AuthSessionKeys::AUTHENTICATOR_SETUP_EMAIL_SECRET,
+            AuthSessionKeys::SECURITY_CHALLENGE_TOKEN,
+            AuthSessionKeys::SECURITY_CHALLENGE_PURPOSE,
+            AuthSessionKeys::SECURITY_CHALLENGE_BINDING,
+            AuthSessionKeys::SECURITY_PENDING_RECOVERY_SET_ID,
+            AuthSessionKeys::SECURITY_RECOVERY_CODES_DELIVERED,
+            AuthSessionKeys::SECURITY_EMAIL_SECRET,
+            AuthSessionKeys::BROWSER_SESSION_VERSION,
             AuthSessionKeys::JWT_TOKEN,
         ] as $key) {
             $this->sessionService->remove($key);
@@ -50,7 +61,16 @@ class AuthService
         }
 
         $userId = (int) $userId;
-        return $userId > 0 ? $userId : null;
+        if ($userId <= 0) {
+            return null;
+        }
+
+        if ($this->browserSessionIsCurrent($userId) === false) {
+            $this->logoutUser(false);
+            return null;
+        }
+
+        return $userId;
     }
 
     public function setPendingLoginEmail(?string $email): void
@@ -125,6 +145,83 @@ class AuthService
         return AuthSessionKeys::AUTHENTICATOR_SETUP_EMAIL_SECRET;
     }
 
+    public function getSecurityEmailSessionKey(): string
+    {
+        return AuthSessionKeys::SECURITY_EMAIL_SECRET;
+    }
+
+    public function getSecurityChallengeBinding(): string
+    {
+        $binding = $this->getStringValue(AuthSessionKeys::SECURITY_CHALLENGE_BINDING);
+        if ($binding === null) {
+            $binding = bin2hex(random_bytes(32));
+            $this->sessionService->set(AuthSessionKeys::SECURITY_CHALLENGE_BINDING, $binding);
+        }
+
+        return $binding;
+    }
+
+    public function setSecurityChallenge(string $token, string $purpose): void
+    {
+        $this->sessionService->set(AuthSessionKeys::SECURITY_CHALLENGE_TOKEN, $token);
+        $this->sessionService->set(AuthSessionKeys::SECURITY_CHALLENGE_PURPOSE, $purpose);
+    }
+
+    public function getSecurityChallengeToken(): ?string
+    {
+        return $this->getStringValue(AuthSessionKeys::SECURITY_CHALLENGE_TOKEN);
+    }
+
+    public function getSecurityChallengePurpose(): ?string
+    {
+        return $this->getStringValue(AuthSessionKeys::SECURITY_CHALLENGE_PURPOSE);
+    }
+
+    public function setPendingRecoverySetId(?int $setId): void
+    {
+        if ($setId === null || $setId <= 0) {
+            $this->sessionService->remove(AuthSessionKeys::SECURITY_PENDING_RECOVERY_SET_ID);
+            return;
+        }
+
+        $this->sessionService->set(AuthSessionKeys::SECURITY_PENDING_RECOVERY_SET_ID, $setId);
+    }
+
+    public function getPendingRecoverySetId(): ?int
+    {
+        $setId = (int) $this->sessionService->get(AuthSessionKeys::SECURITY_PENDING_RECOVERY_SET_ID, 0);
+        return $setId > 0 ? $setId : null;
+    }
+
+    public function markRecoveryCodesDelivered(int $setId): void
+    {
+        if ($setId <= 0) {
+            throw new \InvalidArgumentException('A valid delivered recovery-code set is required.');
+        }
+
+        $this->sessionService->set(AuthSessionKeys::SECURITY_RECOVERY_CODES_DELIVERED, $setId);
+    }
+
+    public function getDeliveredRecoverySetId(): ?int
+    {
+        $setId = (int) $this->sessionService->get(AuthSessionKeys::SECURITY_RECOVERY_CODES_DELIVERED, 0);
+        return $setId > 0 ? $setId : null;
+    }
+
+    public function clearSecurityFlow(): void
+    {
+        foreach ([
+            AuthSessionKeys::SECURITY_CHALLENGE_TOKEN,
+            AuthSessionKeys::SECURITY_CHALLENGE_PURPOSE,
+            AuthSessionKeys::SECURITY_PENDING_RECOVERY_SET_ID,
+            AuthSessionKeys::SECURITY_RECOVERY_CODES_DELIVERED,
+            AuthSessionKeys::SECURITY_EMAIL_SECRET,
+            AuthSessionKeys::PENDING_AUTHENTICATOR_SECRET,
+        ] as $key) {
+            $this->sessionService->remove($key);
+        }
+    }
+
     private function setAuthenticatedUserId(int $userId): void
     {
         $this->sessionService->set(AuthSessionKeys::AUTHENTICATED_USER_ID, $userId);
@@ -161,5 +258,36 @@ class AuthService
     public function rotateCsrfToken(): void
     {
         $this->csrfService->rotateToken();
+    }
+
+    private function storeCurrentBrowserSessionVersion(int $userId): void
+    {
+        if ($this->userRepository === null) {
+            return;
+        }
+
+        $version = $this->userRepository->getBrowserSessionVersion($userId);
+        if ($version !== null) {
+            $this->sessionService->set(AuthSessionKeys::BROWSER_SESSION_VERSION, $version);
+        }
+    }
+
+    private function browserSessionIsCurrent(int $userId): bool
+    {
+        if ($this->userRepository === null) {
+            return true;
+        }
+
+        $currentVersion = $this->userRepository->getBrowserSessionVersion($userId);
+        if ($currentVersion === null) {
+            return false;
+        }
+
+        $sessionVersion = $this->sessionService->get(AuthSessionKeys::BROWSER_SESSION_VERSION);
+        if ($sessionVersion === null || $sessionVersion === '') {
+            return false;
+        }
+
+        return (int) $sessionVersion === $currentVersion;
     }
 }

@@ -11,6 +11,7 @@ use app\Service\SessionService;
 use src\Business\EmailService;
 use src\Business\AuthenticatorTOTPService;
 use src\Business\EmailTOTPService;
+use src\Business\RecoveryFeatureService;
 use src\Controller\Account;
 use src\Entity\User;
 
@@ -84,6 +85,17 @@ final class AccountAuthenticatorTestEmail extends EmailService
     public function sendEmailTOTP(string $toEmail, string $totp): bool { $this->calls[] = [$toEmail, $totp]; return true; }
 }
 
+final class AccountAuthenticatorTestRecoveryFeature extends RecoveryFeatureService
+{
+    public array $calls = [];
+    public function __construct() {}
+    public function disableAuthenticatorAndRecoveryCodes(int $userId): bool
+    {
+        $this->calls[] = ['disableAuthenticatorAndRecoveryCodes', $userId];
+        return true;
+    }
+}
+
 final class AccountAuthenticatorTestApplication extends Application
 {
     public function __construct(
@@ -128,10 +140,12 @@ function runAuthenticatorCase(bool $enabled, array $fields): array
     $emailTotp = new AccountAuthenticatorTestEmailTOTP();
     $email = new AccountAuthenticatorTestEmail();
     $application = new AccountAuthenticatorTestApplication($session, $emailTotp, $email);
+    $recoveryFeature = new AccountAuthenticatorTestRecoveryFeature();
 
     $account = (new ReflectionClass(Account::class))->newInstanceWithoutConstructor();
     (new ReflectionProperty(Account::class, 'application'))->setValue($account, $application);
     (new ReflectionProperty(Account::class, 'authenticatorService'))->setValue($account, $authenticator);
+    (new ReflectionProperty(Account::class, 'recoveryFeatureService'))->setValue($account, $recoveryFeature);
     $user = new User(42, 'alice', 'alice@example.test', '127.0.0.1', new DateTimeImmutable(), new DateTimeImmutable(), new DateTimeImmutable());
     (new ReflectionMethod(Account::class, 'handleAuthenticator'))->invoke($account, new AccountAuthenticatorTestRequest($fields), $user, $auth);
 
@@ -143,41 +157,31 @@ function runAuthenticatorCase(bool $enabled, array $fields): array
         'emailTotpCalls' => $emailTotp->calls,
         'emailCalls' => $email->calls,
         'csrfRotations' => $csrf->rotations,
+        'recoveryFeatureCalls' => $recoveryFeature->calls,
     ];
 }
 
-$setupWins = runAuthenticatorCase(false, ['submit_authenticator_setup' => '1', 'submit_authenticator_cancel' => '1']);
-assertAuthenticatorSame(['errors' => [], 'success' => ['account.authenticator-secret-generated', 'account.authenticator-email-code-sent']], $setupWins['messages'], 'Setup should win over cancel and report both setup statuses.');
-assertAuthenticatorSame('pending-secret', $setupWins['pending'], 'Setup should preserve an existing pending secret.');
-assertAuthenticatorSame('pending-email-secret', $setupWins['emailPending'], 'Setup should not clear pending email verification state.');
-assertAuthenticatorSame([['hasEnabledAuthenticator', 42]], $setupWins['authenticatorCalls'], 'Setup with a pending secret should not verify or persist authenticator.');
-assertAuthenticatorSame([['generate', 42, AuthSessionKeys::AUTHENTICATOR_SETUP_EMAIL_SECRET]], $setupWins['emailTotpCalls'], 'Setup should generate the email verification code.');
-assertAuthenticatorSame([['alice@example.test', '654321']], $setupWins['emailCalls'], 'Setup should send the generated email code.');
-assertAuthenticatorSame(0, $setupWins['csrfRotations'], 'Setup should not rotate CSRF.');
-
-$cancelWins = runAuthenticatorCase(false, ['submit_authenticator_cancel' => '1', 'submit_authenticator_confirm' => '1', 'authenticator_code' => '123456', 'authenticator_email_code' => '654321']);
-assertAuthenticatorSame(['errors' => [], 'success' => ['account.authenticator-secret-cleared']], $cancelWins['messages'], 'Cancel should win over confirm and report the clear status.');
-assertAuthenticatorSame(null, $cancelWins['pending'], 'Cancel should clear the pending secret.');
-assertAuthenticatorSame(null, $cancelWins['emailPending'], 'Cancel should clear pending email verification state.');
-assertAuthenticatorSame([['hasEnabledAuthenticator', 42]], $cancelWins['authenticatorCalls'], 'Cancel should not verify or persist authenticator.');
-assertAuthenticatorSame([], $cancelWins['emailTotpCalls'], 'Cancel should not verify an email code.');
-assertAuthenticatorSame([], $cancelWins['emailCalls'], 'Cancel should not send email.');
-assertAuthenticatorSame(0, $cancelWins['csrfRotations'], 'Cancel should not rotate CSRF.');
-
-$confirmWins = runAuthenticatorCase(false, ['submit_authenticator_confirm' => '1', 'submit_authenticator_disable' => '1', 'authenticator_code' => '123456', 'authenticator_email_code' => '654321', 'authenticator_disable_code' => '111111']);
-assertAuthenticatorSame(['errors' => [], 'success' => ['account.authenticator-enabled']], $confirmWins['messages'], 'Confirm should win over disable and report enabled.');
-assertAuthenticatorSame(null, $confirmWins['pending'], 'Successful confirm should clear the pending secret.');
-assertAuthenticatorSame(null, $confirmWins['emailPending'], 'Successful confirm should clear pending email verification state.');
-assertAuthenticatorSame([['hasEnabledAuthenticator', 42], ['verifySecret', 'pending-secret', '123456'], ['enableAuthenticator', 42, 'pending-secret']], $confirmWins['authenticatorCalls'], 'Confirm should verify and enable, but must not disable authenticator.');
-assertAuthenticatorSame([['verify', 42, '654321', AuthSessionKeys::AUTHENTICATOR_SETUP_EMAIL_SECRET]], $confirmWins['emailTotpCalls'], 'Confirm should verify the email code.');
-assertAuthenticatorSame([], $confirmWins['emailCalls'], 'Confirm should not send email.');
-assertAuthenticatorSame(1, $confirmWins['csrfRotations'], 'Successful confirm should rotate CSRF once.');
+$legacyActions = [
+    ['submit_authenticator_setup' => '1'],
+    ['submit_authenticator_cancel' => '1'],
+    ['submit_authenticator_confirm' => '1', 'authenticator_code' => '123456', 'authenticator_email_code' => '654321'],
+];
+foreach ($legacyActions as $legacyFields) {
+    $legacy = runAuthenticatorCase(false, $legacyFields);
+    assertAuthenticatorSame(
+        ['errors' => ['account.authenticator-flow-required'], 'success' => []],
+        $legacy['messages'],
+        'Legacy account POST actions must not bypass staged enrollment and recovery-code acknowledgement.'
+    );
+    assertAuthenticatorSame([], $legacy['authenticatorCalls'], 'Legacy actions must not inspect, verify, or persist an authenticator.');
+    assertAuthenticatorSame([], $legacy['emailTotpCalls'], 'Legacy actions must not issue or verify email codes.');
+    assertAuthenticatorSame(0, $legacy['csrfRotations'], 'Blocked legacy actions must not rotate CSRF.');
+}
 
 $enabledCases = [
-    'setup' => [['submit_authenticator_setup' => '1'], ['errors' => ['account.authenticator-setup-already-enabled'], 'success' => []], [['hasEnabledAuthenticator', 42]], [], [], 0, 'pending-secret', 'pending-email-secret'],
-    'cancel' => [['submit_authenticator_cancel' => '1'], ['errors' => ['account.authenticator-disable-requires-verification'], 'success' => []], [['hasEnabledAuthenticator', 42]], [], [], 0, 'pending-secret', 'pending-email-secret'],
-    'confirm' => [['submit_authenticator_confirm' => '1', 'authenticator_code' => '123456', 'authenticator_email_code' => '654321'], ['errors' => ['account.authenticator-setup-already-enabled'], 'success' => []], [['hasEnabledAuthenticator', 42]], [], [], 0, 'pending-secret', 'pending-email-secret'],
-    'disable' => [['submit_authenticator_disable' => '1', 'authenticator_disable_code' => '123456'], ['errors' => [], 'success' => ['account.authenticator-disabled']], [['hasEnabledAuthenticator', 42], ['verifyEnabledSecret', 42, '123456'], ['disableAuthenticator', 42]], [], [], 1, null, 'pending-email-secret'],
+    'setup' => [['submit_authenticator_setup' => '1'], ['errors' => ['account.authenticator-flow-required'], 'success' => []], [], [], [], 0, 'pending-secret', 'pending-email-secret'],
+    'cancel' => [['submit_authenticator_cancel' => '1'], ['errors' => ['account.authenticator-flow-required'], 'success' => []], [], [], [], 0, 'pending-secret', 'pending-email-secret'],
+    'confirm' => [['submit_authenticator_confirm' => '1', 'authenticator_code' => '123456', 'authenticator_email_code' => '654321'], ['errors' => ['account.authenticator-flow-required'], 'success' => []], [], [], [], 0, 'pending-secret', 'pending-email-secret'],
 ];
 
 foreach ($enabledCases as $name => [$fields, $messages, $authenticatorCalls, $emailTotpCalls, $emailCalls, $rotations, $pending, $emailPending]) {

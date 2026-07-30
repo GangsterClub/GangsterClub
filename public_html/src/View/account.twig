@@ -13,6 +13,7 @@
             </div>
             <form method="POST" action="{{ docRoot }}logout" class="shrink-0">
                 {{ csrf_field() }}
+
                 <button type="submit" class="inline-flex items-center gap-2 rounded border border-gray-400 bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-200 dark:border-gray-600 dark:bg-slate-800 dark:text-gray-200 dark:hover:bg-slate-700" aria-label="{{ __('account.logout') }}">
                     <svg class="h-5 w-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v8" />
@@ -38,6 +39,7 @@
                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ __('account.current-username', { 'username': user.username }) }}</p>
                 <form method="POST" autocomplete="off" class="space-y-4">
                     {{ csrf_field() }}
+
                     <div>
                         <label for="username" class="block text-sm font-medium">{{ __('account.new-username-label') }}</label>
                         <input type="text" name="username" id="username" value="{{ user.username }}" minlength="3" maxlength="32" pattern="[A-Za-z0-9._-]+"
@@ -57,6 +59,7 @@
                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ __('account.current-email', { 'email': user.email }) }}</p>
                 <form method="POST" autocomplete="off" class="space-y-4">
                     {{ csrf_field() }}
+
                     <div>
                         <label for="new_email" class="block text-sm font-medium">{{ __('account.new-email-label') }}</label>
                         <input type="email" name="new_email" id="new_email" value="" class="field-input" required />
@@ -90,15 +93,154 @@
 
             <div class="mt-4 space-y-4">
                 {% if not authenticator.enabled %}
-                    <form method="POST">
+                    <form method="POST" action="{{ docRoot }}account/authenticator/enroll" data-recovery-form>
                         {{ csrf_field() }}
-                        <button type="submit" name="submit_authenticator_setup" value="1"
-                            class="btn-secondary">
+
+                        <button type="submit" class="btn-secondary">
                             {{ __('account.authenticator-start') }}
                         </button>
                     </form>
                 {% else %}
                     <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('account.authenticator-setup-blocked-while-enabled') }}</p>
+                {% endif %}
+
+                {% if authenticator.enabled %}
+                    <div class="rounded-lg border border-gray-300 p-4 dark:border-gray-700">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <h3 class="font-semibold">{{ __('account.recovery-codes-title') }}</h3>
+                                {% if recoveryCodes.active %}
+                                    <p class="text-sm">{{ __('account.recovery-codes-remaining', { count: recoveryCodes.remainingCount }) }}</p>
+                                    {% if recoveryCodes.remainingCount <= 1 %}
+                                        <p class="mt-2 rounded border border-amber-500 bg-amber-50 p-2 text-sm font-bold text-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                                            {{ __('account.recovery-codes-one-recommendation') }}
+                                        </p>
+                                    {% elseif recoveryCodes.remainingCount <= 3 %}
+                                        <p class="mt-2 text-sm font-semibold text-amber-600">{{ __('account.recovery-codes-low-warning') }}</p>
+                                    {% endif %}
+                                {% else %}
+                                    <p class="text-sm text-amber-600">{{ __('account.recovery-codes-required-existing') }}</p>
+                                {% endif %}
+                            </div>
+                            {% if recoveryCodes.active %}
+                                <button type="button"
+                                    class="btn-secondary"
+                                    data-js-only
+                                    hidden
+                                    onclick="document.getElementById('replace-recovery-codes-modal').showModal()">
+                                    {{ __('account.generate-new-recovery-codes') }}
+                                </button>
+
+                                <noscript>
+                                    <form method="POST" action="{{ docRoot }}account/recovery-codes/replace">
+                                        {{ csrf_field() }}
+
+                                        <button class="btn-secondary" type="submit">
+                                            {{ __('account.generate-new-recovery-codes') }}
+                                        </button>
+                                    </form>
+                                </noscript>
+                            {% else %}
+                                <button type="button"
+                                    class="btn-primary"
+                                    data-js-only
+                                    hidden
+                                    onclick="document.getElementById('initial-recovery-codes-modal').showModal()">
+                                    {{ __('account.generate-recovery-codes') }}
+                                </button>
+
+                                <noscript>
+                                    <form method="POST" action="{{ docRoot }}account/recovery-codes/initial">
+                                        {{ csrf_field() }}
+
+                                        <button class="btn-primary" type="submit">
+                                            {{ __('account.generate-recovery-codes') }}
+                                        </button>
+                                    </form>
+                                </noscript>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if recoveryCodes.active %}
+                        <dialog id="replace-recovery-codes-modal"
+                            class="modal-dialog backdrop:bg-black/60"
+                            aria-labelledby="replace-recovery-codes-title"
+                            data-pending-label="{{ __('account.security-action-pending') }}"
+                            data-failure-message="{{ __('account.security-action-failed') }}">
+                            <div class="modal-panel" role="document">
+                                <div class="mb-4 flex items-start justify-between gap-4">
+                                    <div>
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-amber-600">{{ __('account.protected-security-step') }}</p>
+                                        <h3 id="replace-recovery-codes-title" class="mt-1 text-lg font-semibold text-gray-700 dark:text-gray-200">
+                                            {{ __('account.generate-new-recovery-codes') }}
+                                        </h3>
+                                    </div>
+                                    <button type="button"
+                                        class="text-sm font-semibold text-gray-700 underline dark:text-gray-200"
+                                        onclick="document.getElementById('replace-recovery-codes-modal').close()">
+                                        {{ __('account.authenticator-modal-close') }}
+                                    </button>
+                                </div>
+                                <div data-modal-status class="mb-4 hidden rounded border p-3 text-sm" aria-live="polite" aria-atomic="true" tabindex="-1"></div>
+                                <div class="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-700/70 dark:bg-amber-950/30 dark:text-amber-100">
+                                    <p class="font-semibold">{{ __('account.recovery-replacement-warning-title') }}</p>
+                                    <p class="mt-1">{{ __('account.recovery-replacement-warning') }}</p>
+                                </div>
+                                <form method="POST" action="{{ docRoot }}account/recovery-codes/replace" data-recovery-form class="mt-5">
+                                    {{ csrf_field() }}
+
+                                    <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                                        <button type="button"
+                                            onclick="document.getElementById('replace-recovery-codes-modal').close()"
+                                            class="btn-secondary w-full text-gray-700 dark:text-gray-200 sm:w-auto">
+                                            {{ __('account.authenticator-cancel') }}
+                                        </button>
+                                        <button class="btn-primary w-full sm:w-auto" type="submit">{{ __('account.continue-secure-flow') }}</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </dialog>
+                    {% else %}
+                        <dialog id="initial-recovery-codes-modal"
+                            class="modal-dialog backdrop:bg-black/60"
+                            aria-labelledby="initial-recovery-codes-title"
+                            data-pending-label="{{ __('account.security-action-pending') }}"
+                            data-failure-message="{{ __('account.security-action-failed') }}">
+                            <div class="modal-panel" role="document">
+                                <div class="mb-4 flex items-start justify-between gap-4">
+                                    <div>
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-amber-600">{{ __('account.protected-security-step') }}</p>
+                                        <h3 id="initial-recovery-codes-title" class="mt-1 text-lg font-semibold text-gray-700 dark:text-gray-200">
+                                            {{ __('account.generate-recovery-codes') }}
+                                        </h3>
+                                    </div>
+                                    <button type="button"
+                                        class="text-sm font-semibold text-gray-700 underline dark:text-gray-200"
+                                        onclick="document.getElementById('initial-recovery-codes-modal').close()">
+                                        {{ __('account.authenticator-modal-close') }}
+                                    </button>
+                                </div>
+                                <div data-modal-status class="mb-4 hidden rounded border p-3 text-sm" aria-live="polite" aria-atomic="true" tabindex="-1"></div>
+                                <div class="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-700/70 dark:bg-amber-950/30 dark:text-amber-100">
+                                    <p class="font-semibold">{{ __('account.initial-recovery-codes-warning-title') }}</p>
+                                    <p class="mt-1">{{ __('account.initial-recovery-codes-warning') }}</p>
+                                </div>
+                                <form method="POST" action="{{ docRoot }}account/recovery-codes/initial" data-recovery-form class="mt-5">
+                                    {{ csrf_field() }}
+
+                                    <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                                        <button type="button"
+                                            onclick="document.getElementById('initial-recovery-codes-modal').close()"
+                                            class="btn-secondary w-full text-gray-700 dark:text-gray-200 sm:w-auto">
+                                            {{ __('account.authenticator-cancel') }}
+                                        </button>
+                                        <button class="btn-primary w-full sm:w-auto" type="submit">{{ __('account.continue-secure-flow') }}</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </dialog>
+                    {% endif %}
                 {% endif %}
 
                 {% if authenticator.pendingSecret %}
@@ -114,18 +256,19 @@
                         {% endif %}
                         <form method="POST" class="grid gap-4 md:grid-cols-2">
                             {{ csrf_field() }}
+
                             <div>
                                 <label for="authenticator_code" class="block text-sm font-medium">{{ __('account.authenticator-code-label') }}</label>
                                 <input type="text" name="authenticator_code" id="authenticator_code" inputmode="numeric" pattern="\d*" maxlength="{{ authenticator.digits }}"
                                     class="field-input"
-                                    autocomplete="off" />
+                                    autocomplete="one-time-code" data-bwignore />
                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('account.authenticator-code-help') }}</p>
                             </div>
                             <div>
                                 <label for="authenticator_email_code" class="block text-sm font-medium">{{ __('account.authenticator-email-code-label') }}</label>
                                 <input type="text" name="authenticator_email_code" id="authenticator_email_code" inputmode="numeric" pattern="\d*" maxlength="{{ authenticator.emailDigits }}"
                                     class="field-input"
-                                    autocomplete="one-time-code" />
+                                    autocomplete="one-time-code" data-bwignore />
                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('account.authenticator-email-code-help', { 'digits': authenticator.emailDigits, 'period': authenticator.emailPeriod, 'email': user.email }) }}</p>
                             </div>
                             <div class="md:col-span-2 flex flex-wrap items-end gap-2">
@@ -153,18 +296,34 @@
                             <p class="text-sm text-red-700/80 dark:text-red-200/80">{{ __('account.authenticator-disable-help', { 'digits': authenticator.digits }) }}</p>
                             <p class="text-xs text-red-700/70 dark:text-red-200/70 mt-2">{{ __('account.authenticator-disable-recovery-note') }}</p>
                         </div>
-                        <button type="button"
-                            class="inline-flex justify-center items-center px-4 py-2 rounded border border-red-500 text-red-600 font-semibold"
+                        {% set disableBtnClass = 'inline-flex justify-center items-center px-4 py-2 rounded border border-red-500 text-red-600' %}
+                        <button type="button" class="{{ disableBtnClass }}"
+                            data-js-only
+                            hidden
                             onclick="document.getElementById('authenticator-disable-modal').showModal()">
                             {{ __('account.authenticator-disable') }}
                         </button>
+                        <noscript>
+                            <form method="POST" action="{{ docRoot }}account/authenticator/disable/start">
+                                {{ csrf_field() }}
+
+                                <button type="submit" class="{{ disableBtnClass }}">
+                                    {{ __('account.authenticator-disable') }}
+                                </button>
+                            </form>
+                        </noscript>
                     </div>
 
-                    <dialog id="authenticator-disable-modal" class="modal-dialog backdrop:bg-black/60">
-                        <div class="modal-panel">
+                    <dialog id="authenticator-disable-modal"
+                        class="modal-dialog backdrop:bg-black/60"
+                        aria-labelledby="authenticator-disable-title"
+                        data-pending-label="{{ __('account.security-action-pending') }}"
+                        data-failure-message="{{ __('account.security-action-failed') }}">
+                        <div class="modal-panel" role="document">
                             <div class="flex items-start justify-between gap-4 mb-4">
                                 <div>
-                                    <h3 class="text-gray-700 dark:text-gray-200 text-lg font-semibold">{{ __('account.authenticator-disable-modal-title') }}</h3>
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-red-600 dark:text-red-400">{{ __('account.sensitive-security-step') }}</p>
+                                    <h3 id="authenticator-disable-title" class="mt-1 text-gray-700 dark:text-gray-200 text-lg font-semibold">{{ __('account.authenticator-disable-modal-title') }}</h3>
                                     <p class="text-sm mt-1">{{ __('account.authenticator-disable-modal-body', { 'digits': authenticator.digits }) }}</p>
                                 </div>
                                 <form method="dialog">
@@ -172,13 +331,16 @@
                                 </form>
                             </div>
 
-                            <form method="POST" class="space-y-4">
+                            <div data-modal-status class="mb-4 hidden rounded border p-3 text-sm" aria-live="polite" aria-atomic="true" tabindex="-1"></div>
+
+                            <form method="POST" action="{{ docRoot }}account/authenticator/disable" class="space-y-4" data-security-modal-form>
                                 {{ csrf_field() }}
+
                                 <div>
                                     <label for="authenticator_disable_code" class="block text-sm font-medium">{{ __('account.authenticator-disable-code-label') }}</label>
                                     <input type="text" name="authenticator_disable_code" id="authenticator_disable_code" inputmode="numeric" pattern="\d*" maxlength="{{ authenticator.digits }}"
                                         class="field-input focus:ring-red-500"
-                                        autocomplete="one-time-code" required />
+                                        autocomplete="one-time-code" data-bwignore required />
                                     <p class="text-xs mt-1">{{ __('account.authenticator-disable-code-help') }}</p>
                                 </div>
 
@@ -198,4 +360,8 @@
             </div>
         </div>
     </section>
+{% endblock %}
+
+{% block js %}
+    <script src="{{ docRoot }}js/recovery-flow.js" defer></script>
 {% endblock %}

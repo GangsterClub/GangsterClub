@@ -7,12 +7,16 @@ namespace src\Controller;
 use app\Http\Request;
 use app\Http\Response;
 use app\Service\AuthService;
+use src\Business\AuthenticationRateLimitContext;
 use src\Business\AuthEntryService;
+use src\Business\RecoveryCodeConsumptionResult;
+use src\Business\RecoveryFeatureService;
 
 class AuthEntryController extends Controller
 {
     private const MODE_LOGIN = 'login';
     private const MODE_REGISTER = 'register';
+    private const LOGIN_RECOVERY_FLASH_BAG = 'login.recovery';
     private const REGISTER_FORM_VALUES = 'register.form_values';
 
     public function login(Request $request): Response
@@ -37,6 +41,9 @@ class AuthEntryController extends Controller
         }
 
         $this->twigVariables[$mode] = $this->consumeFlash($mode);
+        $this->twigVariables['loginRecovery'] = $mode === self::MODE_LOGIN
+            ? $this->consumeFlash(self::LOGIN_RECOVERY_FLASH_BAG)
+            : ['errors' => [], 'success' => []];
 
         $firstStepResponse = $this->handleFirstStep($request, $auth, $mode);
         if ($firstStepResponse instanceof Response) {
@@ -119,6 +126,36 @@ class AuthEntryController extends Controller
 
     private function verify(Request $request, AuthService $auth, string $mode): ?Response
     {
+        if ($mode === self::MODE_LOGIN && $request->post('submit_recovery_code') !== null) {
+            $userId = $auth->getPendingUserId();
+            $ipAddress = (string) $this->application->get('sessionService')->get('_IPaddress', '127.0.0.1');
+            if ($userId === null) {
+                return $this->mapVerifyResult(
+                    $mode,
+                    ['status' => AuthEntryService::STATUS_INVALID_RECOVERY_CODE]
+                );
+            }
+            if ($this->hasActiveRecoveryCodes($userId) === false) {
+                return $this->mapVerifyResult(
+                    $mode,
+                    ['status' => AuthEntryService::STATUS_RECOVERY_CODE_UNAVAILABLE]
+                );
+            }
+
+            return $this->mapVerifyResult(
+                $mode,
+                $this->authEntryService()->verifyRecoveryCode(
+                    $auth,
+                    (string) $request->post('recovery_code', ''),
+                    AuthenticationRateLimitContext::forUser(
+                        $userId,
+                        $ipAddress,
+                        $auth->getSecurityChallengeBinding()
+                    )
+                )
+            );
+        }
+
         $submit = $request->post('submit_totp');
         $otp = $request->post('totp');
 
@@ -158,7 +195,27 @@ class AuthEntryController extends Controller
         switch ($result['status'] ?? null) {
             case AuthEntryService::STATUS_AUTHENTICATED:
                 $this->flash('account', 'success', $this->translateForMode($mode, 'success-authenticated'));
+                $remainingCount = $result['remainingCount'] ?? null;
+                if (is_int($remainingCount) && $remainingCount <= 3) {
+                    $messageKey = $remainingCount <= 1
+                        ? 'recovery-code-one-remaining'
+                        : 'recovery-code-low-count';
+                    $this->flash('account', 'success', __('login.' . $messageKey, [
+                        'count' => (string) $remainingCount,
+                    ]));
+                }
                 return Response::redirect(APP_BASE . '/account', 303);
+            case RecoveryCodeConsumptionResult::STATUS_RATE_LIMITED:
+                $this->flash(self::LOGIN_RECOVERY_FLASH_BAG, 'errors', __('login.recovery-code-rate-limited', [
+                    'seconds' => (string) ($result['retryAfterSeconds'] ?? 0),
+                ]));
+                return $this->redirectSelf();
+            case AuthEntryService::STATUS_INVALID_RECOVERY_CODE:
+                $this->flash(self::LOGIN_RECOVERY_FLASH_BAG, 'errors', __('login.recovery-code-invalid'));
+                return $this->redirectSelf();
+            case AuthEntryService::STATUS_RECOVERY_CODE_UNAVAILABLE:
+                $this->flash($mode, 'errors', __('login.recovery-code-unavailable'));
+                return $this->redirectSelf();
             default:
                 $this->flash($mode, 'errors', $this->translateForMode($mode, 'error-invalid-otp'));
                 return $this->redirectSelf();
@@ -250,6 +307,18 @@ class AuthEntryController extends Controller
             'uUID' => $auth->getPendingUserId(),
             'totp' => is_string($loginTotp) === true ? str_split($loginTotp) : [],
             'UID' => $auth->getAuthenticatedUserId(),
+            'loginRecoveryAvailable' => $mode === self::MODE_LOGIN
+                && $auth->isLoginAuthenticatorRequired()
+                && $auth->getPendingUserId() !== null
+                && $this->hasActiveRecoveryCodes($auth->getPendingUserId()),
         ];
+    }
+
+    private function hasActiveRecoveryCodes(int $userId): bool
+    {
+        $recoveryFeature = $this->application->get('recoveryFeatureService');
+
+        return $recoveryFeature instanceof RecoveryFeatureService
+            && $recoveryFeature->getActiveRecoverySetId($userId) !== null;
     }
 }

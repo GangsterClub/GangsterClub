@@ -8,6 +8,8 @@ use app\Http\Request;
 
 class SessionService extends \SessionHandler
 {
+    private const FLASH_TYPES = ['errors', 'success'];
+
     private ?string $ipAddress;
     private string $userAgent;
 
@@ -161,6 +163,10 @@ class SessionService extends \SessionHandler
 
     public function flash(string $bag, string $type, string $message): void
     {
+        if (in_array($type, self::FLASH_TYPES, true) === false) {
+            throw new \InvalidArgumentException('Unsupported flash message type.');
+        }
+
         $messages = $this->getFlashMessages();
         $messages[$bag][$type][] = $message;
         $this->storeFlashMessages($messages);

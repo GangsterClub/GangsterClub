@@ -24,6 +24,46 @@ account:
     controller: Account
     methods: ['GET', 'HEAD', 'POST']
 
+accountRecoveryCodes:
+    path: /account/recovery-codes
+    controller: RecoveryCodes::account
+    methods: ['GET', 'HEAD', 'POST']
+
+accountAuthenticatorEnrollmentStart:
+    path: /account/authenticator/enroll
+    controller: RecoveryCodes::startEnrollment
+    methods: ['POST']
+
+accountRecoveryCodesInitial:
+    path: /account/recovery-codes/initial
+    controller: RecoveryCodes::startInitial
+    methods: ['POST']
+
+accountRecoveryCodesReplace:
+    path: /account/recovery-codes/replace
+    controller: RecoveryCodes::startReplacement
+    methods: ['POST']
+
+loginLostAuthenticatorStart:
+    path: /login/recovery/start
+    controller: RecoveryCodes::startLostAuthenticator
+    methods: ['POST']
+
+loginLostAuthenticator:
+    path: /login/recovery
+    controller: RecoveryCodes::lostAuthenticator
+    methods: ['GET', 'HEAD', 'POST']
+
+accountAuthenticatorDisableStart:
+    path: /account/authenticator/disable/start
+    controller: AuthenticatorSecurity::startDisable
+    methods: ['POST']
+
+accountAuthenticatorDisable:
+    path: /account/authenticator/disable
+    controller: AuthenticatorSecurity::disable
+    methods: ['GET', 'HEAD', 'POST']
+
 accountVerifyEmail:
     path: /account/email/verify/{token}
     controller: Account::verifyEmailChange

@@ -32,7 +32,15 @@ class Session
         $this->application->addService('sessionService', $session);
         $csrfService = new CsrfService($session);
         $this->application->addService('csrfService', $csrfService);
-        $this->application->addService('authService', new AuthService($session, $csrfService));
+        $userRepository = $this->application->get('userRepository');
+        $this->application->addService(
+            'authService',
+            new AuthService(
+                $session,
+                $csrfService,
+                $userRepository instanceof \src\Data\Repository\UserRepository ? $userRepository : null
+            )
+        );
         ini_set('session.save_handler', 'files');
         session_set_save_handler($session, true);
         session_save_path($this->savePath);

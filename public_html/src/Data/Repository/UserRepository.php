@@ -71,4 +71,31 @@ class UserRepository
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
     }
+
+    public function getBrowserSessionVersion(int $userId): ?int
+    {
+        $user = $this->findById($userId);
+        return $user === false ? null : (int) ($user->browser_session_version ?? 1);
+    }
+
+    public function incrementBrowserSessionVersion(int $userId): ?int
+    {
+        $user = $this->dbh->table('user')
+            ->where('id', $userId)
+            ->lockForUpdate()
+            ->first();
+        if ($user === false) {
+            return null;
+        }
+
+        $nextVersion = (int) ($user->browser_session_version ?? 1) + 1;
+        $updated = $this->dbh->table('user')
+            ->where('id', $userId)
+            ->updateAffected([
+                'browser_session_version' => $nextVersion,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+
+        return $updated === 1 ? $nextVersion : null;
+    }
 }

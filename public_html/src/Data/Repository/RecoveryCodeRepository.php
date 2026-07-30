@@ -94,6 +94,35 @@ class RecoveryCodeRepository
         return $set;
     }
 
+    public function findActiveSet(int $userId): object|false
+    {
+        $state = $this->connection->table('user_recovery_code_state')
+            ->where('user_id', $userId)
+            ->first();
+        if ($state === false || $state->active_recovery_code_set_id === null) {
+            return false;
+        }
+
+        return $this->connection->table('recovery_code_set')
+            ->where('id', (int) $state->active_recovery_code_set_id)
+            ->where('user_id', $userId)
+            ->where('status', 'active')
+            ->where('acknowledged_at', 'IS NOT', null)
+            ->first();
+    }
+
+    public function getActiveSetId(int $userId): ?int
+    {
+        $set = $this->findActiveSet($userId);
+        return $set === false ? null : (int) $set->id;
+    }
+
+    public function countActiveUnused(int $userId): int
+    {
+        $set = $this->findActiveSet($userId);
+        return $set === false ? 0 : $this->countUnused((int) $set->id);
+    }
+
     public function findAuthenticatorGenerationForUpdate(int $userId): ?int
     {
         $record = $this->connection->table('user_authenticator_totp')
@@ -171,5 +200,24 @@ class RecoveryCodeRepository
                 'active_recovery_code_set_id' => $setId,
                 'updated_at' => $now,
             ]);
+    }
+
+    public function clearActiveSet(int $userId, string $now): bool
+    {
+        $state = $this->connection->table('user_recovery_code_state')
+            ->where('user_id', $userId)
+            ->lockForUpdate()
+            ->first();
+
+        if ($state === false) {
+            return true;
+        }
+
+        return $this->connection->table('user_recovery_code_state')
+            ->where('user_id', $userId)
+            ->updateAffected([
+                'active_recovery_code_set_id' => null,
+                'updated_at' => $now,
+            ]) === 1;
     }
 }

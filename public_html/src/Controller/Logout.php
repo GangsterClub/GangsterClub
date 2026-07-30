@@ -6,6 +6,7 @@ namespace src\Controller;
 
 use app\Http\Request;
 use app\Http\Response;
+use src\Business\RecoveryCodeService;
 
 class Logout extends Controller
 {
@@ -15,6 +16,20 @@ class Logout extends Controller
         if ($request->getMethod() !== 'POST') {
             $redirect = $auth->getAuthenticatedUserId() === null ? '/login' : '/account';
             return Response::redirect(APP_BASE . $redirect, 303);
+        }
+
+        $pendingSetId = $auth->getPendingRecoverySetId();
+        $flowUserId = $auth->getAuthenticatedUserId() ?? $auth->getPendingUserId();
+        $recoveryCodes = $this->application->get('recoveryCodeService');
+        if ($pendingSetId !== null
+            && $flowUserId !== null
+            && $recoveryCodes instanceof RecoveryCodeService
+        ) {
+            $recoveryCodes->invalidatePendingSet(
+                $flowUserId,
+                $pendingSetId,
+                'logout_abandonment'
+            );
         }
 
         $auth->logoutUser();

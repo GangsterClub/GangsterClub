@@ -18,6 +18,7 @@ use src\Business\AuthenticatorTOTPService;
 use src\Business\EmailTOTPService;
 use src\Business\RecoveryCodeCodec;
 use src\Business\RecoveryCodeService;
+use src\Business\RecoveryFeatureService;
 use src\Business\SecurityAuditService;
 use src\Business\TOTPService;
 use src\Business\UserService;
@@ -109,6 +110,15 @@ class Application extends Container
             $this->getRegisteredService('authenticationRateLimitService', AuthenticationRateLimitService::class),
             $this->getRegisteredService('securityAuditService', SecurityAuditService::class)
         ));
+        $this->addService('recoveryFeatureService', fn(): RecoveryFeatureService => new RecoveryFeatureService(
+            $this->getRegisteredService('dbh', Connection::class),
+            $this->getRegisteredService('authenticationChallengeService', AuthenticationChallengeService::class),
+            $this->getRegisteredService('recoveryCodeService', RecoveryCodeService::class),
+            $this->getRegisteredService('recoveryCodeRepository', RecoveryCodeRepository::class),
+            $this->getRegisteredService('userAuthenticatorTotpRepository', UserAuthenticatorTOTPRepository::class),
+            $this->getRegisteredService('userRepository', UserRepository::class),
+            $this->getRegisteredService('securityAuditService', SecurityAuditService::class)
+        ));
         $this->addService('authenticatorTotpService', fn(): AuthenticatorTOTPService => new AuthenticatorTOTPService(
             $this->getRegisteredService('totpService', TOTPService::class),
             $this->getRegisteredService('userAuthenticatorTotpRepository', UserAuthenticatorTOTPRepository::class)
@@ -130,7 +140,8 @@ class Application extends Container
             $this->getRegisteredService('emailTotpService', EmailTOTPService::class),
             $this->getRegisteredService('totpService', TOTPService::class),
             $this->getRegisteredService('emailService', EmailService::class),
-            $this->getRegisteredService('sessionService', SessionService::class)
+            $this->getRegisteredService('sessionService', SessionService::class),
+            $this->getRegisteredService('recoveryCodeService', RecoveryCodeService::class)
         ));
     }
 

@@ -59,4 +59,26 @@ class UserAuthenticatorTOTPRepository
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
     }
+
+    public function replaceSecretForGeneration(
+        int $userId,
+        int $expectedGeneration,
+        int $newGeneration,
+        string $secret,
+        int $digits,
+        int $period
+    ): bool {
+        return $this->dbh->table('user_authenticator_totp')
+            ->where('user_id', $userId)
+            ->where('generation', $expectedGeneration)
+            ->updateAffected([
+                'secret' => $secret,
+                'digits' => $digits,
+                'period' => $period,
+                'generation' => $newGeneration,
+                'enabled_at' => date('Y-m-d H:i:s'),
+                'last_verified_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]) === 1;
+    }
 }

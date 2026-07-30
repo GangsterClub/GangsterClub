@@ -1,0 +1,49 @@
+{% extends "tmpl/base.twig" %}
+{% import "macro/alerts.twig" as alerts %}
+
+{% block md %}
+    <title>{{ __('account.authenticator-disable-modal-title') }}</title>
+{% endblock %}
+
+{% block content %}
+<section class="min-h-screen px-4 py-10">
+    <dialog open id="authenticator-disable-flow-modal"
+        class="modal-dialog backdrop:bg-black/60"
+        data-pending-label="{{ __('account.authenticator-disable-requires-verification') }}"
+        data-failure-message="{{ __('account.authenticator-invalid-code') }}">
+        <div class="modal-panel max-w-2xl" role="document" aria-labelledby="authenticator-disable-flow-title">
+            <header class="mb-5">
+                <p class="text-xs font-semibold uppercase tracking-wide text-red-600 dark:text-red-400">{{ __('recovery.security-step') }}</p>
+                <h1 id="authenticator-disable-flow-title" class="text-2xl font-bold">
+                    {{ __('account.authenticator-disable-modal-title') }}
+                </h1>
+            </header>
+
+            <div id="authenticator-disable-flow-status" data-modal-status aria-live="polite" aria-atomic="true" tabindex="-1">
+                {% for error in account.errors %}
+                    {{ alerts.error(error) }}
+                {% endfor %}
+                {% for success in account.success %}
+                    {{ alerts.success(success) }}
+                {% endfor %}
+            </div>
+
+            <form method="POST" class="mt-4 space-y-4">
+                {{ csrf_field() }}
+
+                <label for="authenticator_disable_code" class="block text-sm font-medium">
+                    {{ __('account.authenticator-disable-code-label') }}
+                </label>
+
+                <input id="authenticator_disable_code" type="text" name="authenticator_disable_code" inputmode="numeric"
+                    pattern="\d*" maxlength="{{ constant('AUTHENTICATOR_TOTP_DIGITS') }}" class="field-input"
+                    autocomplete="one-time-code" required>
+
+                <button type="submit" name="submit_authenticator_disable" value="1" class="btn-primary">
+                    {{ __('account.authenticator-disable-confirm') }}
+                </button>
+            </form>
+        </div>
+    </dialog>
+</section>
+{% endblock %}

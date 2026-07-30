@@ -83,4 +83,20 @@ class EmailService
             return false;
         }
     }
+
+    public function sendSecurityNotification(string $toEmail, string $subject, string $message): bool
+    {
+        try {
+            $this->mailer->clearAddresses();
+            $this->mailer->addAddress($toEmail);
+            $this->mailer->Subject = APP_NAME . ' - ' . $subject;
+            $this->mailer->Body = $message;
+            $this->mailer->isHTML(false);
+
+            return $this->mailer->send();
+        } catch (Exception $e) {
+            error_log("Mailer Error: {$this->mailer->ErrorInfo}");
+            return false;
+        }
+    }
 }

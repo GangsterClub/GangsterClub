@@ -7,6 +7,7 @@ use src\Migration\CreateAuthenticationChallenge;
 use src\Migration\CreateAuthenticationRateLimit;
 use src\Migration\CreateRecoveryCodes;
 use src\Migration\CreateSecurityAuditEvent;
+use src\Migration\AddBrowserSessionVersion;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -21,6 +22,17 @@ final class SecurityMigrationTestConnection extends Connection
     public function query(string $query, array $params = []): void
     {
         $this->queries[] = $query;
+    }
+}
+
+final class BrowserSessionVersionTestMigration extends AddBrowserSessionVersion
+{
+    private int $checks = 0;
+
+    protected function columnExists(string $table, string $column): bool
+    {
+        ++$this->checks;
+        return $this->checks > 1;
     }
 }
 
@@ -75,4 +87,20 @@ assertMigrationTrue(
     'Recovery migration should add authenticator generation when schema inspection reports it missing.'
 );
 
-echo "Security migration tests passed.\n";
+$sessionVersionConnection = new SecurityMigrationTestConnection();
+$sessionVersionMigration = new BrowserSessionVersionTestMigration($sessionVersionConnection);
+ob_start();
+$sessionVersionMigration->up();
+$sessionVersionMigration->down();
+ob_end_clean();
+$sessionVersionSql = implode("\n", $sessionVersionConnection->queries);
+assertMigrationTrue(
+    str_contains($sessionVersionSql, 'ADD COLUMN `browser_session_version`'),
+    'Browser-session revocation migration should add the account version.'
+);
+assertMigrationTrue(
+    str_contains($sessionVersionSql, 'DROP COLUMN `browser_session_version`'),
+    'Browser-session revocation migration should provide an isolated rollback.'
+);
+
+fwrite(STDOUT, "Security migration tests passed.\n");

@@ -17,6 +17,8 @@ class AuthEntryService
     public const STATUS_VALIDATION_ERROR = 'validation_error';
     public const STATUS_SEND_ERROR = 'send_error';
     public const STATUS_INVALID_OTP = 'invalid_otp';
+    public const STATUS_INVALID_RECOVERY_CODE = 'invalid_recovery_code';
+    public const STATUS_RECOVERY_CODE_UNAVAILABLE = 'recovery_code_unavailable';
     public const STATUS_AUTHENTICATED = 'authenticated';
 
     private const PENDING_REGISTRATION_USERNAME = 'PENDING_REGISTRATION_USERNAME';
@@ -29,7 +31,8 @@ class AuthEntryService
         private readonly EmailTOTPService $emailTotpService,
         private readonly TOTPService $totpService,
         private readonly EmailService $emailService,
-        private readonly SessionService $sessionService
+        private readonly SessionService $sessionService,
+        private readonly ?RecoveryCodeService $recoveryCodeService = null
     ) {
     }
 
@@ -125,6 +128,54 @@ class AuthEntryService
         $auth->loginUser($userId);
 
         return ['status' => self::STATUS_AUTHENTICATED, 'userId' => $userId];
+    }
+
+    public function verifyRecoveryCode(
+        AuthService $auth,
+        string $submittedCode,
+        AuthenticationRateLimitContext $rateLimitContext
+    ): array {
+        $userId = $auth->getPendingUserId();
+        if ($userId === null
+            || $auth->isLoginAuthenticatorRequired() === false
+            || $this->recoveryCodeService === null
+        ) {
+            return ['status' => self::STATUS_INVALID_RECOVERY_CODE];
+        }
+
+        $result = $this->recoveryCodeService->consumeActiveCode(
+            $userId,
+            $submittedCode,
+            $rateLimitContext,
+            AuthenticationRateLimitPurpose::AUTHENTICATOR_LOGIN
+        );
+        if ($result->status === RecoveryCodeConsumptionResult::STATUS_RATE_LIMITED) {
+            return [
+                'status' => RecoveryCodeConsumptionResult::STATUS_RATE_LIMITED,
+                'retryAfterSeconds' => $result->retryAfterSeconds,
+            ];
+        }
+        if ($result->isConsumed() === false) {
+            return ['status' => self::STATUS_INVALID_RECOVERY_CODE];
+        }
+
+        $email = $auth->getPendingLoginEmail();
+        if ($email === null) {
+            return ['status' => self::STATUS_INVALID_RECOVERY_CODE];
+        }
+
+        $auth->loginUser($userId);
+        $this->emailService->sendSecurityNotification(
+            $email,
+            'Recovery code used',
+            'A recovery code was used to sign in to your account. If this was not you, secure your account immediately.'
+        );
+
+        return [
+            'status' => self::STATUS_AUTHENTICATED,
+            'userId' => $userId,
+            'remainingCount' => $result->remainingCount,
+        ];
     }
 
     private function createPendingUser(string $mode, string $email): ?User

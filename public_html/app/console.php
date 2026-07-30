@@ -17,6 +17,7 @@ $migrationManager->addMigration(new \src\Migration\CreateAuthenticationChallenge
 $migrationManager->addMigration(new \src\Migration\CreateAuthenticationRateLimit($dbh));
 $migrationManager->addMigration(new \src\Migration\CreateSecurityAuditEvent($dbh));
 $migrationManager->addMigration(new \src\Migration\CreateRecoveryCodes($dbh));
+$migrationManager->addMigration(new \src\Migration\AddBrowserSessionVersion($dbh));
 
 $allowedArgs = ['--migrate', '--rollback', '-m', '-r'];
 if (isset($argv[1]) === false || in_array($argv[1], $allowedArgs) === false) {

@@ -9,9 +9,8 @@ use app\Http\Request;
 use app\Http\Response;
 use app\Service\AuthService;
 use src\Business\AccountService;
-use src\Business\EmailService;
 use src\Business\AuthenticatorTOTPService;
-use src\Business\EmailTOTPService;
+use src\Business\RecoveryFeatureService;
 use src\Business\UserService;
 use src\Entity\User;
 
@@ -22,6 +21,8 @@ class Account extends Controller
     private UserService $userService;
 
     private AuthenticatorTOTPService $authenticatorService;
+
+    private RecoveryFeatureService $recoveryFeatureService;
 
     private array $accountMessages = [
         'errors' => [],
@@ -49,6 +50,11 @@ class Account extends Controller
         }
 
         $this->authenticatorService = $authenticatorService;
+        $recoveryFeatureService = $application->get('recoveryFeatureService');
+        if (($recoveryFeatureService instanceof RecoveryFeatureService) === false) {
+            throw new \RuntimeException('recoveryFeatureService service is not available.');
+        }
+        $this->recoveryFeatureService = $recoveryFeatureService;
     }
 
     public function __invoke(Request $request): Response
@@ -90,7 +96,7 @@ class Account extends Controller
         }
 
         $pendingEmailChange = $this->formatPendingEmailChange($user->getId());
-        $pendingSecret = $auth->getPendingAuthenticatorSecret();
+        $pendingSecret = null;
         $authenticatorEnabled = $this->authenticatorService->hasEnabledAuthenticator($user->getId());
         $authenticatorLabel = APP_NAME . ':' . $user->getEmail();
         $otpauth = (is_string($pendingSecret) === true && $pendingSecret !== '')
@@ -118,6 +124,10 @@ class Account extends Controller
                             'period' => (int) AUTHENTICATOR_TOTP_PERIOD,
                             'emailDigits' => (int) TOTP_DIGITS,
                             'emailPeriod' => (int) TOTP_PERIOD,
+                        ],
+                        'recoveryCodes' => [
+                            'active' => $this->recoveryFeatureService->getActiveRecoverySetId($user->getId()) !== null,
+                            'remainingCount' => $this->recoveryFeatureService->getUnusedRecoveryCodeCount($user->getId()),
                         ],
                     ]
                 )
@@ -224,178 +234,15 @@ class Account extends Controller
         $this->accountMessages['errors'][] = __($messageKeys[$status] ?? 'account.email-change-error');
     }
 
-    private function getEmailTOTPService(): EmailTOTPService
-    {
-        $emailTotpService = $this->application->get('emailTotpService');
-        if (($emailTotpService instanceof EmailTOTPService) === false) {
-            throw new \RuntimeException('emailTotpService service is not available.');
-        }
-
-        return $emailTotpService;
-    }
-
     private function handleAuthenticator(Request $request, User $user, AuthService $auth): void
     {
-        $userId = $user->getId();
-        $isEnabled = $this->authenticatorService->hasEnabledAuthenticator($userId);
-        $pendingSecret = $auth->getPendingAuthenticatorSecret();
-        $hasPendingSetup = is_string($pendingSecret) && $pendingSecret !== '';
-
-        if ($request->post('submit_authenticator_setup') !== null) {
-            $this->handleAuthenticatorSetup($user, $auth, $userId, $isEnabled, $hasPendingSetup);
+        if ($request->post('submit_authenticator_setup') !== null
+            || $request->post('submit_authenticator_cancel') !== null
+            || $request->post('submit_authenticator_confirm') !== null
+        ) {
+            $this->accountMessages['errors'][] = __('account.authenticator-flow-required');
             return;
         }
-
-        if ($request->post('submit_authenticator_cancel') !== null) {
-            $this->handleAuthenticatorCancel($auth, $isEnabled, $hasPendingSetup);
-            return;
-        }
-
-        if ($request->post('submit_authenticator_confirm') !== null) {
-            $this->handleAuthenticatorConfirm($request, $auth, $userId, $isEnabled, $pendingSecret, $hasPendingSetup);
-            return;
-        }
-
-        if ($request->post('submit_authenticator_disable') !== null) {
-            $this->handleAuthenticatorDisable($request, $auth, $userId, $isEnabled, $hasPendingSetup);
-        }
-    }
-
-    private function handleAuthenticatorSetup(User $user, AuthService $auth, int $userId, bool $isEnabled, bool $hasPendingSetup): void
-    {
-        if ($isEnabled === true) {
-            $this->accountMessages['errors'][] = __('account.authenticator-setup-already-enabled');
-            return;
-        }
-
-        if ($hasPendingSetup === false) {
-            $auth->setPendingAuthenticatorSecret($this->authenticatorService->generateSecret());
-        }
-
-        $emailTotpService = $this->getEmailTOTPService();
-        $emailCode = $emailTotpService->generateEmailTOTPForSession($userId, $auth->getAuthenticatorSetupEmailSessionKey());
-
-        $emailService = $this->application->get('emailService');
-        if (($emailService instanceof EmailService) === false) {
-            $this->accountMessages['errors'][] = __('account.authenticator-email-code-send-error');
-            return;
-        }
-
-        $emailSent = $emailService->sendEmailTOTP($user->getEmail(), $emailCode);
-        if ($emailSent === false) {
-            $this->accountMessages['errors'][] = __('account.authenticator-email-code-send-error');
-            return;
-        }
-
-        $this->accountMessages['success'][] = __('account.authenticator-secret-generated');
-        $this->accountMessages['success'][] = __('account.authenticator-email-code-sent');
-    }
-
-    private function handleAuthenticatorCancel(AuthService $auth, bool $isEnabled, bool $hasPendingSetup): void
-    {
-        if ($isEnabled === false && $hasPendingSetup === true) {
-            $auth->clearPendingAuthenticatorSetup();
-            $this->accountMessages['success'][] = __('account.authenticator-secret-cleared');
-            return;
-        }
-
-        if ($isEnabled === true) {
-            $this->accountMessages['errors'][] = __('account.authenticator-disable-requires-verification');
-            return;
-        }
-
-        $this->accountMessages['errors'][] = __('account.authenticator-requires-secret');
-    }
-
-    private function handleAuthenticatorConfirm(Request $request, AuthService $auth, int $userId, bool $isEnabled, ?string $pendingSecret, bool $hasPendingSetup): void
-    {
-        if ($isEnabled === true) {
-            $this->accountMessages['errors'][] = __('account.authenticator-setup-already-enabled');
-            return;
-        }
-
-        if ($hasPendingSetup === false) {
-            $this->accountMessages['errors'][] = __('account.authenticator-requires-secret');
-            return;
-        }
-
-        $code = $this->normalizeOtpCode((string) $request->post('authenticator_code'));
-        if ($this->isValidNumericCodeFormat($code, (int) AUTHENTICATOR_TOTP_DIGITS) === false) {
-            $this->accountMessages['errors'][] = __('account.authenticator-invalid-code');
-            return;
-        }
-
-        $emailCode = $this->normalizeOtpCode((string) $request->post('authenticator_email_code'));
-        if ($this->isValidNumericCodeFormat($emailCode, (int) TOTP_DIGITS) === false) {
-            $this->accountMessages['errors'][] = __('account.authenticator-email-code-required');
-            return;
-        }
-
-        if ($this->authenticatorService->verifySecret($pendingSecret, $code) === false) {
-            $this->accountMessages['errors'][] = __('account.authenticator-invalid-code');
-            return;
-        }
-
-        $emailTotpService = $this->getEmailTOTPService();
-        if ($emailTotpService->verifyEmailTOTPForSession($userId, $emailCode, $auth->getAuthenticatorSetupEmailSessionKey()) === false) {
-            $this->accountMessages['errors'][] = __('account.authenticator-email-code-invalid');
-            return;
-        }
-
-        $enabled = $this->authenticatorService->enableAuthenticator($userId, $pendingSecret);
-        if ($enabled === true) {
-            $auth->clearPendingAuthenticatorSetup();
-            $auth->rotateCsrfToken();
-            $this->accountMessages['success'][] = __('account.authenticator-enabled');
-        } else {
-            $this->accountMessages['errors'][] = __('account.authenticator-enable-error');
-        }
-    }
-
-    private function handleAuthenticatorDisable(Request $request, AuthService $auth, int $userId, bool $isEnabled, bool $hasPendingSetup): void
-    {
-        if ($isEnabled === false) {
-            if ($hasPendingSetup === true) {
-                $auth->clearPendingAuthenticatorSetup();
-                $this->accountMessages['success'][] = __('account.authenticator-secret-cleared');
-            } else {
-                $this->accountMessages['errors'][] = __('account.authenticator-disable-not-enabled');
-            }
-
-            return;
-        }
-
-        $code = $this->normalizeOtpCode((string) $request->post('authenticator_disable_code'));
-        if ($this->isValidNumericCodeFormat($code, (int) AUTHENTICATOR_TOTP_DIGITS) === false) {
-            $this->accountMessages['errors'][] = __('account.authenticator-disable-code-required');
-            return;
-        }
-
-        if ($this->authenticatorService->verifyEnabledSecret($userId, $code) === false) {
-            $this->accountMessages['errors'][] = __('account.authenticator-disable-invalid-code');
-            return;
-        }
-
-        $disabled = $this->authenticatorService->disableAuthenticator($userId);
-        if ($disabled === true) {
-            $auth->setPendingAuthenticatorSecret(null);
-            $auth->rotateCsrfToken();
-            $this->accountMessages['success'][] = __('account.authenticator-disabled');
-        } else {
-            $this->accountMessages['errors'][] = __('account.authenticator-disable-error');
-        }
-    }
-
-    private function normalizeOtpCode(string $code): string
-    {
-        return preg_replace('/\s+/', '', $code) ?? '';
-    }
-
-    private function isValidNumericCodeFormat(string $code, int $digits): bool
-    {
-        $pattern = '/^\d{' . $digits . '}$/';
-
-        return (bool) preg_match($pattern, $code);
     }
 
     private function formatPendingEmailChange(int $userId): ?array

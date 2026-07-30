@@ -240,4 +240,4 @@ assertSameValue('https://example.test/account', $sameOriginBackUrl, 'Same-origin
 $externalBackUrl = $getBackUrl->invoke($middleware, new CsrfTestRequest('POST', ['Referer' => 'https://evil.example/phish']));
 assertSameValue(WEB_ROOT, $externalBackUrl, 'External CSRF back URLs should fall back to WEB_ROOT.');
 
-print "CSRF middleware tests passed.\n";
+fwrite(STDOUT, "CSRF middleware tests passed.\n");

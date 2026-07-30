@@ -17,6 +17,10 @@ namespace Twig {
                     $html .= '<input type="email" id="email_reference" value="' . $vars['email'] . '" disabled />';
                 }
                 $html .= '<input name="totp[]" />';
+                $recoveryErrors = $vars['loginRecovery']['errors'] ?? [];
+                if ($recoveryErrors !== []) {
+                    $html .= '<details data-login-recovery open>' . implode('', $recoveryErrors) . '</details>';
+                }
             } else {
                 if ($name === 'register.twig') {
                     $html .= '<input name="username" value="' . htmlspecialchars((string) ($vars['registerUsername'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '" />';
@@ -35,7 +39,9 @@ use app\Http\Request;
 use app\Http\Response;
 use app\Service\AuthService;
 use app\Service\CsrfService;
+use src\Business\AuthenticationRateLimitContext;
 use src\Business\AuthEntryService;
+use src\Business\RecoveryFeatureService;
 use src\Controller\AuthEntryController;
 
 const APP_BASE = '';
@@ -68,6 +74,11 @@ require_once __DIR__ . '/../app/Service/AuthService.php';
 require_once __DIR__ . '/../src/Controller/Controller.php';
 require_once __DIR__ . '/../src/Controller/AuthEntryController.php';
 require_once __DIR__ . '/../src/Business/AuthEntryService.php';
+require_once __DIR__ . '/../src/Business/AuthenticationRateLimitBucketDimension.php';
+require_once __DIR__ . '/../src/Business/AuthenticationRateLimitAccountIdentifier.php';
+require_once __DIR__ . '/../src/Business/AuthenticationRateLimitContext.php';
+require_once __DIR__ . '/../src/Business/RecoveryCodeConsumptionResult.php';
+require_once __DIR__ . '/../src/Business/RecoveryFeatureService.php';
 
 final class AuthEntryTestSession extends \app\Service\SessionService
 {
@@ -79,16 +90,37 @@ final class AuthEntryTestSession extends \app\Service\SessionService
     public function set(string $key, mixed $value): void { $this->values[$key] = filter_var($value, 515); }
     public function remove(string $key): void { unset($this->values[$key]); }
     public function regenerate(): void {}
-    public function flash(string $bag, string $type, string $message): void { $this->flashes[$bag][$type][] = $message; }
-    public function consumeFlash(string $bag): array { return $this->flashes[$bag] ?? []; }
+    public function flash(string $bag, string $type, string $message): void
+    {
+        if (in_array($type, ['errors', 'success'], true) === false) {
+            throw new \InvalidArgumentException('Unsupported flash message type.');
+        }
+        $this->flashes[$bag][$type][] = $message;
+    }
+    public function consumeFlash(string $bag): array
+    {
+        $messages = $this->flashes[$bag] ?? [];
+        unset($this->flashes[$bag]);
+        return [
+            'errors' => is_array($messages['errors'] ?? null) ? $messages['errors'] : [],
+            'success' => is_array($messages['success'] ?? null) ? $messages['success'] : [],
+        ];
+    }
 }
 
 final class AuthEntryTestTranslation { public function setFile(string $file): void {} }
+final class AuthEntryTestRecoveryFeature extends RecoveryFeatureService
+{
+    public ?int $activeSetId = 99;
+    public function __construct() {}
+    public function getActiveRecoverySetId(int $userId): ?int { return $this->activeSetId; }
+}
 final class AuthEntryTestApplication extends Application
 {
     public AuthEntryTestSession $session;
     public CsrfService $csrf;
     public AuthService $auth;
+    public AuthEntryTestRecoveryFeature $recoveryFeature;
 
     public function __construct()
     {
@@ -98,6 +130,7 @@ final class AuthEntryTestApplication extends Application
             $this->session,
             $this->csrf
         );
+        $this->recoveryFeature = new AuthEntryTestRecoveryFeature();
     }
 
     public function get(string $name): ?object
@@ -108,6 +141,7 @@ final class AuthEntryTestApplication extends Application
             'translationService' => new AuthEntryTestTranslation(),
             'twig' => new \Twig\Environment(new \Twig\Loader\ArrayLoader(['login.twig' => 'login', 'register.twig' => 'register'])),
             'csrfService' => $this->csrf,
+            'recoveryFeatureService' => $this->recoveryFeature,
             default => null,
         };
     }
@@ -121,6 +155,11 @@ final class FakeAuthEntryService extends AuthEntryService
     public function beginLogin(AuthService $auth, string $email): array { $this->calls[] = ['beginLogin', $email]; return array_shift($this->queue); }
     public function beginRegistration(AuthService $auth, string $username, string $email): array { $this->calls[] = ['beginRegistration', $username, $email]; return array_shift($this->queue); }
     public function verify(AuthService $auth, string $mode, string $otp): array { $this->calls[] = ['verify', $mode, $otp]; return array_shift($this->queue); }
+    public function verifyRecoveryCode(AuthService $auth, string $submittedCode, AuthenticationRateLimitContext $rateLimitContext): array
+    {
+        $this->calls[] = ['verifyRecoveryCode', $submittedCode];
+        return array_shift($this->queue);
+    }
 }
 
 final class TestAuthEntryController extends AuthEntryController
@@ -172,6 +211,20 @@ function runController(string $mode, array $post, array $result): array
     $response = (new TestAuthEntryController($app, $service))->handle(new AuthEntryTestRequest($post), $mode);
     return [$response, $app->session->flashes, $service->calls];
 }
+
+$unsupportedFlashRejected = false;
+try {
+    (new ReflectionClass(\app\Service\SessionService::class))
+        ->newInstanceWithoutConstructor()
+        ->flash('login', 'unsupported', 'message');
+} catch (InvalidArgumentException) {
+    $unsupportedFlashRejected = true;
+}
+assertSameValue(
+    true,
+    $unsupportedFlashRejected,
+    'Production session flash storage must reject unsupported message types.'
+);
 
 [$response, $flashes, $calls] = runController('login', ['submit_login' => '1', 'email' => 'known@example.test'], ['status' => AuthEntryService::STATUS_EMAIL_OTP_SENT]);
 assertSameValue(303, $response->getStatusCode(), 'Existing-user login should redirect after sending email OTP.');
@@ -250,6 +303,108 @@ assertSameValue(303, $response->getStatusCode(), 'Verify success should redirect
 assertSameValue('Location: /account', $response->getHeaders()[0] ?? null, 'Verify success should target account.');
 assertSameValue([['verify', 'login', '123456']], $calls, 'Verify should concatenate OTP digits and delegate JWT issuing to the service.');
 assertContainsValue('success-authenticated', $flashes['account']['success'] ?? [], 'Verify success should flash account success.');
+
+$app = new AuthEntryTestApplication();
+$app->auth->setPendingLoginEmail('recovery@example.test');
+$app->auth->setPendingUserId(42);
+$app->auth->setLoginAuthenticatorRequired(true);
+$service = new FakeAuthEntryService();
+$service->queue[] = [
+    'status' => AuthEntryService::STATUS_AUTHENTICATED,
+    'remainingCount' => 1,
+];
+$response = (new TestAuthEntryController($app, $service))->handle(
+    new AuthEntryTestRequest([
+        'submit_recovery_code' => '1',
+        'recovery_code' => 'ABCDE-FGHJK-MNPQR-STUVW',
+    ]),
+    'login'
+);
+assertSameValue(303, $response->getStatusCode(), 'Recovery-code fallback should use the normal authenticated redirect.');
+assertSameValue(
+    [['verifyRecoveryCode', 'ABCDE-FGHJK-MNPQR-STUVW']],
+    $service->calls,
+    'The recovery-code form must delegate to the typed recovery verification path.'
+);
+assertContainsValue(
+    'login.recovery-code-one-remaining count=1',
+    $app->session->flashes['account']['success'] ?? [],
+    'One remaining code must produce the prominent replacement recommendation.'
+);
+
+$app = new AuthEntryTestApplication();
+$app->auth->setPendingLoginEmail('recovery@example.test');
+$app->auth->setPendingUserId(42);
+$app->auth->setLoginAuthenticatorRequired(true);
+$service = new FakeAuthEntryService();
+$service->queue[] = ['status' => AuthEntryService::STATUS_INVALID_RECOVERY_CODE];
+$response = (new TestAuthEntryController($app, $service))->handle(
+    new AuthEntryTestRequest([
+        'submit_recovery_code' => '1',
+        'recovery_code' => 'ABCDE-FGHJK-MNPQR-STUVW',
+    ]),
+    'login'
+);
+assertSameValue(303, $response->getStatusCode(), 'Invalid recovery codes should retain PRG behavior.');
+assertContainsValue(
+    'login.recovery-code-invalid',
+    $app->session->flashes['login.recovery']['errors'] ?? [],
+    'Invalid recovery codes must use a recovery-specific inline error.'
+);
+assertSameValue(
+    [],
+    $app->session->flashes['login']['errors'] ?? [],
+    'Invalid recovery codes must not be presented as generic authenticator OTP failures.'
+);
+$response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->handle(
+    new AuthEntryTestRequest([]),
+    'login'
+);
+assertResponseContains(
+    $response,
+    '<details data-login-recovery open>login.recovery-code-invalid</details>',
+    'The redirected login GET must show the recovery error inside an open recovery subsection.'
+);
+assertSameValue(
+    false,
+    isset($app->session->flashes['login.recovery']),
+    'Recovery feedback must be consumed after the redirected login GET.'
+);
+$response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->handle(
+    new AuthEntryTestRequest([]),
+    'login'
+);
+assertResponseNotContains(
+    $response,
+    'login.recovery-code-invalid',
+    'Recovery feedback must not be displayed twice.'
+);
+
+$app = new AuthEntryTestApplication();
+$app->auth->setPendingLoginEmail('recovery@example.test');
+$app->auth->setPendingUserId(42);
+$app->auth->setLoginAuthenticatorRequired(true);
+$app->recoveryFeature->activeSetId = null;
+$service = new FakeAuthEntryService();
+$response = (new TestAuthEntryController($app, $service))->handle(new AuthEntryTestRequest([]), 'login');
+assertSameValue(
+    false,
+    \Twig\Environment::$lastVars['loginRecoveryAvailable'] ?? null,
+    'Recovery-code fallback must not be offered when the account has no active recovery-code set.'
+);
+$response = (new TestAuthEntryController($app, $service))->handle(
+    new AuthEntryTestRequest([
+        'submit_recovery_code' => '1',
+        'recovery_code' => 'ABCDE-FGHJK-MNPQR-STUVW',
+    ]),
+    'login'
+);
+assertSameValue([], $service->calls, 'Unavailable recovery-code fallback must not attempt credential consumption.');
+assertContainsValue(
+    'login.recovery-code-unavailable',
+    $app->session->flashes['login']['errors'] ?? [],
+    'A stale recovery-code submission without an active set should explain that the fallback is unavailable.'
+);
 
 fwrite(STDOUT, "AuthEntryController tests passed.\n");
 

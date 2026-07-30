@@ -573,4 +573,4 @@ assertRateLimitSame(
     'Changing session and IP must not bypass the account bucket.'
 );
 
-echo "Authentication rate-limit service tests passed.\n";
+fwrite(STDOUT, "Authentication rate-limit service tests passed.\n");

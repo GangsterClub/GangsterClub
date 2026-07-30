@@ -539,4 +539,4 @@ assertSecuritySame(
     'Composed security services should share and roll back the outer transaction.'
 );
 
-echo "Security foundation tests passed.\n";
+fwrite(STDOUT, "Security foundation tests passed.\n");
