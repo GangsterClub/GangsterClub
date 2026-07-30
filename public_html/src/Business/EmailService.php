@@ -46,11 +46,22 @@ class EmailService
         try {
             $this->mailer->clearAddresses();
             $this->mailer->addAddress($toEmail);
-            $this->mailer->Subject = "Your OTP Code is: $totp";
-            $this->mailer->Body = "Your GangsterClub.com OTP code is: $totp. Please do not share this code nor your email address
-                with anyone. If you did not request a login code you can ignore this email. Or if you experience spam you can have us
-                blacklist your email address by writing us at
-                <a href='mailto:info@gangsterclub.com?subject=Blacklist my email'>info@gangsterclub.com</a>.";
+            $this->mailer->Subject = APP_NAME . ' - Your OTP code has arrived';
+            $this->mailer->Body = sprintf(
+                "To continue verifying your account ownership for %1s, copy or enter this " .
+                "single time use OTP code: <strong>%2\$d</strong>.<br /><br />" .
+
+                "Please do not share this code and your email address with anyone.<br /><br />" .
+
+                "If you did not request this code you can safely ignore this email.<br /><br />" .
+
+                "If you experience spam we recommend you to notify us and have us " .
+                "(temporarily) blacklist your email address by writing us at: " .
+                "<a href='mailto:%3\$s?subject=Blacklist my email'>%3\$s</a> .",
+                "GangsterClub.com",
+                (int) $totp,
+                "info@gangsterclub.com"
+            );
 
             $this->mailer->isHTML(true);
 
