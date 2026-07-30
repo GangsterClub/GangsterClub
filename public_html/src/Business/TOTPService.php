@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace src\Business;
 
+use chillerlan\QRCode\QRCode;
 use OTPHP\TOTP;
 
 class TOTPService
@@ -53,19 +54,6 @@ class TOTPService
         return $totp->getProvisioningUri();
     }
 
-    public function generateQRCode(
-        string $secret,
-        string $label = APP_NAME,
-        string $issuer = APP_NAME,
-        int $digits = AUTHENTICATOR_TOTP_DIGITS,
-        int $period = AUTHENTICATOR_TOTP_PERIOD
-    ): string
-    {
-        $qrCodeUrl = $this->generateProvisioningUri($secret, $label, $issuer, $digits, $period);
-
-        return 'https://api.qrserver.com/v1/create-qr-code/?data=' . urlencode($qrCodeUrl);
-    }
-
     private function sanitizeProvisioningLabel(string $label): string
     {
         $sanitized = str_replace(':', ' ', trim($label));
@@ -78,5 +66,29 @@ class TOTPService
         $totp = TOTP::create($secret, $period);
         $totp->setDigits($digits);
         return $totp->verify($code);
+    }
+
+    /**
+     * Generate a completely local QR-code data URI.
+     *
+     * The returned value can be used directly as an <img src="..."> value.
+     * No secret or provisioning URI leaves the application.
+     */
+    public function generateQRCode(
+        string $secret,
+        string $label = APP_NAME,
+        string $issuer = APP_NAME,
+        int $digits = AUTHENTICATOR_TOTP_DIGITS,
+        int $period = AUTHENTICATOR_TOTP_PERIOD
+    ): string {
+        $provisioningUri = $this->generateProvisioningUri(
+            $secret,
+            $label,
+            $issuer,
+            $digits,
+            $period
+        );
+
+        return (new QRCode())->render($provisioningUri);
     }
 }

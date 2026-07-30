@@ -96,15 +96,7 @@ class Account extends Controller
         }
 
         $pendingEmailChange = $this->formatPendingEmailChange($user->getId());
-        $pendingSecret = null;
         $authenticatorEnabled = $this->authenticatorService->hasEnabledAuthenticator($user->getId());
-        $authenticatorLabel = APP_NAME . ':' . $user->getEmail();
-        $otpauth = (is_string($pendingSecret) === true && $pendingSecret !== '')
-            ? $this->authenticatorService->generateProvisioningUri($pendingSecret, $authenticatorLabel)
-            : null;
-        $qrCodeUrl = (is_string($pendingSecret) === true && $pendingSecret !== '')
-            ? $this->authenticatorService->generateQRCode($pendingSecret, $authenticatorLabel)
-            : null;
 
         return Response::html(
             $this->twig->render(
@@ -117,9 +109,6 @@ class Account extends Controller
                         'pendingEmailChange' => $pendingEmailChange,
                         'authenticator' => [
                             'enabled' => $authenticatorEnabled,
-                            'pendingSecret' => $pendingSecret,
-                            'otpauth' => $otpauth,
-                            'qrCodeUrl' => $qrCodeUrl,
                             'digits' => (int) AUTHENTICATOR_TOTP_DIGITS,
                             'period' => (int) AUTHENTICATOR_TOTP_PERIOD,
                             'emailDigits' => (int) TOTP_DIGITS,

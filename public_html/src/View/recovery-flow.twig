@@ -61,9 +61,11 @@
                 {% if flow.qrCodeUrl %}
                     <img src="{{ flow.qrCodeUrl }}" alt="{{ __('recovery.qr-alt') }}" class="mb-4 h-48 w-48 rounded bg-white p-2" />
                 {% endif %}
-                <p class="mb-2">{{ __('recovery.secret-label') }}: <code class="font-mono">{{ flow.authenticatorSecret }}</code></p>
+                <p class="mb-2">{{ __('recovery.secret-label') }}:</p>
+                <code class="mb-2 block max-w-full whitespace-normal wrap-anywhere font-mono text-sm">{{ flow.authenticatorSecret }}</code>
                 {% if flow.otpauth %}
-                    <p class="mb-4 break-all text-sm"><code>{{ flow.otpauth|raw }}</code></p>
+                    <p class="mb-2">{{ __('account.authenticator-otpauth-label') }}:</p>
+                    <code class="mb-4 block max-w-full whitespace-normal wrap-anywhere font-mono text-sm">{{ flow.otpauth|raw }}</code>
                 {% endif %}
                 <form method="POST" data-recovery-form class="space-y-4">
                     {{ csrf_field() }}

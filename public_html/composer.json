@@ -20,7 +20,8 @@
         "firebase/php-jwt": "^7.1",
         "phpmailer/phpmailer": "^7.1.1",
         "spomky-labs/otphp": "^11.5.0",
-        "twig/twig": "^3.28.0"
+        "twig/twig": "^3.28.0",
+        "chillerlan/php-qrcode": "^6.0"
     },
     "suggest": {
         "symfony/yaml": "PHP's yaml_parse_file() fallback package"

@@ -241,55 +241,7 @@
                             </div>
                         </dialog>
                     {% endif %}
-                {% endif %}
 
-                {% if authenticator.pendingSecret %}
-                    <div class="border border-dashed border-gray-400 dark:border-gray-600 rounded p-4 space-y-3">
-                        {% if authenticator.qrCodeUrl %}
-                            <div>
-                                <img src="{{ authenticator.qrCodeUrl }}" alt="TOTP QR code" class="w-48 h-48 rounded bg-white p-2" />
-                            </div>
-                        {% endif %}
-                        <p class="text-sm">{{ __('account.authenticator-secret-label') }}:<br><code class="text-lg font-mono">{{ authenticator.pendingSecret }}</code></p>
-                        {% if authenticator.otpauth %}
-                            <p class="text-sm break-all">{{ __('account.authenticator-otpauth-label') }}:<br><code class="font-mono">{{ authenticator.otpauth|raw }}</code></p>
-                        {% endif %}
-                        <form method="POST" class="grid gap-4 md:grid-cols-2">
-                            {{ csrf_field() }}
-
-                            <div>
-                                <label for="authenticator_code" class="block text-sm font-medium">{{ __('account.authenticator-code-label') }}</label>
-                                <input type="text" name="authenticator_code" id="authenticator_code" inputmode="numeric" pattern="\d*" maxlength="{{ authenticator.digits }}"
-                                    class="field-input"
-                                    autocomplete="one-time-code" data-bwignore />
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('account.authenticator-code-help') }}</p>
-                            </div>
-                            <div>
-                                <label for="authenticator_email_code" class="block text-sm font-medium">{{ __('account.authenticator-email-code-label') }}</label>
-                                <input type="text" name="authenticator_email_code" id="authenticator_email_code" inputmode="numeric" pattern="\d*" maxlength="{{ authenticator.emailDigits }}"
-                                    class="field-input"
-                                    autocomplete="one-time-code" data-bwignore />
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('account.authenticator-email-code-help', { 'digits': authenticator.emailDigits, 'period': authenticator.emailPeriod, 'email': user.email }) }}</p>
-                            </div>
-                            <div class="md:col-span-2 flex flex-wrap items-end gap-2">
-                                <button type="submit" name="submit_authenticator_confirm" value="1"
-                                    class="btn-primary flex-1">
-                                    {{ __('account.authenticator-verify') }}
-                                </button>
-                                <button type="submit" name="submit_authenticator_setup" value="1"
-                                    class="btn-secondary">
-                                    {{ __('account.authenticator-email-code-resend') }}
-                                </button>
-                                <button type="submit" name="submit_authenticator_cancel" value="1"
-                                    class="btn-secondary">
-                                    {{ __('account.authenticator-cancel') }}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                {% endif %}
-
-                {% if authenticator.enabled %}
                     <div class="rounded-lg border border-red-200 dark:border-red-900/60 bg-red-50/80 dark:bg-red-950/30 p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div>
                             <p class="font-semibold text-red-700 dark:text-red-300">{{ __('account.authenticator-disable-title') }}</p>
