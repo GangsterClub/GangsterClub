@@ -23,7 +23,7 @@ A custom PHP MVC framework for building web applications.
 
 ## Quick Start
 
-> **Warning:**Store generated secrets only in your local/deployment `.env` or secret manager. Do not put real secret values in `.env.example` or commit them to version control.
+> **Warning:** Store generated secrets only in your local/deployment `.env` or secret manager. Do not put real secret values in `.env.example` or commit them to version control.
 
 ```bash
 git clone https://github.com/GangsterClub/GangsterClub.git
@@ -62,7 +62,11 @@ The project dependencies are managed with Composer. The `composer install` comma
 
 ## Tailwind CSS
 
-The project is tested with **Tailwind CSS v4.2.2**. Compile the CSS using the command shown in the Quick Start.
+The project is tested with **Tailwind CSS v4.2.2**. Compile the CSS using the following command:
+
+```
+tailwindcss -i web/css/tailwind.css -o web/cache/tailwind.css --minify
+```
 
 ## Migration
 
