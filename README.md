@@ -30,7 +30,8 @@ git clone https://github.com/GangsterClub/GangsterClub.git
 cd GangsterClub/public_html
 
 composer install
-php run.php --setup
+composer setup
+tailwindcss -i web/css/tailwind.css -o web/cache/tailwind.css --minify
 
 # Before continuing, configure DB_HOST, DB_NAME, DB_USER, and DB_PASS in .env.
 php run.php --migrate
@@ -62,11 +63,7 @@ The project dependencies are managed with Composer. The `composer install` comma
 
 ## Tailwind CSS
 
-The project is tested with **Tailwind CSS v4.2.2**. Compile the CSS using the following command:
-
-```
-tailwindcss -i web/css/tailwind.css -o web/cache/tailwind.css --minify
-```
+The project is tested with **Tailwind CSS v4.2.2**. Compile the CSS using the command shown in the Quick Start.
 
 ## Migration
 

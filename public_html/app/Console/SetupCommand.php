@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace app\Console;
 
-use app\Console\CompileTailwindCss;
 use app\Console\GenerateSecretsCommand;
 use RuntimeException;
 
@@ -22,7 +21,6 @@ final class SetupCommand
             (new GenerateSecretsCommand())->generateSecrets(
                 $this->projectRoot . '/.env'
             );
-            (new CompileTailwindCss())->compileTailwind();
 
             fwrite(STDOUT, 'Setup completed successfully.' . PHP_EOL);
 

@@ -33,6 +33,9 @@
         }
     },
     "scripts": {
+        "setup": [
+            "@php run.php --setup"
+        ],
         "test": [
             "php tests/AccountAuthenticatorCharacterizationTest.php",
             "php tests/AccountRedirectStatusTest.php",
