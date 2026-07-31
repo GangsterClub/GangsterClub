@@ -23,27 +23,18 @@ A custom PHP MVC framework for building web applications.
 
 ## Quick Start
 
-> **Warning:** Replace the default `JWT_SECRET` in `.env` with a new random, cryptographically secure value before deploying to production.
+> **Warning:**Store generated secrets only in your local/deployment `.env` or secret manager. Do not put real secret values in `.env.example` or commit them to version control.
 
 ```bash
 git clone https://github.com/GangsterClub/GangsterClub.git
 cd GangsterClub/public_html
 
-cp .env.example .env   # or copy on Windows
-
 composer install
-tailwindcss -i web/css/tailwind.css -o web/cache/tailwind.css --minify
+php run.php --setup
 
-# Generate three independent security peppers (run this command three times)
-php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"
-
-# Configure your database connection and paste one different generated value
-# into each of AUTH_CHALLENGE_PEPPER, AUTH_RATE_LIMIT_PEPPER, and
-# RECOVERY_CODE_PEPPER in .env
+# Before continuing, configure DB_HOST, DB_NAME, DB_USER, and DB_PASS in .env.
 php run.php --migrate
 ```
-
-Store generated secrets only in your local/deployment `.env` or secret manager. Do not put real secret values in `.env.example` or commit them to version control.
 
 > **Note:** Configure your web server's document root to point to the `public_html` directory.
 
@@ -97,10 +88,12 @@ Creates a JSON snapshot of the current data and drops the migrated schema.
 
 ### Recommended update and migrate workflow
 
-Always update the application code before creating the rollback snapshot so that rollback and migration use the same application version.
+Update the application code before creating the rollback snapshot so that the rollback and migration use the same application version.
 
 ```bash
+# Update the application code and resolve any Git conflicts before continuing.
 git pull
+
 composer install
 php run.php --rollback && php run.php --migrate
 ```

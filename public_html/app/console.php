@@ -1,39 +1,44 @@
-<?PHP
+<?php
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-use src\Data\Connection;
-use app\Middleware\MigrationPipeline;
+use app\Console\SetupCommand;
+use app\Console\MigrationPipelineFactory;
 
-$dbh = new Connection();
-$migrationManager = new MigrationPipeline($dbh);
+const COMMAND_MIGRATE = '--migrate';
+const COMMAND_ROLLBACK = '--rollback';
+const COMMAND_SETUP = '--setup';
+const COMMAND_HELP = '--help';
 
-// Add migrations here
-$migrationManager->addMigration(new \src\Migration\CreateUser($dbh));
-$migrationManager->addMigration(new \src\Migration\CreateEmailTOTP($dbh));
-$migrationManager->addMigration(new \src\Migration\CreateUserAuthenticatorTOTP($dbh));
-$migrationManager->addMigration(new \src\Migration\CreateUserEmailChange($dbh));
-$migrationManager->addMigration(new \src\Migration\CreateAuthenticationChallenge($dbh));
-$migrationManager->addMigration(new \src\Migration\CreateAuthenticationRateLimit($dbh));
-$migrationManager->addMigration(new \src\Migration\CreateSecurityAuditEvent($dbh));
-$migrationManager->addMigration(new \src\Migration\CreateRecoveryCodes($dbh));
-$migrationManager->addMigration(new \src\Migration\AddBrowserSessionVersion($dbh));
+$command = $argv[1] ?? null;
 
-$allowedArgs = ['--migrate', '--rollback', '-m', '-r'];
-if (isset($argv[1]) === false || in_array($argv[1], $allowedArgs) === false) {
-    fwrite(STDOUT, "Invalid command. Use '-m = --migrate' or '-r = --rollback'." . PHP_EOL);
-}
+switch ($command) {
+    case COMMAND_SETUP:
+        new SetupCommand(__DIR__ . '/../')->execute();
+        break;
 
-if (isset($argv[1]) === true) {
-    $mArgs = [$allowedArgs[0], $allowedArgs[2]];
-    if (in_array($argv[1], $mArgs) === true) {
-        $migrationManager->migrate();
+    case COMMAND_MIGRATE:
+    case '-m':
+        $pipeline = (new MigrationPipelineFactory())->create();
+        $pipeline->migrate();
+
         fwrite(STDOUT, "Migrations applied successfully." . PHP_EOL);
-    }
+        break;
 
-    $rArgs = [$allowedArgs[1], $allowedArgs[3]];
-    if (in_array($argv[1], $rArgs) === true) {
-        $migrationManager->rollback();
+    case COMMAND_ROLLBACK:
+    case '-r':
+        $pipeline = (new MigrationPipelineFactory())->create();
+        $pipeline->rollback();
+
         fwrite(STDOUT, "Migrations rolled back successfully." . PHP_EOL);
-    }
+        break;
+    
+    case COMMAND_HELP:
+    default:
+        fwrite(
+            STDERR,
+            "Usage: php run.php [--setup|--migrate, -m|--rollback, -r|--help]"
+            . PHP_EOL
+        );
+        exit(1);
 }
