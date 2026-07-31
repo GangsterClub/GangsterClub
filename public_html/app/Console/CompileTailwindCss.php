@@ -27,8 +27,7 @@ class CompileTailwindCss
         $exitCode = 0;
 
         exec(
-            "tailwindcss -i " . realpath($inputPath) ." -o " .
-            realpath(__DIR__ . '/../../web/cache') . "/tailwind.css --minify 2>&1",
+            "tailwindcss -i " . realpath(__DIR__.'/../../') . "/web/css/tailwind.css -o " . realpath(__DIR__.'/../../') . "/web/cache/tailwind.css --minify 2>&1",
             $commandOutput, $exitCode
         );
 

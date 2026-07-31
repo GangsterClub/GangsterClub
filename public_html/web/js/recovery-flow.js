@@ -117,11 +117,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (payload.success && payload.redirect) {
                     const redirectAllowList = ['/login/recovery', '/account/recovery-codes'];
                     if (redirectAllowList.indexOf(payload.redirect) > -1) {
-                        window.location.href = payload.redirect;
+                        window.location.assign(escape(payload.redirect));
                     } else {
-                        window.location.href = '/login';
+                        window.location.assign(escape('/login'));
                     }
-                    //window.location.assign(payload.redirect);
                 }
             } catch (error) {
                 console.error(error);
