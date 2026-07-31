@@ -2,7 +2,7 @@
 
 namespace src\Migration;
 
-class CreateUser extends \app\Middleware\Migration
+class CreateUser extends \app\Console\Migration
 {
     protected array $tables = ['user'];
 

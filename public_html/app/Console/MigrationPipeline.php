@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace app\Middleware;
+namespace app\Console;
 
 use src\Data\Connection;
 

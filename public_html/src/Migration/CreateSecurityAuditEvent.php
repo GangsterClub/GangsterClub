@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace src\Migration;
 
-class CreateSecurityAuditEvent extends \app\Middleware\Migration
+class CreateSecurityAuditEvent extends \app\Console\Migration
 {
     protected array $tables = ['security_audit_event'];
 

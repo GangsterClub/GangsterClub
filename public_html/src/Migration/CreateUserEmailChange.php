@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace src\Migration;
 
-class CreateUserEmailChange extends \app\Middleware\Migration
+class CreateUserEmailChange extends \app\Console\Migration
 {
     protected array $tables = ['user_email_change'];
 

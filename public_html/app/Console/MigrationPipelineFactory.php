@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace app\Console;
 
-use app\Middleware\MigrationPipeline;
 use src\Data\Connection;
 use src\Migration\AddBrowserSessionVersion;
 use src\Migration\CreateAuthenticationChallenge;

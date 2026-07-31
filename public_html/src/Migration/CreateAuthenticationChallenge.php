@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace src\Migration;
 
-class CreateAuthenticationChallenge extends \app\Middleware\Migration
+class CreateAuthenticationChallenge extends \app\Console\Migration
 {
     protected array $tables = ['authentication_challenge'];
 

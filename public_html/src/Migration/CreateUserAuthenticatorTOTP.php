@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace src\Migration;
 
-class CreateUserAuthenticatorTOTP extends \app\Middleware\Migration
+class CreateUserAuthenticatorTOTP extends \app\Console\Migration
 {
     private const TABLE = 'user_authenticator_totp';
     private const LEGACY_TABLE = 'user_mfa_totp';

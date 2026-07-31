@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace src\Migration;
 
-class CreateRecoveryCodes extends \app\Middleware\Migration
+class CreateRecoveryCodes extends \app\Console\Migration
 {
     protected array $tables = [
         'recovery_code_set',

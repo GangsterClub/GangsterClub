@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace src\Migration;
 
-class CreateAuthenticationRateLimit extends \app\Middleware\Migration
+class CreateAuthenticationRateLimit extends \app\Console\Migration
 {
     protected array $tables = ['authentication_rate_limit'];
 

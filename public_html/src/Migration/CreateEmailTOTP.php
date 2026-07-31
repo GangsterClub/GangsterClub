@@ -2,7 +2,7 @@
 
 namespace src\Migration;
 
-class CreateEmailTOTP extends \app\Middleware\Migration
+class CreateEmailTOTP extends \app\Console\Migration
 {
     private const TABLE = 'email_totp';
     private const LEGACY_TABLE = 'totp_email';

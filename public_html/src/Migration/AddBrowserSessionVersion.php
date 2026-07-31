@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace src\Migration;
 
-class AddBrowserSessionVersion extends \app\Middleware\Migration
+class AddBrowserSessionVersion extends \app\Console\Migration
 {
     protected array $tables = ['user'];
 
