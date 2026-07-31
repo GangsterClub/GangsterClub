@@ -115,7 +115,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (payload.success && Array.isArray(payload.codes)) {
                     renderCodes(payload, payload.csrfToken || csrfToken);
                 } else if (payload.success && payload.redirect) {
-                    window.location.assign(payload.redirect);
+                    const redirectAllowList = ['/login/recovery', '/account/recovery-codes'];
+                    if (redirectAllowList.indexOf(payload.redirect) > -1) {
+                        window.location.href = payload.redirect;
+                    } else {
+                        window.location.href = '/login';
+                    }
+                    //window.location.assign(payload.redirect);
                 }
             } catch (error) {
                 console.error(error);

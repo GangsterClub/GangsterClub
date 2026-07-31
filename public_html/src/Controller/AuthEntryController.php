@@ -303,6 +303,7 @@ class AuthEntryController extends Controller
         return [
             'email' => $pendingEmail ?? ($registerValues['email'] ?? null),
             'registerUsername' => $registerValues['username'] ?? '',
+            'usernamePattern' => str_replace('_-', '_\-', AuthEntryService::REGISTRATION_USERNAME_PATTERN),
             'awaitingOtp' => $pendingEmail !== null,
             'uUID' => $auth->getPendingUserId(),
             'totp' => is_string($loginTotp) === true ? str_split($loginTotp) : [],

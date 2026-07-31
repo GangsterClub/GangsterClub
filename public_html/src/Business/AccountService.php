@@ -45,7 +45,7 @@ class AccountService
     public function changeUsername(User $user, string $username): string
     {
         $username = trim($username);
-        if ((bool) preg_match('/^[A-Za-z0-9._-]{3,32}$/', $username) === false) {
+        if ($username === '' || preg_match('/^' . AuthEntryService::REGISTRATION_USERNAME_PATTERN . '$/', $username) !== 1) {
             return self::USERNAME_CHANGE_INVALID;
         }
 

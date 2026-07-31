@@ -23,16 +23,14 @@ class CompileTailwindCss
             return false;
         }
 
-        $command = sprintf(
-            'tailwindcss -i %s -o %s --minify 2>&1',
-            escapeshellarg($inputPath),
-            escapeshellarg($outputPath)
-        );
-
         $commandOutput = [];
         $exitCode = 0;
 
-        exec($command, $commandOutput, $exitCode);
+        exec(
+            "tailwindcss -i " . realpath($inputPath) ." -o " .
+            realpath(__DIR__ . '/../../web/cache') . "/tailwind.css --minify 2>&1",
+            $commandOutput, $exitCode
+        );
 
         if ($exitCode !== 0) {
             fwrite(

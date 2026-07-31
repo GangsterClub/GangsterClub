@@ -1,7 +1,10 @@
-{% macro textInput(name, value, type, label, invalidTxt) %}
+{% macro textInput(name, value, type, label, invalidTxt, min = false, max = false, pttrn = false) %}
     <div>
         <label for="{{ name }}" class="block">{{ label }}</label>
-        <input type="{{ type }}" name="{{ name }}" id="{{ name }}" placeholder="{{ label }}" value="{{ value|e('html_attr') }}" class="peer auth-input" autofocus autocomplete="off" required />
+        <input type="{{ type }}" name="{{ name }}" id="{{ name }}" placeholder="{{ label }}" value="{{ value|e('html_attr') }}"
+            class="peer auth-input" autofocus autocomplete="off" {% if min %}minlength="{{ min }}"{% endif %}
+            {% if max %}maxlength="{{ max }}"{% endif %} {% if pttrn %}pattern="{{ pttrn }}"{% endif %}
+            required />
 
         <p class="mt-2 invisible peer-placeholder-shown:!invisible peer-invalid:visible text-pink-600 text-sm">
             {{ invalidTxt }}

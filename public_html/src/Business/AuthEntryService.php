@@ -20,6 +20,7 @@ class AuthEntryService
     public const STATUS_INVALID_RECOVERY_CODE = 'invalid_recovery_code';
     public const STATUS_RECOVERY_CODE_UNAVAILABLE = 'recovery_code_unavailable';
     public const STATUS_AUTHENTICATED = 'authenticated';
+    public const REGISTRATION_USERNAME_PATTERN = '[A-Za-z0-9._-]{3,32}';
 
     private const PENDING_REGISTRATION_USERNAME = 'PENDING_REGISTRATION_USERNAME';
     private const PENDING_CREATE_BY_EMAIL = 'PENDING_CREATE_BY_EMAIL';
@@ -72,7 +73,7 @@ class AuthEntryService
             return ['status' => self::STATUS_VALIDATION_ERROR, 'error' => 'provide-valid-email'];
         }
 
-        if ($username === '') {
+        if ($username === '' || preg_match('/^' . self::REGISTRATION_USERNAME_PATTERN . '$/', $username) !== 1) {
             return ['status' => self::STATUS_VALIDATION_ERROR, 'error' => 'provide-valid-username'];
         }
 

@@ -8,6 +8,7 @@ use app\Container\Application;
 use app\Http\Request;
 use app\Http\Response;
 use app\Service\AuthService;
+use src\Business\AuthEntryService;
 use src\Business\AccountService;
 use src\Business\AuthenticatorTOTPService;
 use src\Business\RecoveryFeatureService;
@@ -106,6 +107,7 @@ class Account extends Controller
                     [
                         'user' => $user,
                         'account' => $this->accountMessages,
+                        'usernamePattern' => str_replace('_-', '_\-', AuthEntryService::REGISTRATION_USERNAME_PATTERN),
                         'pendingEmailChange' => $pendingEmailChange,
                         'authenticator' => [
                             'enabled' => $authenticatorEnabled,

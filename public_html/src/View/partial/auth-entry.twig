@@ -1,4 +1,4 @@
-{% import "macro/forms.twig" as forms %}
+{% import "macro/auth-forms.twig" as authForms %}
 {% import "macro/alerts.twig" as alerts %}
 
 {% if (awaitingOtp or UID) %}
@@ -42,17 +42,18 @@
                     {% set name, value, type, submitName = 'totp', totp, 'text', 'submit_totp' %}
                     {% set label = authEntry.verificationCodeLabel %}
                     {% set submit = authEntry.verifyLabel %}
-                    {{ forms.otpInput(name, value, type, label, value) }}
+                    {{ authForms.otpInput(name, value, type, label, value) }}
                 {% else %}
                     {% if authEntry.mode == 'register' %}
-                        {% set name, value, type = 'username', registerUsername|default(''), 'text' %}
-                        {{ forms.textInput(name, value, type, authEntry.usernameLabel, authEntry.usernameInvalidText) }}
+                        {% set name, value, type, min, max = 'username', registerUsername|default(''), 'text', 3, 32 %}
+                        {% set label, invalidText = authEntry.usernameLabel, authEntry.usernameInvalidText %}
+                        {{ authForms.textInput(name, value, type, label, invalidText, min, max, usernamePattern) }}
                     {% endif %}
                     {% set name, value, type, submitName = 'email', email, 'email', authEntry.firstStepSubmitName %}
-                    {{ forms.textInput(name, value, type, authEntry.emailLabel, authEntry.emailInvalidText) }}
+                    {{ authForms.textInput(name, value, type, authEntry.emailLabel, authEntry.emailInvalidText) }}
                     {% set submit = authEntry.firstStepSubmitLabel %}
                 {% endif %}
-                {{ forms.submitInput(submitName, submit) }}
+                {{ authForms.submitInput(submitName, submit) }}
 
             </form>
             {% if authEntry.mode == 'login' and loginRecoveryAvailable %}
