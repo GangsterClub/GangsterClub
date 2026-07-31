@@ -6,11 +6,12 @@ namespace app\Http;
 
 use app\Container\Application;
 use app\Middleware\MiddlewarePipeline;
-use src\Controller\Controller;
 use src\Data\Exception\DatabaseConnectionException;
 
 class Kernel
 {
+    private const CONTROLLER_NAMESPACE = 'src\\Controller\\';
+
     private Application $application;
 
     private MiddlewarePipeline $middlewarePipeline;
@@ -30,13 +31,11 @@ class Kernel
     public function handleRequest(Request $request): Response
     {
         try {
-            $method = $request->getMethod();
             $router = $this->application->get('router');
-            $route = $router->match(REQUEST_URI, $method);
-
+            $route = $router->match($request->getPath(), $request->getMethod());
             $finalHandler = $route instanceof Route
-                ? fn(Request $request) => $this->handleController($route, $request)
-                : fn() => $this->handleNotFound();
+                ? fn(Request $request): Response => $this->handleController($route, $request)
+                : fn(): Response => $this->handleNotFound();
 
             return $this->middlewarePipeline->handle($request, $finalHandler);
         } catch (\Throwable $throwable) {
@@ -52,32 +51,53 @@ class Kernel
 
     private function handleController(Route $route, Request $request): Response
     {
-        $action = '__invoke';
-        $name = $nameAction = $route->getController();
-        if (strpos($nameAction, '::') !== false) {
-            list($name, $action) = explode('::', $nameAction);
-        }
+        [$controller, $action] = $this->resolveController($route->getController());
+        $instance = $this->application->make($controller);
+        $response = $instance->{$action}($request);
 
-        $controllerInstance = $this->fetchControllerInstance($name, $action);
-        $result = $controllerInstance->$action($request);
-        if ($result instanceof Response === false) {
+        if (($response instanceof Response) === false) {
             throw new \UnexpectedValueException(
-                sprintf('Controller [%s::%s] must return %s.', $name, $action, Response::class)
+                sprintf(
+                    'Controller [%s::%s] must return %s.', $controller, $action, Response::class
+                )
             );
         }
 
-        return $result;
+        return $response;
     }
 
-    private function fetchControllerInstance(string $name, string $action, string $act = "__invoke"): Controller
+    private function resolveController(string $notation): array
     {
-        $namespace = SRC_CONTROLLER;
-        $prefix = str_starts_with($name, $namespace) === false && strpos($name, '\\') === false ? $namespace : '';
-        $controller = $prefix . $name;
-        $exists = class_exists($controller);
-        $action = $exists === true && method_exists($controller, $action) === true ? $action : $act;
-        $cntrllr = $exists === true ? $controller : Controller::class;
-        return $this->application->make($cntrllr);
+        [$name, $action] = str_contains($notation, '::') === true
+            ? explode('::', $notation, 2)
+            : [$notation, '__invoke'];
+
+        $name = trim($name);
+        $action = trim($action);
+
+        if ($name === '' || $action === '') {
+            throw new \InvalidArgumentException(
+                sprintf('Invalid controller notation "%s".', $notation),
+            );
+        }
+
+        $isFullyQualified = str_starts_with($name, '\\') || str_starts_with($name, 'src\\');
+        $name = str_replace('/', '\\', ltrim($name, '\\'));
+        $class = $isFullyQualified === true ? $name : self::CONTROLLER_NAMESPACE . $name;
+
+        if (class_exists($class) === false) {
+            throw new \RuntimeException(
+                sprintf('Controller "%s" resolved to missing class "%s".', $notation, $class)
+            );
+        }
+
+        if (method_exists($class, $action) === false) {
+            throw new \RuntimeException(
+                sprintf('Controller action "%s::%s" does not exist.', $class, $action)
+            );
+        }
+
+        return [$class, $action];
     }
 
     private function handleException(\Throwable $throwable): Response

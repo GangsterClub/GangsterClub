@@ -129,7 +129,7 @@ class Account extends Controller
     public function verifyEmailChange(Request $request): Response
     {
         $this->application->get('translationService')->setFile('account');
-        $token = (string) $request->getParameter('token', '');
+        $token = (string) $request->getRouteParameter('token', '');
         $status = AccountService::EMAIL_CHANGE_INVALID;
         if ($token !== '') {
             $status = $this->accountService->confirmEmailChange($token);

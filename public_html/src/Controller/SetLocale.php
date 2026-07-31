@@ -10,7 +10,7 @@ class SetLocale extends Controller
 {
     public function __invoke(\app\Http\Request $request): Response
     {
-        $locale = ($request->getParameter('locale') ?? null);
+        $locale = ($request->getRouteParameter('locale') ?? null);
         if ($locale !== null) {
             $locale = urldecode($locale);
         }
