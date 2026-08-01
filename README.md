@@ -37,7 +37,7 @@ tailwindcss -i web/css/tailwind.css -o web/cache/tailwind.css --minify
 php run.php --migrate
 ```
 
-> **Note:** Configure your web server's document root to point to the `public_html` directory.
+> **Note:** Configure your apache web server's document root to point to the `public_html` directory.
 
 ## Requirements
 
