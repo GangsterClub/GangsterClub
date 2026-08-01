@@ -45,14 +45,16 @@ class Router
         return $routes ?? $parsed;
     }
 
-    public function match(string $url, string $method): ?Route
+    public function match(string $path, string $method): ?RouteMatch
     {
-        if (($routeData = self::matchRoute($url, $method)) === null) {
+        if (($routeData = self::matchRoute($path, $method)) === null) {
             return null;
         }
 
         $allowedMethods = ($routeData['methods'] ?? []);
-        return new Route($url, $routeData['controller'], $allowedMethods);
+        $parameters = self::extractParameters($path, $routeData['path']);
+        $route = new Route($path, $routeData['controller'], $allowedMethods);
+        return new RouteMatch($route, $parameters);
     }
 
     private static function matchRoute(string $url, string $method): ?array

@@ -55,7 +55,7 @@ authenticator-disable-modal-title: "Verifieer uw identiteit voordat u aanmelden 
 authenticator-disable-modal-body: "Voer de huidige authenticatorcode van :digits cijfers van uw actieve apparaat in om deze gevoelige wijziging te bevestigen."
 authenticator-modal-close: "Sluiten"
 authenticator-disable-code-label: "Huidige authenticatorcode"
-authenticator-disable-code-help: "Voer de huidige code uit uw authenticator-app in om te bevestigen dat u de authenticator wilt uitschakelen."
+authenticator-disable-code-help: "Voer de huidige code uit uw authenticator-app in om te bevestigen dat u de authenticator wilt uitschakelen. Na uitschakelen worden het gekoppelde apparaat en de herstelcodes verwijderd. Voor heractivering is een nieuwe configuratie vereist."
 authenticator-disable-confirm: "Nu uitschakelen"
 authenticator-disable-requires-verification: "Doorloop de verificatiestap in het uitschakelvenster om een ingeschakelde authenticator uit te schakelen."
 authenticator-disable-code-required: "Voer uw huidige authenticatorcode in om aanmelden met de authenticator uit te schakelen."

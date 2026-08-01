@@ -55,7 +55,7 @@ authenticator-disable-modal-title: "Verify before disabling authenticator sign-i
 authenticator-disable-modal-body: "Enter the current :digits-digit authenticator code from your active device to confirm this sensitive change."
 authenticator-modal-close: "Close"
 authenticator-disable-code-label: "Current authenticator code"
-authenticator-disable-code-help: "Use the current code from your enrolled authenticator app."
+authenticator-disable-code-help: "Use the current code from your enrolled authenticator app. Disabling authenticator sign-in removes the enrolled device and invalidates its recovery codes. A new configuration is required for reactivation."
 authenticator-disable-confirm: "Disable now"
 authenticator-disable-requires-verification: "To disable an enabled authenticator, complete the verification step in the disable dialog."
 authenticator-disable-code-required: "Enter your current authenticator code to disable authenticator sign-in."

@@ -55,7 +55,7 @@ authenticator-disable-modal-title: "Vor dem Deaktivieren der Authenticator-Anmel
 authenticator-disable-modal-body: "Geben Sie den aktuellen :digits-stelligen Authenticator-Code Ihres aktiven Geräts ein, um diese sensible Änderung zu bestätigen."
 authenticator-modal-close: "Schließen"
 authenticator-disable-code-label: "Aktueller Authenticator-Code"
-authenticator-disable-code-help: "Verwenden Sie den aktuellen Code aus Ihrer registrierten Authenticator-App."
+authenticator-disable-code-help: "Verwenden Sie den aktuellen Code aus Ihrer registrierten Authenticator-App. Nach der Deaktivierung werden das verknüpfte Gerät entfernt und die Wiederherstellungscodes ungültig. Zur erneuten Aktivierung ist eine neue Einrichtung erforderlich."
 authenticator-disable-confirm: "Jetzt deaktivieren"
 authenticator-disable-requires-verification: "Führen Sie im Deaktivierungsdialog den Bestätigungsschritt durch, um einen aktivierten Authenticator zu deaktivieren."
 authenticator-disable-code-required: "Geben Sie Ihren aktuellen Authenticator-Code ein, um die Authenticator-Anmeldung zu deaktivieren."

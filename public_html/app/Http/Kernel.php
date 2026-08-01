@@ -31,10 +31,12 @@ class Kernel
     {
         try {
             $router = $this->application->get('router');
-            $route = $router->match($request->getPath(), $request->getMethod());
-            $finalHandler = $route instanceof Route
-                ? fn(Request $request): Response => $this->handleController($route, $request)
+            $match = $router->match($request->getPath(), $request->getMethod());
+            $finalHandler = $match instanceof RouteMatch && $match->route instanceof Route
+                ? fn(Request $request): Response => $this->handleController($match->route, $request)
                 : fn(): Response => $this->handleNotFound();
+
+            $request->setRouteParameters($match->parameters);
 
             return $this->middlewarePipeline->handle($request, $finalHandler);
         } catch (\Throwable $throwable) {
