@@ -17,7 +17,7 @@ if (defined('REQUEST_METHOD') === false) {
 }
 
 if (defined('JWT_SECRET') === false) {
-    define('JWT_SECRET', 'jwt-service-characterization-test-secret-0123456789-abcdefghijklmnopqrstuvwxyz');
+    define('JWT_SECRET', bin2hex(random_bytes(64)));
 }
 
 if (defined('APP_DOMAIN') === false) {
