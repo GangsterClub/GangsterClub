@@ -14,7 +14,7 @@ $command = $argv[1] ?? null;
 
 switch ($command) {
     case COMMAND_SETUP:
-        new SetupCommand(__DIR__ . '/../')->execute();
+        (new SetupCommand(__DIR__ . '/../'))->execute();
         break;
 
     case COMMAND_MIGRATE:
