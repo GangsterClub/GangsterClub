@@ -11,6 +11,8 @@ use app\Service\AuthService;
 
 class Controller
 {
+    public const CONTROLLER_NAMESPACE = 'src\\Controller\\';
+
     protected Application $application;
 
     protected \Twig\Environment $twig;
@@ -33,7 +35,7 @@ class Controller
 
     public function __invoke(Request $request): Response
     {
-        if (strpos($cls = $this::class, $rpl = SRC_CONTROLLER) !== false) {
+        if (strpos($cls = $this::class, $rpl = self::CONTROLLER_NAMESPACE) !== false) {
             $view = strtolower(str_replace($rpl, '', $cls));
             if (file_exists(DOC_ROOT . '/src/View/' . $view . '.twig') === true) {
                 return Response::html((string) $this->twig->render($view . '.twig', $this->twigVariables));

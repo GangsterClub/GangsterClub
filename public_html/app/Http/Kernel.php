@@ -6,12 +6,11 @@ namespace app\Http;
 
 use app\Container\Application;
 use app\Middleware\MiddlewarePipeline;
+use src\Controller\Controller;
 use src\Data\Exception\DatabaseConnectionException;
 
 class Kernel
 {
-    private const CONTROLLER_NAMESPACE = 'src\\Controller\\';
-
     private Application $application;
 
     private MiddlewarePipeline $middlewarePipeline;
@@ -83,7 +82,7 @@ class Kernel
 
         $isFullyQualified = str_starts_with($name, '\\') || str_starts_with($name, 'src\\');
         $name = str_replace('/', '\\', ltrim($name, '\\'));
-        $class = $isFullyQualified === true ? $name : self::CONTROLLER_NAMESPACE . $name;
+        $class = $isFullyQualified === true ? $name : Controller::CONTROLLER_NAMESPACE . $name;
 
         if (class_exists($class) === false) {
             throw new \RuntimeException(
