@@ -36,7 +36,9 @@ class Kernel
                 ? fn(Request $request): Response => $this->handleController($match->route, $request)
                 : fn(): Response => $this->handleNotFound();
 
-            $request->setRouteParameters($match->parameters);
+            if($match !== null && $match->parameters !== null) {
+                $request->setRouteParameters($match->parameters);
+            }
 
             return $this->middlewarePipeline->handle($request, $finalHandler);
         } catch (\Throwable $throwable) {
