@@ -119,6 +119,10 @@ class AuthenticatorSecurity extends Controller
                 'authenticator-disable.twig',
                 array_merge($this->twigVariables, [
                     'account' => $messages,
+                    'cancelDisable' => [
+                        'action' => __('account.authenticator-cancel'),
+                        'backUrl' => APP_BASE . '/account',
+                    ],
                 ])
             )
         );

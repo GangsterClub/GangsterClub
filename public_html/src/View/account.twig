@@ -248,7 +248,7 @@
                             <p class="text-sm text-red-700/80 dark:text-red-200/80">{{ __('account.authenticator-disable-help', { 'digits': authenticator.digits }) }}</p>
                             <p class="text-xs text-red-700/70 dark:text-red-200/70 mt-2">{{ __('account.authenticator-disable-recovery-note') }}</p>
                         </div>
-                        {% set disableBtnClass = 'inline-flex justify-center items-center px-4 py-2 rounded border border-red-500 text-red-600' %}
+                        {% set disableBtnClass = 'inline-flex justify-center items-center px-4 py-2 rounded border border-red-500 text-red-600 cursor-pointer' %}
                         <button type="button" class="{{ disableBtnClass }}"
                             data-js-only
                             hidden
@@ -297,11 +297,11 @@
                                 </div>
 
                                 <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                                    <button type="button" onclick="document.getElementById('authenticator-disable-modal').close()" class="btn-secondary w-full text-gray-700 dark:text-gray-200 sm:w-auto">
+                                    <button type="button" onclick="document.getElementById('authenticator-disable-modal').close()" class="btn-secondary w-full text-gray-700 dark:text-gray-200 sm:w-auto cursor-pointer">
                                         {{ __('account.authenticator-cancel') }}
                                     </button>
                                     <button type="submit" name="submit_authenticator_disable" value="1"
-                                        class="inline-flex justify-center items-center px-4 py-2 rounded bg-red-600 text-white font-semibold w-full sm:w-auto">
+                                        class="inline-flex justify-center items-center px-4 py-2 rounded bg-red-600 text-white font-semibold w-full sm:w-auto cursor-pointer">
                                         {{ __('account.authenticator-disable-confirm') }}
                                     </button>
                                 </div>

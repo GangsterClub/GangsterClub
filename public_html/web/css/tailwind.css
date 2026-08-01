@@ -21,11 +21,11 @@
 
 @layer components {
     .btn-primary {
-        @apply inline-flex items-center justify-center rounded bg-black px-4 py-2 font-semibold text-white dark:bg-gray-200 dark:text-black;
+        @apply inline-flex items-center justify-center rounded bg-black px-4 py-2 font-semibold text-white dark:bg-gray-200 dark:text-black cursor-pointer;
     }
 
     .btn-secondary {
-        @apply inline-flex items-center justify-center rounded border border-gray-400 px-4 py-2 font-semibold dark:border-gray-600;
+        @apply inline-flex items-center justify-center rounded border border-gray-400 px-4 py-2 font-semibold dark:border-gray-600 cursor-pointer;
     }
 
     .field-input {
