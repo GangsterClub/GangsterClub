@@ -19,7 +19,7 @@ class Request extends Superglobal
         $path = parse_url($uri, PHP_URL_PATH);
         $this->method = $method;
         $this->uri = $uri;
-        $this->path =  is_string($path) && $path !== '' ? $path : '/';
+        $this->path =  is_string($path) === true && $path !== '' ? $path : '/';
         $this->headers = $headers;
     }
 

@@ -790,7 +790,7 @@ final class RecoveryCodes extends Controller
         if (in_array($purpose, [
             AuthenticationChallengeService::PURPOSE_REPLACE_RECOVERY_CODES,
             AuthenticationChallengeService::PURPOSE_LOST_AUTHENTICATOR_RECOVERY,
-        ], true)) {
+        ], true) === true) {
             $this->email->sendSecurityNotification(
                 $user->getEmail(),
                 $lostFlow === true ? 'Authenticator replaced' : 'Recovery codes replaced',

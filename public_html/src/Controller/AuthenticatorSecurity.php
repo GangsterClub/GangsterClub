@@ -134,7 +134,7 @@ class AuthenticatorSecurity extends Controller
 
     private function disableFailure(Request $request, string $message): Response
     {
-        if ($this->expectsStructuredResponse($request)) {
+        if ($this->expectsStructuredResponse($request) === true) {
             return Response::json(
                 [
                     'success' => false,
