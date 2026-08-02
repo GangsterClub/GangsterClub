@@ -35,7 +35,7 @@ spl_autoload_register(static function (string $class): void {
             . str_replace('\\', '/', substr($class, strlen($prefix)))
             . '.php';
 
-        if (is_file($file)) {
+        if (is_file($file) === true) {
             require $file;
         }
     }

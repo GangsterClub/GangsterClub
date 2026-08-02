@@ -197,7 +197,7 @@ class AuthEntryController extends Controller
             case AuthEntryService::STATUS_AUTHENTICATED:
                 $this->flash('account', 'success', $this->translateForMode($mode, 'success-authenticated'));
                 $remainingCount = $result['remainingCount'] ?? null;
-                if (is_int($remainingCount) && $remainingCount <= 3) {
+                if (is_int($remainingCount) === true && $remainingCount <= 3) {
                     $messageKey = $remainingCount <= 1
                         ? 'recovery-code-one-remaining'
                         : 'recovery-code-low-count';

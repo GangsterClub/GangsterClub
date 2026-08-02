@@ -236,8 +236,8 @@ final class RecoveryCodes extends Controller
         $generation = $this->feature->getAuthenticatorGeneration($userId);
         $activeSetId = $this->feature->getActiveRecoverySetId($userId);
         if ($generation === null
-            || ($requiresExistingSet && $activeSetId === null)
-            || (!$requiresExistingSet && $activeSetId !== null)
+            || ($requiresExistingSet === true && $activeSetId === null)
+            || ($requiresExistingSet === false && $activeSetId !== null)
         ) {
             return $this->respond(
                 $request,
@@ -271,12 +271,12 @@ final class RecoveryCodes extends Controller
 
     private function handleFlow(Request $request, User $user, bool $lostFlow): Response
     {
-        $this->flowRedirectName = $lostFlow ? 'loginRecovery' : 'accountRecoveryCodes';
+        $this->flowRedirectName = $lostFlow === true ? 'loginRecovery' : 'accountRecoveryCodes';
         $this->application->get('translationService')->setFile('recovery');
         $auth = $this->auth();
         $token = $auth->getSecurityChallengeToken();
         $purpose = $auth->getSecurityChallengePurpose();
-        $expectedPurpose = $lostFlow
+        $expectedPurpose = $lostFlow === true
             ? AuthenticationChallengeService::PURPOSE_LOST_AUTHENTICATOR_RECOVERY
             : $purpose;
         if ($token === null || $purpose === null || $purpose !== $expectedPurpose) {
@@ -337,11 +337,11 @@ final class RecoveryCodes extends Controller
                     'codes' => $codes,
                     'pendingSetId' => $auth->getPendingRecoverySetId(),
                     'remainingCount' => $this->feature->getUnusedRecoveryCodeCount($user->getId()),
-                    'authenticatorSecret' => $showAuthenticatorConfiguration ? $pendingSecret : null,
-                    'otpauth' => $showAuthenticatorConfiguration && $pendingSecret !== null
+                    'authenticatorSecret' => $showAuthenticatorConfiguration === true ? $pendingSecret : null,
+                    'otpauth' => $showAuthenticatorConfiguration === true && $pendingSecret !== null
                         ? $this->authenticators->generateProvisioningUri($pendingSecret, $label)
                         : null,
-                    'qrCodeUrl' => $showAuthenticatorConfiguration && $pendingSecret !== null
+                    'qrCodeUrl' => $showAuthenticatorConfiguration === true && $pendingSecret !== null
                         ? $this->authenticators->generateQRCode($pendingSecret, $label)
                         : null,
                     'digits' => (int) AUTHENTICATOR_TOTP_DIGITS,
@@ -493,7 +493,7 @@ final class RecoveryCodes extends Controller
             );
         }
 
-        $expectedState = $lostFlow
+        $expectedState = $lostFlow === true
             ? 'new_authenticator_configuration_presented'
             : 'authenticator_configuration_presented';
         $pendingSecret = $this->auth()->getPendingAuthenticatorSecret();
@@ -504,7 +504,7 @@ final class RecoveryCodes extends Controller
             return $this->respond($request, false, $state, 'recovery.authenticator-code-invalid');
         }
 
-        $verifiedState = $lostFlow ? 'new_authenticator_verified' : 'authenticator_verified';
+        $verifiedState = $lostFlow === true ? 'new_authenticator_verified' : 'authenticator_verified';
         $verified = $this->challenges->transition(
             $token,
             $binding,
@@ -658,7 +658,7 @@ final class RecoveryCodes extends Controller
         if (in_array($purpose, [
             AuthenticationChallengeService::PURPOSE_INITIAL_RECOVERY_CODES,
             AuthenticationChallengeService::PURPOSE_REPLACE_RECOVERY_CODES,
-        ], true) && $this->challenges->isFreshReauthentication($challenge, $purpose) === false) {
+        ], true) === true && $this->challenges->isFreshReauthentication($challenge, $purpose) === false) {
             return $this->respond($request, false, 'expired', 'recovery.reauthentication-expired');
         }
 
@@ -793,8 +793,8 @@ final class RecoveryCodes extends Controller
         ], true)) {
             $this->email->sendSecurityNotification(
                 $user->getEmail(),
-                $lostFlow ? 'Authenticator replaced' : 'Recovery codes replaced',
-                $lostFlow
+                $lostFlow === true ? 'Authenticator replaced' : 'Recovery codes replaced',
+                $lostFlow === true
                     ? 'Your authenticator and recovery-code set were replaced. Other browser sessions were revoked.'
                     : 'A new recovery-code set is active. All previous recovery codes are now invalid.'
             );
@@ -837,7 +837,7 @@ final class RecoveryCodes extends Controller
         );
         $this->auth()->setPendingRecoverySetId(null);
 
-        $generation = (int) ($challenge->baseline_authenticator_generation ?? 1) + ($lostFlow ? 1 : 0);
+        $generation = (int) ($challenge->baseline_authenticator_generation ?? 1) + ($lostFlow === true ? 1 : 0);
         $replacesSetId = $challenge->baseline_recovery_code_set_id === null
             ? null
             : (int) $challenge->baseline_recovery_code_set_id;
@@ -889,10 +889,10 @@ final class RecoveryCodes extends Controller
             true,
             'cancelled',
             'recovery.cancelled',
-            $lostFlow ? Router::path('login') : Router::path('account'),
+            $lostFlow === true ? Router::path('login') : Router::path('account'),
             200,
             [],
-            $lostFlow ? 'login' : 'account'
+            $lostFlow === true ? 'login' : 'account'
         );
     }
 
@@ -924,10 +924,10 @@ final class RecoveryCodes extends Controller
             false,
             'unavailable',
             $message,
-            $lostFlow ? Router::path('login') : Router::path('account'),
+            $lostFlow === true ? Router::path('login') : Router::path('account'),
             409,
             [],
-            $lostFlow ? 'login' : 'account'
+            $lostFlow === true ? 'login' : 'account'
         );
     }
 
@@ -947,21 +947,21 @@ final class RecoveryCodes extends Controller
             'state' => $state,
             'nextStep' => $state,
             'message' => __($messageKey),
-            'errors' => $success ? [] : [__($messageKey)],
+            'errors' => $success === true ? [] : [__($messageKey)],
             'redirect' => $redirect,
         ], $extra);
 
         if ($this->expectsJson($request) === true) {
             return Response::json(
                 $payload,
-                $success ? $status : max($status, 422),
+                $success === true ? $status : max($status, 422),
                 $this->noStoreHeaders()
             );
         }
 
         $this->flash(
             $flashBag ?? $this->flowFlashBag,
-            $success ? 'success' : 'errors',
+            $success === true ? 'success' : 'errors',
             __($messageKey)
         );
         return Response::redirect($redirect, 303);
@@ -1034,7 +1034,7 @@ final class RecoveryCodes extends Controller
             'new_authenticator_configuration_presented',
             'new_authenticator_verified',
             'new_recovery_codes_presented_unacknowledged',
-        ], true)) {
+        ], true) === true) {
             return true;
         }
 
@@ -1061,7 +1061,7 @@ final class RecoveryCodes extends Controller
     private function service(string $name, string $class): object
     {
         $service = $this->application->get($name);
-        if ($service instanceof $class === false) {
+        if (($service instanceof $class) === false) {
             throw new \RuntimeException($name . ' service is not available.');
         }
 

@@ -94,7 +94,7 @@ class RecoveryCodeService
 
         $codes = [];
         $hashes = [];
-        while (count($codes) < self::CODE_COUNT) {
+        for ($i = 0; $i < self::CODE_COUNT;) {
             $code = $this->codec->generate();
             $normalized = $this->codec->normalize($code);
             if ($normalized === null) {
@@ -108,6 +108,7 @@ class RecoveryCodeService
 
             $codes[] = $code;
             $hashes[$hash] = $hash;
+            $i++;
         }
 
         $now = $this->now();
@@ -302,7 +303,7 @@ class RecoveryCodeService
             );
         });
 
-        if ($result->isConsumed()) {
+        if ($result->isConsumed() === true) {
             $this->rateLimitService->resetAfterSuccessfulCredentialVerification(
                 $rateLimitContext,
                 $purpose

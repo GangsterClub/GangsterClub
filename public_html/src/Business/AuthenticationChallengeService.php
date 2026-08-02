@@ -187,10 +187,9 @@ class AuthenticationChallengeService
                 return null;
             }
 
-            return $this->repository->findBound(
-                $this->hashToken($rawToken),
-                $this->hashSession($sessionId)
-            ) ?: null;
+            $bound = $this->repository->findBound($this->hashToken($rawToken), $this->hashSession($sessionId));
+
+            return $bound === false ? null : $bound;
         });
     }
 

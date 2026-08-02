@@ -21,7 +21,7 @@ class Csrf
     public function handle(Request $request, callable $next): Response
     {
         $csrf = $this->application->get('csrfService');
-        if ($csrf instanceof CsrfService === false) {
+        if (($csrf instanceof CsrfService) === false) {
             throw new \RuntimeException('The csrfService must be registered before the CSRF middleware runs.');
         }
 

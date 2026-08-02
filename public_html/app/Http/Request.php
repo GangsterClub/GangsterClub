@@ -15,9 +15,11 @@ class Request extends Superglobal
     public function __construct(string $method, string $uri, array $headers)
     {
         parent::__construct();
+
+        $path = parse_url($uri, PHP_URL_PATH);
         $this->method = $method;
         $this->uri = $uri;
-        $this->path = parse_url($uri, PHP_URL_PATH) ?: '/';
+        $this->path =  is_string($path) && $path !== '' ? $path : '/';
         $this->headers = $headers;
     }
 

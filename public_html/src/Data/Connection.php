@@ -98,12 +98,12 @@ class Connection
 
     private function inTransaction(): bool
     {
-        return $this->connection !== null && $this->connection->inTransaction();
+        return $this->connection !== null && $this->connection->inTransaction() === true;
     }
 
     public function transaction(callable $callback): mixed
     {
-        if ($this->inTransaction()) {
+        if ($this->inTransaction() === true) {
             return $callback($this);
         }
 

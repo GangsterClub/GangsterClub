@@ -89,7 +89,7 @@ class AuthenticatorSecurity extends Controller
             $auth->setPendingAuthenticatorSecret(null);
             $auth->rotateCsrfToken();
 
-            if ($this->expectsStructuredResponse($request)) {
+            if ($this->expectsStructuredResponse($request) === true) {
                 return Response::json(
                     [
                         'success' => true,

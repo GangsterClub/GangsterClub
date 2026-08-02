@@ -17,7 +17,7 @@ class UserEmailChangeRepository
     {
         $this->dbh = $dbh;
         $connection = $dbh->getConnection();
-        if ($connection instanceof \PDO === false) {
+        if (($connection instanceof \PDO) === false) {
             throw new RuntimeException('Database connection unavailable.');
         }
 

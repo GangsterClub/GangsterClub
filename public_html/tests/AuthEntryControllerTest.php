@@ -109,8 +109,8 @@ final class AuthEntryTestSession extends \app\Service\SessionService
         $messages = $this->flashes[$bag] ?? [];
         unset($this->flashes[$bag]);
         return [
-            'errors' => is_array($messages['errors'] ?? null) ? $messages['errors'] : [],
-            'success' => is_array($messages['success'] ?? null) ? $messages['success'] : [],
+            'errors' => is_array($messages['errors'] ?? null) === true ? $messages['errors'] : [],
+            'success' => is_array($messages['success'] ?? null) === true ? $messages['success'] : [],
         ];
     }
 }

@@ -36,7 +36,7 @@ class Kernel
                 ? fn(Request $request): Response => $this->handleController($match->route, $request)
                 : fn(): Response => $this->handleNotFound();
 
-            if($match !== null && $match->parameters !== null) {
+            if ($match !== null && $match->parameters !== null) {
                 $request->setRouteParameters($match->parameters);
             }
 

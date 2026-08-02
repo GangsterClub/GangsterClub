@@ -122,7 +122,7 @@ class AuthenticationRateLimitService
                 $dimension = $bucket['dimension'];
                 $policy = $policies[$dimension] ?? null;
 
-                if (!$policy instanceof RateLimitPolicy) {
+                if (($policy instanceof RateLimitPolicy) === false) {
                     throw new \InvalidArgumentException(
                         'Missing rate-limit policy for dimension: ' . $dimension
                     );

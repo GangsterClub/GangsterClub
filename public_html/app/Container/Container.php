@@ -163,7 +163,7 @@ class Container
         $encodedSecret = constant($constantName);
 
         if (
-            !is_string($encodedSecret)
+            is_string($encodedSecret) === false
             || preg_match('/^[a-fA-F0-9]{64}$/', $encodedSecret) !== 1
         ) {
             throw new \RuntimeException(
