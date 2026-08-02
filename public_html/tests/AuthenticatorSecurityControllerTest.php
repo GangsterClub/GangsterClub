@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+defined('APP_BASE') || define('APP_BASE', '/game');
+defined('WEB_ROOT') || define('WEB_ROOT', APP_BASE . '/');
+
 use app\Container\Application;
 use app\Http\Request;
 use app\Service\AuthService;
@@ -11,7 +14,6 @@ use src\Controller\AuthenticatorSecurity;
 use src\Controller\Controller;
 
 const AUTHENTICATOR_TOTP_DIGITS = 6;
-const APP_BASE = '/game';
 
 function __(string $key, array $parameters = []): string
 {

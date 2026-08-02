@@ -45,6 +45,50 @@ class Router
         return $routes ?? $parsed;
     }
 
+    public static function path(string $name, array $parameters = []): string
+    {
+        $route = static::$routes[$name] ?? null;
+
+        if ($route === null || isset($route['path']) === false) {
+            return rtrim(WEB_ROOT, '/') . '/404';
+        }
+
+        $path = (string) $route['path'];
+        $usedParameters = [];
+
+        $path = preg_replace_callback(
+            '/\{([A-Za-z_][A-Za-z0-9_]*)\}/',
+            static function (array $matches) use ($name, $parameters, &$usedParameters): string {
+                $parameter = $matches[1];
+
+                if (array_key_exists($parameter, $parameters) === false) {
+                    throw new \InvalidArgumentException(
+                        sprintf('Missing parameter "%s" for route "%s".', $parameter, $name)
+                    );
+                }
+
+                $usedParameters[] = $parameter;
+
+                return rawurlencode((string) $parameters[$parameter]);
+            },
+            $path
+        );
+
+        $unusedParameters = array_diff(array_keys($parameters), $usedParameters);
+
+        if ($unusedParameters !== []) {
+            throw new \InvalidArgumentException(
+                sprintf(
+                    'Unused parameter(s) for route "%s": %s.',
+                    $name,
+                    implode(', ', $unusedParameters)
+                )
+            );
+        }
+
+        return rtrim(WEB_ROOT, '/') . '/' . ltrim($path, '/');
+    }
+
     public function match(string $path, string $method): ?RouteMatch
     {
         if (($routeData = self::matchRoute($path, $method)) === null) {

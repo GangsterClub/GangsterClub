@@ -7,6 +7,7 @@ namespace src\Controller;
 use app\Container\Application;
 use app\Http\Request;
 use app\Http\Response;
+use app\Http\Router;
 use app\Service\AuthService;
 
 class Controller
@@ -78,14 +79,14 @@ class Controller
         $session = $this->application->get('sessionService');
         $prevRoute = ($session->get('PREV_ROUTE') ??
             ($request->server('HTTP_REFERER')) ??
-            (APP_BASE . '/'));
+            Router::path('home'));
 
         return Response::redirect((string) $prevRoute, 303);
     }
 
     protected function redirectSelf(): Response
     {
-        return Response::redirect((string) (REQUEST_URI ?? (APP_BASE . '/')), 303);
+        return Response::redirect((string) (REQUEST_URI ?? Router::path('home')), 303);
     }
 
     protected function flash(string $bag, string $type, string $message): void

@@ -41,6 +41,7 @@ class Twig
         $twig->addGlobal('docRoot', WEB_ROOT);
         $twig->addGlobal('assetVersion', $assetVersion);
         $twig->addGlobal('translation', $translation);
+        $twig->addGlobal('router', $this->application->get('router'));
         $twig->addExtension(new \app\Twig\TranslationExtension());
         $twig->addExtension(new \app\Twig\CsrfExtension($this->application->get('csrfService')));
         $this->application->addService('twig', $twig);

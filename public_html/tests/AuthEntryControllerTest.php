@@ -34,17 +34,22 @@ namespace Twig {
 namespace Twig\Loader { class ArrayLoader { public function __construct(array $templates) {} } }
 namespace {
 
+defined('APP_BASE') || define('APP_BASE', '');
+defined('WEB_ROOT') || define('WEB_ROOT', APP_BASE . '/');
+defined('APP_MAX_AGE') || define('APP_MAX_AGE', 7200);
+
 use app\Container\Application;
 use app\Http\Request;
 use app\Http\Response;
+use app\Http\Router;
 use app\Service\AuthService;
 use app\Service\CsrfService;
+use app\Service\YamlCacheService;
 use src\Business\AuthenticationRateLimitContext;
 use src\Business\AuthEntryService;
 use src\Business\RecoveryFeatureService;
 use src\Controller\AuthEntryController;
 
-const APP_BASE = '';
 const AUTHENTICATOR_TOTP_DIGITS = 6;
 const AUTHENTICATOR_TOTP_PERIOD = 30;
 const REQUEST_URI = '/login';
@@ -67,8 +72,10 @@ require_once __DIR__ . '/../app/Container/Application.php';
 require_once __DIR__ . '/../app/Http/Superglobal.php';
 require_once __DIR__ . '/../app/Http/Request.php';
 require_once __DIR__ . '/../app/Http/Response.php';
+require_once __DIR__ . '/../app/Http/Router.php';
 require_once __DIR__ . '/../app/Service/SessionService.php';
 require_once __DIR__ . '/../app/Service/CsrfService.php';
+require_once __DIR__ . '/../app/Service/YamlCacheService.php';
 require_once __DIR__ . '/../app/Service/AuthSessionKeys.php';
 require_once __DIR__ . '/../app/Service/AuthService.php';
 require_once __DIR__ . '/../src/Controller/Controller.php';
@@ -117,6 +124,7 @@ final class AuthEntryTestRecoveryFeature extends RecoveryFeatureService
 }
 final class AuthEntryTestApplication extends Application
 {
+    public Router $router;
     public AuthEntryTestSession $session;
     public CsrfService $csrf;
     public AuthService $auth;
@@ -124,6 +132,7 @@ final class AuthEntryTestApplication extends Application
 
     public function __construct()
     {
+        $this->router = new Router();
         $this->session = new AuthEntryTestSession();
         $this->csrf = new CsrfService($this->session);
         $this->auth = new AuthService(
@@ -136,6 +145,7 @@ final class AuthEntryTestApplication extends Application
     public function get(string $name): ?object
     {
         return match ($name) {
+            'router' => $this->router,
             'sessionService' => $this->session,
             'authService' => $this->auth,
             'translationService' => new AuthEntryTestTranslation(),
@@ -212,6 +222,7 @@ function runController(string $mode, array $post, array $result): array
     return [$response, $app->session->flashes, $service->calls];
 }
 
+(new Router())->load(DOC_ROOT . '/src/resources/routes.yaml');
 $unsupportedFlashRejected = false;
 try {
     (new ReflectionClass(\app\Service\SessionService::class))

@@ -11,7 +11,7 @@
             <div>
                 <h1 class="text-3xl font-bold">{{ __('account.headline') }}</h1>
             </div>
-            <form method="POST" action="{{ docRoot }}logout" class="shrink-0">
+            <form method="POST" action="{{ router.path('logout') }}" class="shrink-0">
                 {{ csrf_field() }}
 
                 <button type="submit" class="inline-flex items-center gap-2 rounded border border-gray-400 bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-200 dark:border-gray-600 dark:bg-slate-800 dark:text-gray-200 dark:hover:bg-slate-700" aria-label="{{ __('account.logout') }}">
@@ -93,7 +93,7 @@
 
             <div class="mt-4 space-y-4">
                 {% if not authenticator.enabled %}
-                    <form method="POST" action="{{ docRoot }}account/authenticator/enroll" data-recovery-form>
+                    <form method="POST" action="{{ router.path('accountAuthenticatorEnroll') }}" data-recovery-form>
                         {{ csrf_field() }}
 
                         <button type="submit" class="btn-secondary">
@@ -132,7 +132,7 @@
                                 </button>
 
                                 <noscript>
-                                    <form method="POST" action="{{ docRoot }}account/recovery-codes/replace">
+                                    <form method="POST" action="{{ router.path('accountRecoveryCodesReplace') }}">
                                         {{ csrf_field() }}
 
                                         <button class="btn-secondary" type="submit">
@@ -150,7 +150,7 @@
                                 </button>
 
                                 <noscript>
-                                    <form method="POST" action="{{ docRoot }}account/recovery-codes/initial">
+                                    <form method="POST" action="{{ router.path('accountRecoveryCodesInitial') }}">
                                         {{ csrf_field() }}
 
                                         <button class="btn-primary" type="submit">
@@ -187,7 +187,7 @@
                                     <p class="font-semibold">{{ __('account.recovery-replacement-warning-title') }}</p>
                                     <p class="mt-1">{{ __('account.recovery-replacement-warning') }}</p>
                                 </div>
-                                <form method="POST" action="{{ docRoot }}account/recovery-codes/replace" data-recovery-form class="mt-5">
+                                <form method="POST" action="{{ router.path('accountRecoveryCodesReplace') }}" data-recovery-form class="mt-5">
                                     {{ csrf_field() }}
 
                                     <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -226,7 +226,7 @@
                                     <p class="font-semibold">{{ __('account.initial-recovery-codes-warning-title') }}</p>
                                     <p class="mt-1">{{ __('account.initial-recovery-codes-warning') }}</p>
                                 </div>
-                                <form method="POST" action="{{ docRoot }}account/recovery-codes/initial" data-recovery-form class="mt-5">
+                                <form method="POST" action="{{ router.path('accountRecoveryCodesInitial') }}" data-recovery-form class="mt-5">
                                     {{ csrf_field() }}
 
                                     <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -256,7 +256,7 @@
                             {{ __('account.authenticator-disable') }}
                         </button>
                         <noscript>
-                            <form method="POST" action="{{ docRoot }}account/authenticator/disable/start">
+                            <form method="POST" action="{{ router.path('accountAuthenticatorDisableStart') }}">
                                 {{ csrf_field() }}
 
                                 <button type="submit" class="{{ disableBtnClass }}">
@@ -285,7 +285,7 @@
 
                             <div data-modal-status class="mb-4 hidden rounded border p-3 text-sm" aria-live="polite" aria-atomic="true" tabindex="-1"></div>
 
-                            <form method="POST" action="{{ docRoot }}account/authenticator/disable" class="space-y-4" data-security-modal-form>
+                            <form method="POST" action="{{ router.path('accountAuthenticatorDisable') }}" class="space-y-4" data-security-modal-form>
                                 {{ csrf_field() }}
 
                                 <div>

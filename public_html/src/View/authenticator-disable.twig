@@ -13,10 +13,11 @@
         data-failure-message="{{ __('authenticator-invalid-code') }}">
         <div class="modal-panel max-w-2xl" role="document" aria-labelledby="authenticator-disable-flow-title">
             <header class="mb-5">
-                <p class="text-xs font-semibold uppercase tracking-wide text-red-600 dark:text-red-400">{{ __('recovery.security-step') }}</p>
+                <p class="text-xs font-semibold uppercase tracking-wide text-red-600 dark:text-red-400">{{ __('sensitive-security-step') }}</p>
                 <h1 id="authenticator-disable-flow-title" class="text-2xl font-bold">
                     {{ __('authenticator-disable-modal-title') }}
                 </h1>
+                <p class="text-sm">{{ __('account.authenticator-disable-modal-body', { 'digits': authenticator.digits }) }}</p>
             </header>
 
             <div id="authenticator-disable-flow-status" data-modal-status aria-live="polite" aria-atomic="true" tabindex="-1">

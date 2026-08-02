@@ -21,7 +21,7 @@
                     {{ alerts.error(verification.message) }}
                 {% endif %}
 
-                <a class="btn-primary w-full" href="{{ docRoot }}login">{{ __('account.email-verify-back-to-login') }}</a>
+                <a class="btn-primary w-full" href="{{ router.path('login') }}">{{ __('account.email-verify-back-to-login') }}</a>
             </div>
         </div>
     </section>

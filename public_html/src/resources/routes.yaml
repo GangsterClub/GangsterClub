@@ -29,7 +29,7 @@ accountRecoveryCodes:
     controller: RecoveryCodes::account
     methods: ['GET', 'HEAD', 'POST']
 
-accountAuthenticatorEnrollmentStart:
+accountAuthenticatorEnroll:
     path: /account/authenticator/enroll
     controller: RecoveryCodes::startEnrollment
     methods: ['POST']
@@ -44,12 +44,12 @@ accountRecoveryCodesReplace:
     controller: RecoveryCodes::startReplacement
     methods: ['POST']
 
-loginLostAuthenticatorStart:
+loginRecoveryStart:
     path: /login/recovery/start
     controller: RecoveryCodes::startLostAuthenticator
     methods: ['POST']
 
-loginLostAuthenticator:
+loginRecovery:
     path: /login/recovery
     controller: RecoveryCodes::lostAuthenticator
     methods: ['GET', 'HEAD', 'POST']
@@ -64,7 +64,7 @@ accountAuthenticatorDisable:
     controller: AuthenticatorSecurity::disable
     methods: ['GET', 'HEAD', 'POST']
 
-accountVerifyEmail:
+accountEmailVerify:
     path: /account/email/verify/{token}
     controller: Account::verifyEmailChange
     methods: ['GET', 'HEAD']

@@ -6,6 +6,7 @@ namespace src\Controller;
 
 use app\Http\Request;
 use app\Http\Response;
+use app\Http\Router;
 use app\Service\AuthService;
 use src\Business\AuthenticationRateLimitContext;
 use src\Business\AuthEntryService;
@@ -37,7 +38,7 @@ class AuthEntryController extends Controller
         $auth = $this->auth();
 
         if ($auth->getAuthenticatedUserId() !== null) {
-            return Response::redirect(APP_BASE . '/account', 303);
+            return Response::redirect(Router::path('account'), 303);
         }
 
         $this->twigVariables[$mode] = $this->consumeFlash($mode);
@@ -204,7 +205,7 @@ class AuthEntryController extends Controller
                         'count' => (string) $remainingCount,
                     ]));
                 }
-                return Response::redirect(APP_BASE . '/account', 303);
+                return Response::redirect(Router::path('account'), 303);
             case RecoveryCodeConsumptionResult::STATUS_RATE_LIMITED:
                 $this->flash(self::LOGIN_RECOVERY_FLASH_BAG, 'errors', __('login.recovery-code-rate-limited', [
                     'seconds' => (string) ($result['retryAfterSeconds'] ?? 0),

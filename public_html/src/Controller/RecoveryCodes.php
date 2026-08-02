@@ -7,6 +7,7 @@ namespace src\Controller;
 use app\Container\Application;
 use app\Http\Request;
 use app\Http\Response;
+use app\Http\Router;
 use app\Service\AuthService;
 use src\Business\AuthenticationChallengeService;
 use src\Business\AuthenticationRateLimitContext;
@@ -23,7 +24,7 @@ use src\Entity\User;
 
 final class RecoveryCodes extends Controller
 {
-    private string $flowRedirect = '/account/recovery-codes';
+    private string $flowRedirectName = 'accountRecoveryCodes';
     private string $flowFlashBag = 'recovery';
     private AuthenticationChallengeService $challenges;
     private RecoveryCodeService $recoveryCodes;
@@ -60,7 +61,7 @@ final class RecoveryCodes extends Controller
                 false,
                 'already_enabled',
                 'recovery.authenticator-already-enabled',
-                APP_BASE . '/account',
+                Router::path('account'),
                 200,
                 [],
                 'account'
@@ -90,7 +91,7 @@ final class RecoveryCodes extends Controller
                 false,
                 'send_failed',
                 'recovery.email-send-failed',
-                APP_BASE . '/account',
+                Router::path('account'),
                 200,
                 [],
                 'account'
@@ -133,7 +134,7 @@ final class RecoveryCodes extends Controller
                 false,
                 'unavailable',
                 'recovery.lost-replacement-unavailable',
-                APP_BASE . '/login',
+                Router::path('login'),
                 200,
                 [],
                 'login'
@@ -149,7 +150,7 @@ final class RecoveryCodes extends Controller
                 false,
                 'unavailable',
                 'recovery.lost-replacement-unavailable',
-                APP_BASE . '/login',
+                Router::path('login'),
                 200,
                 [],
                 'login'
@@ -181,7 +182,7 @@ final class RecoveryCodes extends Controller
                 false,
                 'send_failed',
                 'recovery.email-send-failed',
-                APP_BASE . '/login',
+                Router::path('login'),
                 200,
                 [],
                 'login'
@@ -193,7 +194,7 @@ final class RecoveryCodes extends Controller
             true,
             'email_verification_pending',
             'recovery.email-code-sent',
-            APP_BASE . '/login/recovery'
+            Router::path('loginRecovery')
         );
     }
 
@@ -213,7 +214,7 @@ final class RecoveryCodes extends Controller
         $userId = $auth->getPendingUserId();
         $user = $userId === null ? null : $this->users->getUserById($userId);
         if ($user === null || $auth->isLoginAuthenticatorRequired() === false) {
-            return Response::redirect(APP_BASE . '/login', 303);
+            return Response::redirect(Router::path('login'), 303);
         }
 
         return $this->handleFlow($request, $user, true);
@@ -243,7 +244,7 @@ final class RecoveryCodes extends Controller
                 false,
                 'unavailable',
                 'recovery.action-unavailable',
-                APP_BASE . '/account',
+                Router::path('account'),
                 200,
                 [],
                 'account'
@@ -270,7 +271,7 @@ final class RecoveryCodes extends Controller
 
     private function handleFlow(Request $request, User $user, bool $lostFlow): Response
     {
-        $this->flowRedirect = $lostFlow ? '/login/recovery' : '/account/recovery-codes';
+        $this->flowRedirectName = $lostFlow ? 'loginRecovery' : 'accountRecoveryCodes';
         $this->application->get('translationService')->setFile('recovery');
         $auth = $this->auth();
         $token = $auth->getSecurityChallengeToken();
@@ -806,7 +807,7 @@ final class RecoveryCodes extends Controller
             $purpose === AuthenticationChallengeService::PURPOSE_REPLACE_RECOVERY_CODES
                 ? 'recovery.previous-codes-invalid'
                 : 'recovery.completed',
-            APP_BASE . '/account',
+            Router::path('account'),
             200,
             [],
             'account'
@@ -888,7 +889,7 @@ final class RecoveryCodes extends Controller
             true,
             'cancelled',
             'recovery.cancelled',
-            $lostFlow ? APP_BASE . '/login' : APP_BASE . '/account',
+            $lostFlow ? Router::path('login') : Router::path('account'),
             200,
             [],
             $lostFlow ? 'login' : 'account'
@@ -923,7 +924,7 @@ final class RecoveryCodes extends Controller
             false,
             'unavailable',
             $message,
-            $lostFlow ? APP_BASE . '/login' : APP_BASE . '/account',
+            $lostFlow ? Router::path('login') : Router::path('account'),
             409,
             [],
             $lostFlow ? 'login' : 'account'
@@ -940,7 +941,7 @@ final class RecoveryCodes extends Controller
         array $extra = [],
         ?string $flashBag = null
     ): Response {
-        $redirect ??= APP_BASE . $this->flowRedirect;
+        $redirect ??= Router::path($this->flowRedirectName);
         $payload = array_merge([
             'success' => $success,
             'state' => $state,
@@ -1004,7 +1005,7 @@ final class RecoveryCodes extends Controller
 
     private function unauthenticated(): Response
     {
-        return Response::redirect(APP_BASE . '/login', 303);
+        return Response::redirect(Router::path('login'), 303);
     }
 
     private function normalizeOtp(string $code): string

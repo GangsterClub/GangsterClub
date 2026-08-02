@@ -55,7 +55,7 @@ authenticator-disable-modal-title: "Vérifiez votre identité avant de désactiv
 authenticator-disable-modal-body: "Saisissez le code d’authentification actuel à :digits chiffres de votre appareil actif afin de confirmer cette modification sensible."
 authenticator-modal-close: "Fermer"
 authenticator-disable-code-label: "Code d’authentification actuel"
-authenticator-disable-code-help: "Utilisez le code actuel de votre application d’authentification associée. Désactiver l’authentification supprime l’appareil associé et invalide ses codes de récupération. Vous devrez la reconfigurer pour la réactiver."
+authenticator-disable-code-help: "Désactiver l’authentification supprime l’appareil associé et invalide ses codes de récupération. Vous devrez la reconfigurer pour la réactiver."
 authenticator-disable-confirm: "Désactiver maintenant"
 authenticator-disable-requires-verification: "Pour désactiver une authentification active, effectuez l’étape de vérification dans la fenêtre de désactivation."
 authenticator-disable-code-required: "Saisissez votre code d’authentification actuel pour désactiver la connexion avec authentificateur."

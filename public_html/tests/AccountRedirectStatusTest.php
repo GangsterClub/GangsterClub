@@ -5,15 +5,13 @@ declare(strict_types=1);
 use app\Container\Application;
 use app\Http\Request;
 use app\Http\Response;
+use app\Http\Router;
 use src\Controller\Account;
 
-if (defined('DOC_ROOT') === false) {
-    define('DOC_ROOT', dirname(__DIR__));
-}
-
-if (defined('APP_BASE') === false) {
-    define('APP_BASE', '/game');
-}
+defined('DOC_ROOT') || define('DOC_ROOT', dirname(__DIR__));
+defined('APP_BASE') || define('APP_BASE', '/game');
+defined('WEB_ROOT') || define('WEB_ROOT', APP_BASE . '/');
+defined('APP_MAX_AGE') || define('APP_MAX_AGE', 7200);
 
 spl_autoload_register(static function (string $class): void {
     $prefixes = [
@@ -83,7 +81,7 @@ function assertHeaderContains(Response $response, string $expectedHeader, string
         throw new RuntimeException($message . ' Headers: ' . var_export($response->getHeaders(), true));
     }
 }
-
+(new Router())->load(DOC_ROOT . '/src/resources/routes.yaml');
 $account = (new ReflectionClass(Account::class))->newInstanceWithoutConstructor();
 $applicationProperty = new ReflectionProperty(Account::class, 'application');
 $applicationProperty->setValue($account, new AccountRedirectTestApplication());

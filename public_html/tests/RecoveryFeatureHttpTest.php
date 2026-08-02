@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use app\Container\Application;
 use app\Http\Request;
+use app\Http\Router;
 use app\Service\AuthService;
 use app\Service\AuthSessionKeys;
 use app\Service\CsrfService;
@@ -41,9 +42,11 @@ defined('TOTP_PERIOD') || define('TOTP_PERIOD', 900);
 defined('REQUEST_METHOD') || define('REQUEST_METHOD', 'POST');
 defined('REQUEST_URI') || define('REQUEST_URI', '/account/recovery-codes');
 defined('SRC_CONTROLLER') || define('SRC_CONTROLLER', 'src\\Controller\\');
-defined('DOC_ROOT') || define('DOC_ROOT', __DIR__ . '/..');
+defined('DOC_ROOT') || define('DOC_ROOT', dirname(__DIR__));
 defined('ENVIRONMENT') || define('ENVIRONMENT', 'testing');
 defined('DEVELOPMENT') || define('DEVELOPMENT', false);
+defined('WEB_ROOT') || define('WEB_ROOT', 'http://example.test' . APP_BASE . '/');
+defined('APP_MAX_AGE') || define('APP_MAX_AGE', 7200);
 
 if (function_exists('__') === false) {
     function __(string $key, array $parameters = []): string
@@ -294,6 +297,7 @@ $pdo->exec("INSERT INTO user_authenticator_totp
     (user_id, secret, digits, period, generation, enabled_at)
     VALUES (2, 'ACTIVESECRET', 6, 30, 1, '{$now}')");
 
+(new Router())->load(DOC_ROOT . '/src/resources/routes.yaml');
 $userRepository = new UserRepository($connection);
 $authenticatorRepository = new UserAuthenticatorTOTPRepository($connection);
 $recoveryRepository = new RecoveryCodeRepository($connection);
@@ -381,7 +385,7 @@ for ($attempt = 0; $attempt < 5; ++$attempt) {
     );
     recoveryAssertSame(303, $unavailableLostResponse->getStatusCode(), 'Unavailable lost recovery must retain PRG.');
     recoveryAssertTrue(
-        in_array('Location: ' . APP_BASE . '/login', $unavailableLostResponse->getHeaders(), true),
+        in_array('Location: ' . Router::path('login'), $unavailableLostResponse->getHeaders(), true),
         'Unavailable pre-authentication recovery must explicitly return to login.'
     );
     $loginMessages = $flashSession->consumeFlash('login');

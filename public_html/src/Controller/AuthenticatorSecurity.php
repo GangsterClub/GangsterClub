@@ -7,6 +7,7 @@ namespace src\Controller;
 use app\Container\Application;
 use app\Http\Request;
 use app\Http\Response;
+use app\Http\Router;
 use src\Business\AuthenticatorTOTPService;
 use src\Business\RecoveryFeatureService;
 
@@ -40,10 +41,10 @@ class AuthenticatorSecurity extends Controller
         $auth = $this->auth();
 
         if ($auth->getAuthenticatedUserId() === null) {
-            return Response::redirect(APP_BASE . '/login', 303);
+            return Response::redirect(Router::path('login'), 303);
         }
 
-        return Response::redirect(APP_BASE . '/account/authenticator/disable', 303);
+        return Response::redirect(Router::path('accountAuthenticatorDisable'), 303);
     }
 
     public function disable(Request $request): Response
@@ -54,7 +55,7 @@ class AuthenticatorSecurity extends Controller
         $userId = $auth->getAuthenticatedUserId();
 
         if ($userId === null) {
-            return Response::redirect(APP_BASE . '/login', 303);
+            return Response::redirect(Router::path('login'), 303);
         }
 
         if ($request->getMethod() === 'POST') {
@@ -96,7 +97,7 @@ class AuthenticatorSecurity extends Controller
                         'nextStep' => 'account_security',
                         'message' => __('account.authenticator-disabled'),
                         'errors' => [],
-                        'redirect' => APP_BASE . '/account',
+                        'redirect' => Router::path('account'),
                     ],
                     200,
                     $this->securityHeaders()
@@ -109,7 +110,7 @@ class AuthenticatorSecurity extends Controller
                 __('account.authenticator-disabled')
             );
 
-            return Response::redirect(APP_BASE . '/account', 303);
+            return Response::redirect(Router::path('account'), 303);
         }
 
         $messages = $this->consumeFlash('authenticator.disable');
@@ -121,7 +122,10 @@ class AuthenticatorSecurity extends Controller
                     'account' => $messages,
                     'cancelDisable' => [
                         'action' => __('account.authenticator-cancel'),
-                        'backUrl' => APP_BASE . '/account',
+                        'backUrl' => Router::path('account'),
+                    ],
+                    'authenticator' => [
+                        'digits' => AUTHENTICATOR_TOTP_DIGITS,
                     ],
                 ])
             )
@@ -138,7 +142,7 @@ class AuthenticatorSecurity extends Controller
                     'nextStep' => 'verify_authenticator',
                     'message' => $message,
                     'errors' => [$message],
-                    'redirect' => APP_BASE . '/account',
+                    'redirect' => Router::path('account'),
                 ],
                 422,
                 $this->securityHeaders()
@@ -152,7 +156,7 @@ class AuthenticatorSecurity extends Controller
         );
 
         return Response::redirect(
-            APP_BASE . '/account/authenticator/disable',
+            Router::path('accountAuthenticatorDisable'),
             303
         );
     }

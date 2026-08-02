@@ -7,6 +7,7 @@ namespace src\Controller;
 use app\Container\Application;
 use app\Http\Request;
 use app\Http\Response;
+use app\Http\Router;
 use app\Service\AuthService;
 use src\Business\AuthEntryService;
 use src\Business\AccountService;
@@ -167,7 +168,7 @@ class Account extends Controller
     {
         $statusCode = strtoupper($request->getMethod()) === 'POST' ? 303 : 302;
 
-        return Response::redirect(APP_BASE . '/login', $statusCode);
+        return Response::redirect(Router::path('login'), $statusCode);
     }
 
     private function handleUsernameChange(Request $request, User $user): User
