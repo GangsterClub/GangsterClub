@@ -115,11 +115,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (payload.success && Array.isArray(payload.codes)) {
                     renderCodes(payload, payload.csrfToken || csrfToken);
                 } else if (payload.success && payload.redirect) {
-                    const redirectAllowList = ['/login/recovery', '/account/recovery-codes'];
+                    let baseUri = document.querySelector("base").href;
+                    baseUri = baseUri.substr(0, baseUri.length-1);
+                    const redirectAllowList = [
+                        baseUri + '/login/recovery',
+                        baseUri + '/account/recovery-codes'
+                    ];
                     if (redirectAllowList.indexOf(payload.redirect) > -1) {
-                        window.location.assign(escape(payload.redirect));
+                        window.location.assign(payload.redirect);
                     } else {
-                        window.location.assign(escape('/login'));
+                        window.location.assign('/login');
                     }
                 }
             } catch (error) {
