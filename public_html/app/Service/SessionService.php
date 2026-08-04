@@ -150,15 +150,29 @@ class SessionService extends \SessionHandler
 
         $session = $_SESSION ?? [];
         return isset($session[$key]) === true ?
-            filter_var($session[$key], 515) :
+            $this->sanitizeValue($session[$key]) :
             $default;
     }
 
     public function set(string $key, mixed $value): void
     {
         if (session_status() === PHP_SESSION_ACTIVE) {
-            $_SESSION[$key] = filter_var($value, 515);
+            $_SESSION[$key] = $this->sanitizeValue($value);
         }
+    }
+
+    private function sanitizeValue(mixed $value): mixed
+    {
+        if (is_array($value) === true) {
+            $sanitized = [];
+            foreach ($value as $key => $item) {
+                $sanitized[$key] = $this->sanitizeValue($item);
+            }
+
+            return $sanitized;
+        }
+
+        return $value;
     }
 
     public function flash(string $bag, string $type, string $message): void

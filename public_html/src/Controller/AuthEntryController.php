@@ -239,33 +239,23 @@ class AuthEntryController extends Controller
     {
         $this->application->get('sessionService')->set(
             self::REGISTER_FORM_VALUES,
-            base64_encode(json_encode(['username' => $username, 'email' => $email], JSON_THROW_ON_ERROR))
+            ['username' => $username, 'email' => $email]
         );
     }
 
     private function consumeRegisterFormValues(): array
     {
         $session = $this->application->get('sessionService');
-        $storedValues = $session->get(self::REGISTER_FORM_VALUES, '');
+        $storedValues = $session->get(self::REGISTER_FORM_VALUES, []);
         $this->forgetRegisterFormValues();
 
-        if (is_string($storedValues) === false || $storedValues === '') {
-            return [];
-        }
-
-        $encodedValues = base64_decode($storedValues, true);
-        if (is_string($encodedValues) === false) {
-            return [];
-        }
-
-        $values = json_decode($encodedValues, true);
-        if (is_array($values) === false) {
+        if (is_array($storedValues) === false) {
             return [];
         }
 
         return [
-            'username' => is_string($values['username'] ?? null) === true ? $values['username'] : '',
-            'email' => is_string($values['email'] ?? null) === true ? $values['email'] : null,
+            'username' => is_string($storedValues['username'] ?? null) === true ? $storedValues['username'] : '',
+            'email' => is_string($storedValues['email'] ?? null) === true ? $storedValues['email'] : null,
         ];
     }
 

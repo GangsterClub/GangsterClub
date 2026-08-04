@@ -93,9 +93,31 @@ final class AuthEntryTestSession extends \app\Service\SessionService
     public array $values = ['_IPaddress' => '127.0.0.1'];
     public array $flashes = [];
 
-    public function get(string $key, mixed $default = null): mixed { return isset($this->values[$key]) === true ? filter_var($this->values[$key], 515) : $default; }
-    public function set(string $key, mixed $value): void { $this->values[$key] = filter_var($value, 515); }
+    public function get(string $key, mixed $default = null): mixed
+    {
+        return isset($this->values[$key]) === true ? $this->sanitizeValue($this->values[$key]) : $default;
+    }
+
+    public function set(string $key, mixed $value): void
+    {
+        $this->values[$key] = $this->sanitizeValue($value);
+    }
+
     public function remove(string $key): void { unset($this->values[$key]); }
+
+    private function sanitizeValue(mixed $value): mixed
+    {
+        if (is_array($value) === true) {
+            $sanitized = [];
+            foreach ($value as $key => $item) {
+                $sanitized[$key] = $this->sanitizeValue($item);
+            }
+
+            return $sanitized;
+        }
+
+        return $value;
+    }
     public function regenerate(): void {}
     public function flash(string $bag, string $type, string $message): void
     {
@@ -254,9 +276,9 @@ $app = new AuthEntryTestApplication();
 $service = new FakeAuthEntryService();
 $service->queue[] = ['status' => AuthEntryService::STATUS_VALIDATION_ERROR, 'error' => 'duplicate-email'];
 $response = (new TestAuthEntryController($app, $service))->handle(new AuthEntryTestRequest(['submit_register' => '1', 'username' => 'alice', 'email' => 'dupe@example.test']), 'register');
-assertSameValue(base64_encode('{"username":"alice","email":"dupe@example.test"}'), $app->session->values['register.form_values'] ?? null, 'Failed registration should temporarily remember submitted values.');
+assertSameValue(['username' => 'alice', 'email' => 'dupe@example.test'], $app->session->values['register.form_values'] ?? null, 'Failed registration should temporarily remember submitted values.');
 $response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'login');
-assertSameValue(base64_encode('{"username":"alice","email":"dupe@example.test"}'), $app->session->values['register.form_values'] ?? null, 'Visiting login should not consume remembered registration values.');
+assertSameValue(['username' => 'alice', 'email' => 'dupe@example.test'], $app->session->values['register.form_values'] ?? null, 'Visiting login should not consume remembered registration values.');
 $response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'register');
 assertSameValue('alice', \Twig\Environment::$lastVars['registerUsername'] ?? null, 'Register form should expose remembered username once.');
 assertSameValue('dupe@example.test', \Twig\Environment::$lastVars['email'] ?? null, 'Register form should expose remembered email once.');
@@ -271,7 +293,7 @@ $app = new AuthEntryTestApplication();
 $service = new FakeAuthEntryService();
 $service->queue[] = ['status' => AuthEntryService::STATUS_SEND_ERROR];
 (new TestAuthEntryController($app, $service))->handle(new AuthEntryTestRequest(['submit_register' => '1', 'username' => 'send-failed', 'email' => 'failed@example.test']), 'register');
-assertSameValue(base64_encode('{"username":"send-failed","email":"failed@example.test"}'), $app->session->values['register.form_values'] ?? null, 'Registration send errors should temporarily remember submitted values.');
+assertSameValue(['username' => 'send-failed', 'email' => 'failed@example.test'], $app->session->values['register.form_values'] ?? null, 'Registration send errors should temporarily remember submitted values.');
 $response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'register');
 assertResponseContains($response, 'name="username" value="send-failed"', 'Register form should pre-fill the username after a send error.');
 assertResponseContains($response, 'name="email" value="failed@example.test"', 'Register form should pre-fill the email after a send error.');
