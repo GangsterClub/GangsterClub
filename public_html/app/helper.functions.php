@@ -21,7 +21,8 @@ function loadEnv(string $envFilePath): void
 {
     static $loaded = [];
 
-    $resolvedPath = realpath($envFilePath) ?: $envFilePath;
+    $resolvedPath = realpath($envFilePath);
+    $resolvedPath = $resolvedPath !== false ? $resolvedPath : $envFilePath;
     if (isset($loaded[$resolvedPath]) === true) {
         return;
     }
