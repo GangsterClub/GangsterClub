@@ -19,6 +19,13 @@ function translate(string $key, array $replacements = []): string
 
 function loadEnv(string $envFilePath): void
 {
+    static $loaded = [];
+
+    $resolvedPath = realpath($envFilePath) ?: $envFilePath;
+    if (isset($loaded[$resolvedPath]) === true) {
+        return;
+    }
+
     if ((bool) file_exists($envFilePath) === false) {
         throw new \RuntimeException("Env file not found: " . htmlspecialchars($envFilePath, ENT_QUOTES, 'UTF-8'));
     }
@@ -60,6 +67,8 @@ function loadEnv(string $envFilePath): void
         define($key, $value);
         //$_SERVER[$key] = $value; // Optionally set in $_SERVER superglobal.
     } //end foreach
+
+    $loaded[$resolvedPath] = true;
 }
 
 function seoUrl($string = ""): string
