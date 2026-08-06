@@ -1,6 +1,6 @@
 # GangsterClub Online
 
-> **Alpha** · v0.1.0
+> **Alpha** · v0.1.1
 
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/c9f86499481244ff9269ab82373c7361)](https://app.codacy.com/gh/GangsterClub/GangsterClub/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade) [![Known Vulnerabilities](https://snyk.io/test/github/GangsterClub/GangsterClub/badge.svg)](https://snyk.io/test/github/GangsterClub/GangsterClub)
 
@@ -18,6 +18,7 @@ A custom PHP MVC framework for building web applications.
 - Authentication and session management
 - JWT authentication and authorization (experimental, not yet used in production)
 - TOTP / 2FA - Email and Authenticator app
+- Optional two-step verification using email TOTP followed by authenticator-app TOTP
 - Recovery codes with mandatory acknowledgment during Authenticator app enrollment
 - PHPMailer integration
 
@@ -100,6 +101,14 @@ php run.php --rollback && php run.php --migrate
 ```
 
 > **TODO:** Refactor migrations to update the schema without dropping and rebuilding all migrated tables.
+
+## Two-step verification
+
+Users with an authenticator app configured can opt in to a sequential sign-in flow that requires an email TOTP first and an authenticator-app TOTP second.
+
+This is described as **two-step verification**, not true multi-factor authentication, because both checks are possession-based rather than independent factor categories.
+
+See [Two-step verification](docs/two-step-verification.md) for behavior, limitations, and operational details.
 
 ## Authenticator recovery
 
