@@ -111,13 +111,14 @@
                             <h3 class="font-semibold">{{ __('account.two-step-title') }}</h3>
                             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('account.two-step-help') }}</p>
                         </div>
-                        <form method="POST" class="mt-4 flex shrink-0 flex-col gap-3 md:mt-0 md:flex-row md:items-center">
+                        <form method="POST" class="mt-4 flex shrink-0 flex-col items-start gap-3 md:mt-0 md:items-end">
                             {{ csrf_field() }}
                             {{ controls.toggleSwitch(
                                 'require_two_step_verification',
                                 'require_two_step_verification',
                                 __('account.two-step-label'),
-                                authenticator.twoStepRequired
+                                authenticator.twoStepRequired,
+                                true
                             ) }}
                             <button type="submit" name="submit_two_step" value="1" class="btn-secondary w-full md:w-auto">
                                 {{ __('account.two-step-save') }}
