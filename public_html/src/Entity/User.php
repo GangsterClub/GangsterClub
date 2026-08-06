@@ -21,7 +21,8 @@ class User
         string $ipAddress,
         \DateTimeInterface $createdAt,
         \DateTimeInterface $updatedAt,
-        \DateTimeInterface $deletedAt
+        \DateTimeInterface $deletedAt,
+        private bool $twoStepVerificationRequired = false
     ) {
         $this->id = (int) $id;
         $this->username = $username;
@@ -65,5 +66,10 @@ class User
     public function getDeletedAt(): \DateTimeInterface
     {
         return $this->deletedAt;
+    }
+
+    public function isTwoStepVerificationRequired(): bool
+    {
+        return $this->twoStepVerificationRequired;
     }
 }

@@ -45,6 +45,7 @@ class AuthEntryService
         $auth->setPendingLoginEmail($email);
         $auth->setPendingLoginTotp(null);
         $auth->setLoginAuthenticatorRequired(false);
+        $auth->setLoginTwoStepRequired(false);
 
         if ($user !== null) {
             $userId = (int) $user->getId();
@@ -52,6 +53,10 @@ class AuthEntryService
             $this->sessionService->remove(self::PENDING_CREATE_BY_EMAIL);
 
             if ($this->authenticatorService->hasEnabledAuthenticator($userId) === true) {
+                if ($user->isTwoStepVerificationRequired() === true) {
+                    $auth->setLoginTwoStepRequired(true);
+                    return $this->sendPersistedEmailOtp($userId, $email);
+                }
                 $auth->setLoginAuthenticatorRequired(true);
                 return ['status' => self::STATUS_AUTHENTICATOR_CODE_REQUIRED];
             }
@@ -100,16 +105,14 @@ class AuthEntryService
         $auth->setPendingLoginTotp($otp);
         $userId = $auth->getPendingUserId();
 
-        if ($userId !== null && $auth->isLoginAuthenticatorRequired() === true) {
-            $isValid = $this->authenticatorService->verifyCode($userId, $otp);
-        } elseif ($userId !== null) {
-            $isValid = $this->emailTotpService->verifyEmailTOTP($userId, $otp);
-        } else {
-            $isValid = $this->verifyEmailOnlyOtp($otp);
+        if ($this->verifySubmittedOtp($auth, $userId, $otp) === false) {
+            return ['status' => self::STATUS_INVALID_OTP];
         }
 
-        if ($isValid !== true) {
-            return ['status' => self::STATUS_INVALID_OTP];
+        if ($this->shouldRequestAuthenticatorStep($auth) === true) {
+            $auth->setPendingLoginTotp(null);
+            $auth->setLoginAuthenticatorRequired(true);
+            return ['status' => self::STATUS_AUTHENTICATOR_CODE_REQUIRED];
         }
 
         $email = $auth->getPendingLoginEmail();
@@ -129,6 +132,25 @@ class AuthEntryService
         $auth->loginUser($userId);
 
         return ['status' => self::STATUS_AUTHENTICATED, 'userId' => $userId];
+    }
+
+    private function verifySubmittedOtp(AuthService $auth, ?int $userId, string $otp): bool
+    {
+        if ($userId === null) {
+            return $this->verifyEmailOnlyOtp($otp);
+        }
+
+        if ($auth->isLoginAuthenticatorRequired() === true) {
+            return $this->authenticatorService->verifyCode($userId, $otp);
+        }
+
+        return $this->emailTotpService->verifyEmailTOTP($userId, $otp);
+    }
+
+    private function shouldRequestAuthenticatorStep(AuthService $auth): bool
+    {
+        return $auth->isLoginTwoStepRequired() === true
+            && $auth->isLoginAuthenticatorRequired() === false;
     }
 
     public function verifyRecoveryCode(

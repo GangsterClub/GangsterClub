@@ -75,7 +75,7 @@ function makeService(
         $session
     );
 }
-function makeUser(int $id, string $username, string $email): User { return new User($id, $username, $email, '127.0.0.1', new DateTime(), new DateTime(), new DateTime('0000-00-00 00:00:00')); }
+function makeUser(int $id, string $username, string $email, bool $twoStepRequired = false): User { return new User($id, $username, $email, '127.0.0.1', new DateTime(), new DateTime(), new DateTime('0000-00-00 00:00:00'), $twoStepRequired); }
 function assertSameValue(mixed $expected, mixed $actual, string $message): void { if ($expected !== $actual) { throw new RuntimeException($message . ' Expected ' . var_export($expected, true) . ', got ' . var_export($actual, true)); } }
 
 $session = new AuthEntryServiceTestSession();
@@ -108,5 +108,22 @@ $authenticator->enabled = true;
 $svc = makeService($session, $users, $authenticator);
 $result = $svc->beginLogin(new AuthService($session, new CsrfService($session)), 'known@example.test');
 assertSameValue(AuthEntryService::STATUS_AUTHENTICATOR_CODE_REQUIRED, $result['status'], 'Existing app-authenticator users should be routed to app verification.');
+
+$session = new AuthEntryServiceTestSession();
+$users = new FakeUserService();
+$users->byEmail['secure@example.test'] = makeUser(8, 'secure', 'secure@example.test', true);
+$authenticator = new FakeAuthenticatorService();
+$authenticator->enabled = true;
+$auth = new AuthService($session, new CsrfService($session));
+$svc = makeService($session, $users, $authenticator);
+$result = $svc->beginLogin($auth, 'secure@example.test');
+assertSameValue(AuthEntryService::STATUS_EMAIL_OTP_SENT, $result['status'], 'Two-step login should request email verification first.');
+$result = $svc->verify($auth, AuthEntryService::MODE_LOGIN, '111111');
+assertSameValue(AuthEntryService::STATUS_AUTHENTICATOR_CODE_REQUIRED, $result['status'], 'Email verification should advance to authenticator verification.');
+assertSameValue(null, $auth->getAuthenticatedUserId(), 'Email verification alone must not authenticate a two-step account.');
+$authenticator->valid = true;
+$result = $svc->verify($auth, AuthEntryService::MODE_LOGIN, '222222');
+assertSameValue(AuthEntryService::STATUS_AUTHENTICATED, $result['status'], 'Authenticator verification should complete two-step login.');
+assertSameValue(8, $auth->getAuthenticatedUserId(), 'Both factors should authenticate the expected user.');
 
 fwrite(STDOUT, "AuthEntryService tests passed.\n");

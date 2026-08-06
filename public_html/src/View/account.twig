@@ -106,6 +106,22 @@
 
                 {% if authenticator.enabled %}
                     <div class="rounded-lg border border-gray-300 p-4 dark:border-gray-700">
+                        <h3 class="font-semibold">{{ __('account.two-step-title') }}</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('account.two-step-help') }}</p>
+                        <form method="POST" class="mt-4 space-y-3">
+                            {{ csrf_field() }}
+                            <label class="flex items-start gap-3">
+                                <input type="checkbox" name="require_two_step_verification" value="1"
+                                    {% if authenticator.twoStepRequired %}checked{% endif %} />
+                                <span>{{ __('account.two-step-label') }}</span>
+                            </label>
+                            <button type="submit" name="submit_two_step" value="1" class="btn-secondary">
+                                {{ __('account.two-step-save') }}
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="rounded-lg border border-gray-300 p-4 dark:border-gray-700">
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <h3 class="font-semibold">{{ __('account.recovery-codes-title') }}</h3>

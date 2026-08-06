@@ -6,6 +6,7 @@ namespace app\Console;
 
 use src\Data\Connection;
 use src\Migration\AddBrowserSessionVersion;
+use src\Migration\AddTwoStepVerificationPreference;
 use src\Migration\CreateAuthenticationChallenge;
 use src\Migration\CreateAuthenticationRateLimit;
 use src\Migration\CreateEmailTOTP;
@@ -31,6 +32,7 @@ final class MigrationPipelineFactory
         $pipeline->addMigration(new CreateSecurityAuditEvent($connection));
         $pipeline->addMigration(new CreateRecoveryCodes($connection));
         $pipeline->addMigration(new AddBrowserSessionVersion($connection));
+        $pipeline->addMigration(new AddTwoStepVerificationPreference($connection));
 
         return $pipeline;
     }
