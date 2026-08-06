@@ -32,6 +32,7 @@ class AuthService
             AuthSessionKeys::PENDING_LOGIN_EMAIL,
             AuthSessionKeys::PENDING_LOGIN_TOTP,
             AuthSessionKeys::LOGIN_AUTHENTICATOR_REQUIRED,
+            AuthSessionKeys::LOGIN_TWO_STEP_REQUIRED,
             AuthSessionKeys::PENDING_AUTHENTICATOR_SECRET,
             AuthSessionKeys::AUTHENTICATOR_SETUP_EMAIL_SECRET,
             AuthSessionKeys::SECURITY_CHALLENGE_TOKEN,
@@ -122,6 +123,16 @@ class AuthService
     public function isLoginAuthenticatorRequired(): bool
     {
         return (bool) $this->sessionService->get(AuthSessionKeys::LOGIN_AUTHENTICATOR_REQUIRED, false);
+    }
+
+    public function setLoginTwoStepRequired(bool $required): void
+    {
+        $this->sessionService->set(AuthSessionKeys::LOGIN_TWO_STEP_REQUIRED, $required);
+    }
+
+    public function isLoginTwoStepRequired(): bool
+    {
+        return $this->sessionService->get(AuthSessionKeys::LOGIN_TWO_STEP_REQUIRED, false) === true;
     }
 
     public function setPendingAuthenticatorSecret(?string $secret): void
@@ -233,6 +244,7 @@ class AuthService
         $this->sessionService->remove(AuthSessionKeys::PENDING_LOGIN_EMAIL);
         $this->sessionService->remove(AuthSessionKeys::PENDING_LOGIN_TOTP);
         $this->sessionService->remove(AuthSessionKeys::LOGIN_AUTHENTICATOR_REQUIRED);
+        $this->sessionService->remove(AuthSessionKeys::LOGIN_TWO_STEP_REQUIRED);
     }
 
     private function setStringValue(string $key, ?string $value): void

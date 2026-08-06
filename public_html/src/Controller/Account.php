@@ -84,6 +84,7 @@ class Account extends Controller
         $user = $this->handleUsernameChange($request, $user);
         $this->handleEmailChange($request, $user);
         $this->handleAuthenticator($request, $user, $auth);
+        $this->handleTwoStepPreference($request, $user);
 
         if ($request->getMethod() === 'POST') {
             foreach ($this->accountMessages['errors'] as $message) {
@@ -116,6 +117,7 @@ class Account extends Controller
                             'period' => (int) AUTHENTICATOR_TOTP_PERIOD,
                             'emailDigits' => (int) TOTP_DIGITS,
                             'emailPeriod' => (int) TOTP_PERIOD,
+                            'twoStepRequired' => $user->isTwoStepVerificationRequired(),
                         ],
                         'recoveryCodes' => [
                             'active' => $this->recoveryFeatureService->getActiveRecoverySetId($user->getId()) !== null,
@@ -235,6 +237,30 @@ class Account extends Controller
             $this->accountMessages['errors'][] = __('account.authenticator-flow-required');
             return;
         }
+    }
+
+    private function handleTwoStepPreference(Request $request, User $user): void
+    {
+        if ($request->post('submit_two_step') === null) {
+            return;
+        }
+
+        $required = $request->post('require_two_step_verification') === '1';
+        if ($required === true
+            && $this->authenticatorService->hasEnabledAuthenticator($user->getId()) === false
+        ) {
+            $this->accountMessages['errors'][] = __('account.two-step-requires-authenticator');
+            return;
+        }
+
+        if ($this->userService->setTwoStepVerificationRequired($user->getId(), $required) === false) {
+            $this->accountMessages['errors'][] = __('account.two-step-update-error');
+            return;
+        }
+
+        $this->accountMessages['success'][] = $required === true
+            ? __('account.two-step-enabled')
+            : __('account.two-step-disabled');
     }
 
     private function formatPendingEmailChange(int $userId): ?array

@@ -194,6 +194,12 @@ class AuthEntryController extends Controller
     private function mapVerifyResult(string $mode, array $result): Response
     {
         switch ($result['status'] ?? null) {
+            case AuthEntryService::STATUS_AUTHENTICATOR_CODE_REQUIRED:
+                $this->flash($mode, 'success', __('login.authenticator-app-instructions', [
+                    'digits' => (string) AUTHENTICATOR_TOTP_DIGITS,
+                    'period' => (string) AUTHENTICATOR_TOTP_PERIOD,
+                ]));
+                return $this->redirectSelf();
             case AuthEntryService::STATUS_AUTHENTICATED:
                 $this->flash('account', 'success', $this->translateForMode($mode, 'success-authenticated'));
                 $remainingCount = $result['remainingCount'] ?? null;

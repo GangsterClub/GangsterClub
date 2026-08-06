@@ -72,6 +72,16 @@ class UserRepository
             ]);
     }
 
+    public function updateTwoStepVerificationRequired(int $userId, bool $required): bool
+    {
+        return $this->dbh->table('user')
+            ->where('id', $userId)
+            ->update([
+                'require_two_step_verification' => $required === true ? 1 : 0,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+    }
+
     public function getBrowserSessionVersion(int $userId): ?int
     {
         $user = $this->findById($userId);

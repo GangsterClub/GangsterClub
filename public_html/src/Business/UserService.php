@@ -92,7 +92,13 @@ class UserService
             $object->ip_address,
             new \DateTime($object->created_at),
             new \DateTime($object->updated_at),
-            new \DateTime(($object->deleted_at ?? '0000-00-00 00:00:00'))
+            new \DateTime(($object->deleted_at ?? '0000-00-00 00:00:00')),
+            (int) ($object->require_two_step_verification ?? 0) === 1
         );
+    }
+
+    public function setTwoStepVerificationRequired(int $userId, bool $required): bool
+    {
+        return $this->userRepository->updateTwoStepVerificationRequired($userId, $required);
     }
 }
