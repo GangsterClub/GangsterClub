@@ -4,137 +4,13 @@ declare(strict_types=1);
 
 namespace app\Container;
 
-use app\Service\AuthService;
-use app\Service\JWT;
-use app\Service\JWTService;
-use app\Service\SessionService;
-use src\Business\AccountService;
-use src\Business\AuthenticationChallengeService;
-use src\Business\AuthenticationRateLimitService;
-use src\Business\AuthEntryService;
-use src\Business\EmailService;
-use src\Business\AuthenticatorTOTPService;
-use src\Business\EmailTOTPService;
-use src\Business\RecoveryCodeCodec;
-use src\Business\RecoveryCodeService;
-use src\Business\RecoveryFeatureService;
-use src\Business\SecurityAuditService;
-use src\Business\TOTPService;
-use src\Business\UserService;
-use src\Data\Connection;
-use src\Data\Repository\AuthenticationChallengeRepository;
-use src\Data\Repository\AuthenticationRateLimitRepository;
-use src\Data\Repository\EmailTOTPRepository;
-use src\Data\Repository\RecoveryCodeRepository;
-use src\Data\Repository\SecurityAuditEventRepository;
-use src\Data\Repository\UserEmailChangeRepository;
-use src\Data\Repository\UserRepository;
-use src\Data\Repository\UserAuthenticatorTOTPRepository;
-
 class Container
 {
-    private array $container;
+    private array $container = [];
 
-    public function __construct()
+    public function register(ServiceProvider $provider): void
     {
-        $this->container = [];
-        $this->registerServices();
-    }
-
-    public function registerServices(): void
-    {
-        // Register your services here
-        $this->addService('dbh', fn(): Connection => new Connection());
-        $this->addService('userRepository', fn(): UserRepository => new UserRepository(
-            $this->getRegisteredService('dbh', Connection::class)
-        ));
-        $this->addService('userEmailChangeRepository', fn(): UserEmailChangeRepository => new UserEmailChangeRepository(
-            $this->getRegisteredService('dbh', Connection::class)
-        ));
-        $this->addService('emailService', fn(): EmailService => new EmailService());
-        $this->addService('accountService', fn(): AccountService => new AccountService(
-            $this->getRegisteredService('userRepository', UserRepository::class),
-            $this->getRegisteredService('userEmailChangeRepository', UserEmailChangeRepository::class),
-            $this->getRegisteredService('emailService', EmailService::class)
-        ));
-        $this->addService('userService', fn(): UserService => new UserService(
-            $this->getRegisteredService('userRepository', UserRepository::class)
-        ));
-        $this->addService('totpService', fn(): TOTPService => new TOTPService());
-        $this->addService('userAuthenticatorTotpRepository', fn(): UserAuthenticatorTOTPRepository => new UserAuthenticatorTOTPRepository(
-            $this->getRegisteredService('dbh', Connection::class)
-        ));
-        $this->addService('emailTotpRepository', fn(): EmailTOTPRepository => new EmailTOTPRepository(
-            $this->getRegisteredService('dbh', Connection::class)
-        ));
-        $this->addService('authenticationChallengeRepository', fn(): AuthenticationChallengeRepository => new AuthenticationChallengeRepository(
-            $this->getRegisteredService('dbh', Connection::class)
-        ));
-        $this->addService('authenticationRateLimitRepository', fn(): AuthenticationRateLimitRepository => new AuthenticationRateLimitRepository(
-            $this->getRegisteredService('dbh', Connection::class)
-        ));
-        $this->addService('securityAuditEventRepository', fn(): SecurityAuditEventRepository => new SecurityAuditEventRepository(
-            $this->getRegisteredService('dbh', Connection::class)
-        ));
-        $this->addService('recoveryCodeRepository', fn(): RecoveryCodeRepository => new RecoveryCodeRepository(
-            $this->getRegisteredService('dbh', Connection::class)
-        ));
-        $this->addService('authenticationChallengeService', fn(): AuthenticationChallengeService => new AuthenticationChallengeService(
-            $this->getRegisteredService('dbh', Connection::class),
-            $this->getRegisteredService('authenticationChallengeRepository', AuthenticationChallengeRepository::class),
-            $this->getRequiredSecret('AUTH_CHALLENGE_PEPPER')
-        ));
-        $this->addService('authenticationRateLimitService', fn(): AuthenticationRateLimitService => new AuthenticationRateLimitService(
-            $this->getRegisteredService('dbh', Connection::class),
-            $this->getRegisteredService('authenticationRateLimitRepository', AuthenticationRateLimitRepository::class),
-            $this->getRequiredSecret('AUTH_RATE_LIMIT_PEPPER')
-        ));
-        $this->addService('securityAuditService', fn(): SecurityAuditService => new SecurityAuditService(
-            $this->getRegisteredService('securityAuditEventRepository', SecurityAuditEventRepository::class)
-        ));
-        $this->addService('recoveryCodeCodec', fn(): RecoveryCodeCodec => new RecoveryCodeCodec(
-            $this->getRequiredSecret('RECOVERY_CODE_PEPPER')
-        ));
-        $this->addService('recoveryCodeService', fn(): RecoveryCodeService => new RecoveryCodeService(
-            $this->getRegisteredService('dbh', Connection::class),
-            $this->getRegisteredService('recoveryCodeRepository', RecoveryCodeRepository::class),
-            $this->getRegisteredService('recoveryCodeCodec', RecoveryCodeCodec::class),
-            $this->getRegisteredService('authenticationRateLimitService', AuthenticationRateLimitService::class),
-            $this->getRegisteredService('securityAuditService', SecurityAuditService::class)
-        ));
-        $this->addService('recoveryFeatureService', fn(): RecoveryFeatureService => new RecoveryFeatureService(
-            $this->getRegisteredService('dbh', Connection::class),
-            $this->getRegisteredService('authenticationChallengeService', AuthenticationChallengeService::class),
-            $this->getRegisteredService('recoveryCodeService', RecoveryCodeService::class),
-            $this->getRegisteredService('recoveryCodeRepository', RecoveryCodeRepository::class),
-            $this->getRegisteredService('userAuthenticatorTotpRepository', UserAuthenticatorTOTPRepository::class),
-            $this->getRegisteredService('userRepository', UserRepository::class),
-            $this->getRegisteredService('securityAuditService', SecurityAuditService::class)
-        ));
-        $this->addService('authenticatorTotpService', fn(): AuthenticatorTOTPService => new AuthenticatorTOTPService(
-            $this->getRegisteredService('totpService', TOTPService::class),
-            $this->getRegisteredService('userAuthenticatorTotpRepository', UserAuthenticatorTOTPRepository::class)
-        ));
-        $this->addService('emailTotpService', fn(): EmailTOTPService => new EmailTOTPService(
-            $this->getRegisteredService('totpService', TOTPService::class),
-            $this->getRegisteredService('emailTotpRepository', EmailTOTPRepository::class),
-            $this->getRegisteredService('sessionService', SessionService::class)
-        ));
-        $this->addService('jwt', fn(): JWT => new JWT());
-        $this->addService('jwtService', fn(): JWTService => new JWTService(
-            $this->getRegisteredService('jwt', JWT::class),
-            $this->getRegisteredService('authService', AuthService::class),
-            $this->getRegisteredService('userService', UserService::class)
-        ));
-        $this->addService('authEntryService', fn(): AuthEntryService => new AuthEntryService(
-            $this->getRegisteredService('userService', UserService::class),
-            $this->getRegisteredService('authenticatorTotpService', AuthenticatorTOTPService::class),
-            $this->getRegisteredService('emailTotpService', EmailTOTPService::class),
-            $this->getRegisteredService('totpService', TOTPService::class),
-            $this->getRegisteredService('emailService', EmailService::class),
-            $this->getRegisteredService('sessionService', SessionService::class),
-            $this->getRegisteredService('recoveryCodeService', RecoveryCodeService::class)
-        ));
+        $provider->register($this);
     }
 
     /**
@@ -142,7 +18,7 @@ class Container
      * @param class-string<T> $className
      * @return T
      */
-    private function getRegisteredService(string $name, string $className): object
+    public function getRegisteredService(string $name, string $className): object
     {
         $service = $this->get($name);
         if (($service instanceof $className) === false) {
@@ -152,46 +28,13 @@ class Container
         return $service;
     }
 
-    private function getRequiredSecret(string $constantName): string
+    public function make(string $className): object
     {
-        if (defined($constantName) === false) {
-            throw new \RuntimeException(
-                $constantName . ' must be configured before the security service is used.'
-            );
-        }
-
-        $encodedSecret = constant($constantName);
-
-        if (
-            is_string($encodedSecret) === false
-            || preg_match('/^[a-fA-F0-9]{64}$/', $encodedSecret) !== 1
-        ) {
-            throw new \RuntimeException(
-                $constantName . ' must contain exactly 64 hexadecimal characters.'
-            );
-        }
-
-        $decodedSecret = hex2bin($encodedSecret);
-
-        if ($decodedSecret === false || strlen($decodedSecret) !== 32) {
-            throw new \RuntimeException(
-                $constantName . ' must decode to exactly 32 bytes.'
-            );
-        }
-
-        return $decodedSecret;
-    }
-
-    public function make(string $className): ?object
-    {
-        if ((bool) class_exists($className) === true) {
-            return new $className($this);
-        }
-
-        if ((bool) class_exists($className) === false) {
+        if (class_exists($className) === false) {
             throw new \Exception("Class " . htmlspecialchars($className, ENT_QUOTES, 'UTF-8') . " not found.");
         }
-        return null;
+
+        return new $className($this);
     }
 
     public function addService(string $name, object|callable|null $service): void
@@ -199,16 +42,31 @@ class Container
         $this->container[$name] = $service;
     }
 
+    public function has(string $name): bool
+    {
+        return array_key_exists($name, $this->container);
+    }
+
     public function get(string $name): ?object
     {
-        if (array_key_exists($name, $this->container) === true) {
-            if (is_callable($this->container[$name]) === true) {
-                $this->container[$name] = $this->container[$name]();
-            }
-
-            return $this->container[$name];
+        if (array_key_exists($name, $this->container) === false) {
+            return null;
         }
 
-        return null;
+        $service = $this->container[$name];
+        if (is_object($service) === true && ($service instanceof \Closure) === false) {
+            return $service;
+        }
+
+        if (is_callable($service) === true) {
+            $service = $service();
+            $this->container[$name] = $service;
+        }
+
+        if ($service !== null && is_object($service) === false) {
+            throw new \RuntimeException($name . ' service did not resolve to an object.');
+        }
+
+        return $service;
     }
 }

@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace app\Container;
 
+use app\Container\Provider\ApplicationServiceProvider;
+use app\Container\Provider\DomainServiceProvider;
 use app\Http\Router;
-use app\Service\TranslationService;
 
 class Application extends Container
 {
@@ -15,19 +16,19 @@ class Application extends Container
 
     public function __construct(string $dir)
     {
-        parent::__construct();
-        $this->registerAppServices();
+        $this->registerProviders();
         $this->configure($dir);
         $routes = $dir . '/src/resources/routes.yaml';
-        if (file_exists($routes) === true && (bool) ($router = $this->router) === true) {
-            $router->load($routes);
+        if (file_exists($routes) === true) {
+            $this->router->load($routes);
         }
     }
 
-    private function registerAppServices(): void
+    private function registerProviders(): void
     {
-        $this->addService('router', $this->router = new Router());
-        $this->addService('translationService', new TranslationService());
+        $this->register(new DomainServiceProvider());
+        $this->register(new ApplicationServiceProvider());
+        $this->router = $this->getRegisteredService('router', Router::class);
     }
 
     private function configure(string $dir): void
