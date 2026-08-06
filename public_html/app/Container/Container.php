@@ -44,7 +44,7 @@ class Container
 
     public function has(string $name): bool
     {
-        return array_key_exists($name, $this->container);
+        return array_key_exists($name, $this->container) === true;
     }
 
     public function get(string $name): ?object
