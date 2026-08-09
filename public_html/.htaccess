@@ -1,4 +1,16 @@
+# Deny hidden files (.env, .gitignore, etc.)
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# Deny common project/config files
+<FilesMatch "^(composer\.(json|lock)|package(-lock)?\.json|phpunit\.xml(\.dist)?|run\.(php|sh|bat)|README(?:\..*)?|LICENSE(?:\..*)?)$">
+    Require all denied
+</FilesMatch>
+
 <IfModule mod_rewrite.c>
-   RewriteEngine On   
-   RewriteRule ^(.*)$ web/$1 [L]
+    RewriteEngine On
+
+    # Internally route into web/, but never prefix web/ twice.
+    RewriteRule ^(?!web(?:/|$))(.*)$ web/$1 [L]
 </IfModule>
