@@ -163,7 +163,7 @@ final class RecoveryHttpAuthenticator extends AuthenticatorTOTPService
 final class RecoveryHttpApplication extends Application
 {
     public function __construct(public array $services) {}
-    public function get(string $name): ?object { return $this->services[$name] ?? null; }
+    public function get(string $name): object { return $this->services[$name] ?? throw new RuntimeException($name . ' is missing.'); }
 }
 
 function recoveryAssertSame(mixed $expected, mixed $actual, string $message): void
@@ -355,20 +355,20 @@ $makeController = static function (RecoveryHttpSession $session) use (
     $csrf = new CsrfService($session);
     $auth = new AuthService($session, $csrf, $userRepository);
     $application = new RecoveryHttpApplication([
-        'dbh' => $connection,
-        'sessionService' => $session,
-        'csrfService' => $csrf,
-        'authService' => $auth,
-        'translationService' => new RecoveryHttpTranslation(),
-        'twig' => $twig,
-        'authenticationChallengeService' => $challengeService,
-        'authenticationRateLimitService' => $rateService,
-        'recoveryCodeService' => $recoveryService,
-        'recoveryFeatureService' => $featureService,
-        'authenticatorTotpService' => $authenticatorService,
-        'emailTotpService' => $emailTotp,
-        'emailService' => $email,
-        'userService' => $users,
+        \src\Data\Connection::class => $connection,
+        \app\Service\SessionService::class => $session,
+        \app\Service\CsrfService::class => $csrf,
+        \app\Service\AuthService::class => $auth,
+        \app\Service\TranslationService::class => new RecoveryHttpTranslation(),
+        \Twig\Environment::class => $twig,
+        \src\Business\AuthenticationChallengeService::class => $challengeService,
+        \src\Business\AuthenticationRateLimitService::class => $rateService,
+        \src\Business\RecoveryCodeService::class => $recoveryService,
+        \src\Business\RecoveryFeatureService::class => $featureService,
+        \src\Business\AuthenticatorTOTPService::class => $authenticatorService,
+        \src\Business\EmailTOTPService::class => $emailTotp,
+        \src\Business\EmailService::class => $email,
+        \src\Business\UserService::class => $users,
     ]);
     return [new RecoveryCodes($application), $auth];
 };

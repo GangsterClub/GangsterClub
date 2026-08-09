@@ -30,7 +30,7 @@ class Kernel
     public function handleRequest(Request $request): Response
     {
         try {
-            $router = $this->application->get('router');
+            $router = $this->application->get(\app\Http\Router::class);
             $match = $router->match($request->getPath(), $request->getMethod());
             $finalHandler = $match instanceof RouteMatch && $match->route instanceof Route
                 ? fn(Request $request): Response => $this->handleController($match->route, $request)

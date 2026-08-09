@@ -73,6 +73,14 @@ final class ContainerProviderInvokable
     }
 }
 
+interface ContainerProviderContract
+{
+}
+
+final class ContainerProviderImplementation implements ContainerProviderContract
+{
+}
+
 function containerProviderInstanceWithoutConstructor(string $className): object
 {
     return (new ReflectionClass($className))->newInstanceWithoutConstructor();
@@ -80,27 +88,28 @@ function containerProviderInstanceWithoutConstructor(string $className): object
 
 $lazyCalls = 0;
 $container = new Container();
-$container->addService('lazy', static function () use (&$lazyCalls): stdClass {
+$container->set(stdClass::class, static function () use (&$lazyCalls): stdClass {
     $lazyCalls++;
     return new stdClass();
 });
 
 assertContainerSame(0, $lazyCalls, 'Factory services should remain lazy until first resolution.');
-$first = $container->get('lazy');
-$second = $container->get('lazy');
+$first = $container->get(stdClass::class);
+$second = $container->get(stdClass::class);
 assertContainerSame(1, $lazyCalls, 'Resolved factory services should be memoized.');
-assertContainerTrue($first === $second, 'Memoized factory services should return the same object.');
-assertContainerSame(null, $container->get('missing'), 'Unknown services should continue to resolve to null.');
+assertContainerTrue($first === $second, 'Resolved factory services should be memoized.');
 assertContainerThrows(
-    static fn(): object => $container->getRegisteredService('missing', stdClass::class),
-    'missing service is not available.',
-    'Missing typed services should report a clear error.'
+    static fn(): object => $container->get(Router::class),
+    Router::class . ' service is not registered.',
+    'Missing services should report a clear error.'
 );
-$container->addService('invalidFactory', static fn(): string => 'not-an-object');
+assertContainerSame(null, $container->getOptional(Router::class), 'Optional lookup should return null for a missing service.');
+
+$container->set(Router::class, static fn(): string => 'not-an-object');
 assertContainerThrows(
-    static fn(): ?object => $container->get('invalidFactory'),
-    'invalidFactory service did not resolve to an object.',
-    'Factories returning non-objects should report a clear error.'
+    static fn(): object => $container->get(Router::class),
+    Router::class . ' service must resolve to an instance of ' . Router::class . '.',
+    'Factories returning incompatible values should report a clear error.'
 );
 
 $constructed = $container->make(ContainerProviderConstructable::class);
@@ -115,97 +124,113 @@ assertContainerThrows(
     'make() should report a missing class clearly.'
 );
 assertContainerThrows(
-    static fn(): object => $container->getRegisteredService('lazy', Router::class),
-    'lazy service is not available.',
-    'Typed lookup should reject a service of the wrong class.'
+    static fn(): null => $container->set('arbitrary-name', new stdClass()),
+    'arbitrary-name is not a class or interface.',
+    'Registration should reject arbitrary string identifiers.'
 );
 
 $invokable = new ContainerProviderInvokable();
-$container->addService('invokable', $invokable);
+$container->set(ContainerProviderInvokable::class, $invokable);
 assertContainerSame(
     $invokable,
-    $container->get('invokable'),
+    $container->get(ContainerProviderInvokable::class),
     'Invokable service objects should not be treated as factories.'
+);
+
+$implementation = new ContainerProviderImplementation();
+$container->set(ContainerProviderContract::class, $implementation);
+assertContainerSame(
+    $implementation,
+    $container->get(ContainerProviderContract::class),
+    'Interface service identifiers should accept compatible implementations.'
+);
+
+$replacement = new ContainerProviderInvokable();
+$container->set(ContainerProviderInvokable::class, $replacement);
+assertContainerSame(
+    $replacement,
+    $container->get(ContainerProviderInvokable::class),
+    'Setting an existing service identifier should replace the previous service.'
 );
 
 $applicationServices = new Container();
 $applicationServices->register(new ApplicationServiceProvider());
-assertContainerTrue($applicationServices->has('router'), 'Application provider should register router.');
-assertContainerTrue($applicationServices->has('translationService'), 'Application provider should register translationService.');
-assertContainerTrue($applicationServices->get('router') instanceof Router, 'Router service class should be unchanged.');
+assertContainerTrue($applicationServices->has(\app\Http\Router::class), 'Application provider should register router.');
+assertContainerTrue($applicationServices->has(\app\Service\TranslationService::class), 'Application provider should register translationService.');
+assertContainerTrue($applicationServices->get(\app\Http\Router::class) instanceof Router, 'Router service class should be unchanged.');
 assertContainerTrue(
-    $applicationServices->get('translationService') instanceof TranslationService,
+    $applicationServices->get(\app\Service\TranslationService::class) instanceof TranslationService,
     'Translation service class should be unchanged.'
 );
 
 $domainServices = new Container();
 $domainServices->register(new DomainServiceProvider());
-$expectedNames = [
-    'dbh',
-    'userRepository',
-    'userEmailChangeRepository',
-    'emailService',
-    'accountService',
-    'userService',
-    'totpService',
-    'userAuthenticatorTotpRepository',
-    'emailTotpRepository',
-    'authenticationChallengeRepository',
-    'authenticationRateLimitRepository',
-    'securityAuditEventRepository',
-    'recoveryCodeRepository',
-    'authenticationChallengeService',
-    'authenticationRateLimitService',
-    'securityAuditService',
-    'recoveryCodeCodec',
-    'recoveryCodeService',
-    'recoveryFeatureService',
-    'authenticatorTotpService',
-    'emailTotpService',
-    'jwt',
-    'jwtService',
-    'authEntryService',
+$expectedIds = [
+    \src\Data\Connection::class,
+    \src\Data\Repository\UserRepository::class,
+    \src\Data\Repository\UserEmailChangeRepository::class,
+    \src\Business\EmailService::class,
+    \src\Business\AccountService::class,
+    \src\Business\UserService::class,
+    \src\Business\TOTPService::class,
+    \src\Data\Repository\UserAuthenticatorTOTPRepository::class,
+    \src\Data\Repository\EmailTOTPRepository::class,
+    \src\Data\Repository\AuthenticationChallengeRepository::class,
+    \src\Data\Repository\AuthenticationRateLimitRepository::class,
+    \src\Data\Repository\SecurityAuditEventRepository::class,
+    \src\Data\Repository\RecoveryCodeRepository::class,
+    \src\Business\AuthenticationChallengeService::class,
+    \src\Business\AuthenticationRateLimitService::class,
+    \src\Business\SecurityAuditService::class,
+    \src\Business\RecoveryCodeCodec::class,
+    \src\Business\RecoveryCodeService::class,
+    \src\Business\RecoveryFeatureService::class,
+    \src\Business\AuthenticatorTOTPService::class,
+    \src\Business\EmailTOTPService::class,
+    \app\Service\JWT::class,
+    \app\Service\JWTService::class,
+    \src\Business\AuthEntryService::class,
 ];
 
-foreach ($expectedNames as $serviceName) {
-    assertContainerTrue($domainServices->has($serviceName), $serviceName . ' should remain registered.');
+foreach ($expectedIds as $serviceId) {
+    assertContainerTrue($domainServices->has($serviceId), $serviceId . ' should be registered.');
 }
 
 // Session middleware registers these request-scoped dependencies before dispatching controllers.
-$domainServices->addService(
-    'sessionService',
+$domainServices->set(
+    \app\Service\SessionService::class,
     containerProviderInstanceWithoutConstructor(SessionService::class)
 );
-$domainServices->addService(
-    'authService',
+$domainServices->set(
+    \app\Service\AuthService::class,
     containerProviderInstanceWithoutConstructor(AuthService::class)
 );
-$domainServices->addService(
-    'userService',
+$domainServices->set(
+    \src\Business\UserService::class,
     containerProviderInstanceWithoutConstructor(UserService::class)
 );
-$domainServices->addService('jwt', containerProviderInstanceWithoutConstructor(JWT::class));
+$domainServices->set(\app\Service\JWT::class, containerProviderInstanceWithoutConstructor(JWT::class));
 assertContainerTrue(
-    $domainServices->get('jwtService') instanceof JWTService,
+    $domainServices->get(\app\Service\JWTService::class) instanceof JWTService,
     'JWT service should resolve after request-scoped authentication services are registered.'
 );
 
-$domainServices->addService(
-    'authenticatorTotpService',
+$domainServices->set(
+    \src\Business\AuthenticatorTOTPService::class,
     containerProviderInstanceWithoutConstructor(AuthenticatorTOTPService::class)
 );
-$domainServices->addService(
-    'emailTotpService',
+$domainServices->set(
+    \src\Business\EmailTOTPService::class,
     containerProviderInstanceWithoutConstructor(EmailTOTPService::class)
 );
-$domainServices->addService('totpService', containerProviderInstanceWithoutConstructor(TOTPService::class));
-$domainServices->addService('emailService', containerProviderInstanceWithoutConstructor(EmailService::class));
-$domainServices->addService(
-    'recoveryCodeService',
+$domainServices->set(\src\Business\TOTPService::class, containerProviderInstanceWithoutConstructor(TOTPService::class));
+$domainServices->set(\src\Business\EmailService::class, containerProviderInstanceWithoutConstructor(EmailService::class));
+$domainServices->set(
+    \src\Business\RecoveryCodeService::class,
     containerProviderInstanceWithoutConstructor(RecoveryCodeService::class)
 );
 assertContainerTrue(
-    $domainServices->get('authEntryService') instanceof AuthEntryService,
+    $domainServices->get(\src\Business\AuthEntryService::class) instanceof AuthEntryService,
     'Authentication entry service should resolve after its request-scoped dependencies are registered.'
 );
 

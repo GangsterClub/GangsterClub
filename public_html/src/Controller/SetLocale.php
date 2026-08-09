@@ -15,8 +15,8 @@ class SetLocale extends Controller
             $locale = urldecode($locale);
         }
 
-        $session = $this->application->get('sessionService');
-        $translationService = $this->application->get('translationService');
+        $session = $this->application->get(\app\Service\SessionService::class);
+        $translationService = $this->application->get(\app\Service\TranslationService::class);
         if (array_key_exists($locale, $translationService->getSupportedLanguages()) === true) {
             $translationService->setLocale($locale);
             $session->set('preferred_language', $locale);

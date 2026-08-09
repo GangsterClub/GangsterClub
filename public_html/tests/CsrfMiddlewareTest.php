@@ -9,6 +9,7 @@ use app\Middleware\Csrf;
 use app\Service\AuthService;
 use app\Service\CsrfService;
 use app\Service\SessionService;
+use app\Service\TranslationService;
 
 if (defined('DOC_ROOT') === false) {
     define('DOC_ROOT', dirname(__DIR__));
@@ -27,6 +28,7 @@ require __DIR__ . '/../app/Service/SessionService.php';
 require __DIR__ . '/../app/Service/AuthSessionKeys.php';
 require __DIR__ . '/../app/Service/AuthService.php';
 require __DIR__ . '/../app/Service/CsrfService.php';
+require __DIR__ . '/../app/Service/TranslationService.php';
 require __DIR__ . '/../app/Middleware/Csrf.php';
 
 final class CsrfTestSession extends SessionService
@@ -85,7 +87,7 @@ final class CsrfTestRequest extends Request
 }
 
 
-final class CsrfTestTranslationService
+final class CsrfTestTranslationService extends TranslationService
 {
     private array $messages = [
         'csrf-title' => 'Page expired',
@@ -93,7 +95,11 @@ final class CsrfTestTranslationService
         'csrf-action' => 'Return and try again',
     ];
 
-    public function get(string $key): string
+    public function __construct()
+    {
+    }
+
+    public function get(string $key, array $replacements = [], bool $useFallback = true): string
     {
         return $this->messages[$key] ?? $key;
     }
@@ -101,35 +107,17 @@ final class CsrfTestTranslationService
 
 final class CsrfTestApplication extends Application
 {
-    private array $services = [];
-
     public function __construct()
     {
-    }
-
-    public function addService(string $name, object|callable|null $service): void
-    {
-        $this->services[$name] = $service;
-    }
-
-    public function get(string $name): ?object
-    {
-        $service = $this->services[$name] ?? null;
-        if (is_callable($service) === true) {
-            $service = $service();
-            $this->services[$name] = $service;
-        }
-
-        return is_object($service) === true ? $service : null;
     }
 }
 
 function makeCsrfApplication(CsrfTestSession $session): CsrfTestApplication
 {
     $application = new CsrfTestApplication();
-    $application->addService('sessionService', $session);
-    $application->addService('csrfService', new CsrfService($session));
-    $application->addService('translationService', new CsrfTestTranslationService());
+    $application->set(\app\Service\SessionService::class, $session);
+    $application->set(\app\Service\CsrfService::class, new CsrfService($session));
+    $application->set(\app\Service\TranslationService::class, new CsrfTestTranslationService());
     return $application;
 }
 
@@ -185,7 +173,7 @@ assertSameValue('passed', $response->getContent(), 'Safe requests should continu
 $application = new CsrfTestApplication();
 assertThrowsRuntimeException(
     static fn () => runThroughCsrf($application, new CsrfTestRequest('GET')),
-    'The csrfService must be registered before the CSRF middleware runs.',
+    'app\Service\CsrfService service is not registered.',
     'CSRF middleware should require the service registered by session middleware.'
 );
 
@@ -205,13 +193,13 @@ assertSameValue('This page or form expired. Please refresh the page or return to
 
 $session = new CsrfTestSession();
 $application = makeCsrfApplication($session);
-$token = $application->get('csrfService')->getToken();
+$token = $application->get(\app\Service\CsrfService::class)->getToken();
 $response = runThroughCsrf($application, new CsrfTestRequest('POST', [], [CsrfService::FIELD_NAME => $token]));
 assertSameValue(204, $response->getStatusCode(), 'Valid form tokens should pass.');
 
 $session = new CsrfTestSession();
 $application = makeCsrfApplication($session);
-$token = $application->get('csrfService')->getToken();
+$token = $application->get(\app\Service\CsrfService::class)->getToken();
 $response = runThroughCsrf($application, new CsrfTestRequest('DELETE', ['X-CSRF-Token' => $token]));
 assertSameValue(204, $response->getStatusCode(), 'Valid X-CSRF-Token headers should pass.');
 

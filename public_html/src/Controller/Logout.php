@@ -21,10 +21,9 @@ class Logout extends Controller
 
         $pendingSetId = $auth->getPendingRecoverySetId();
         $flowUserId = $auth->getAuthenticatedUserId() ?? $auth->getPendingUserId();
-        $recoveryCodes = $this->application->get('recoveryCodeService');
+        $recoveryCodes = $this->application->get(RecoveryCodeService::class);
         if ($pendingSetId !== null
             && $flowUserId !== null
-            && $recoveryCodes instanceof RecoveryCodeService
         ) {
             $recoveryCodes->invalidatePendingSet(
                 $flowUserId,

@@ -34,7 +34,7 @@ class AuthEntryController extends Controller
     {
         $this->assertValidMode($mode);
 
-        $this->application->get('translationService')->setFile($mode);
+        $this->application->get(\app\Service\TranslationService::class)->setFile($mode);
         $auth = $this->auth();
 
         if ($auth->getAuthenticatedUserId() !== null) {
@@ -129,7 +129,7 @@ class AuthEntryController extends Controller
     {
         if ($mode === self::MODE_LOGIN && $request->post('submit_recovery_code') !== null) {
             $userId = $auth->getPendingUserId();
-            $ipAddress = (string) $this->application->get('sessionService')->get('_IPaddress', '127.0.0.1');
+            $ipAddress = (string) $this->application->get(\app\Service\SessionService::class)->get('_IPaddress', '127.0.0.1');
             if ($userId === null) {
                 return $this->mapVerifyResult(
                     $mode,
@@ -243,7 +243,7 @@ class AuthEntryController extends Controller
 
     private function rememberRegisterFormValues(string $username, string $email): void
     {
-        $this->application->get('sessionService')->set(
+        $this->application->get(\app\Service\SessionService::class)->set(
             self::REGISTER_FORM_VALUES,
             ['username' => $username, 'email' => $email]
         );
@@ -251,7 +251,7 @@ class AuthEntryController extends Controller
 
     private function consumeRegisterFormValues(): array
     {
-        $session = $this->application->get('sessionService');
+        $session = $this->application->get(\app\Service\SessionService::class);
         $storedValues = $session->get(self::REGISTER_FORM_VALUES, []);
         $this->forgetRegisterFormValues();
 
@@ -267,17 +267,12 @@ class AuthEntryController extends Controller
 
     private function forgetRegisterFormValues(): void
     {
-        $this->application->get('sessionService')->remove(self::REGISTER_FORM_VALUES);
+        $this->application->get(\app\Service\SessionService::class)->remove(self::REGISTER_FORM_VALUES);
     }
 
     protected function authEntryService(): AuthEntryService
     {
-        $authEntryService = $this->application->get('authEntryService');
-        if (($authEntryService instanceof AuthEntryService) === false) {
-            throw new \RuntimeException('Auth entry service is not available.');
-        }
-
-        return $authEntryService;
+        return $this->application->get(AuthEntryService::class);
     }
 
     private function translateForMode(string $mode, string $key): string
@@ -314,9 +309,8 @@ class AuthEntryController extends Controller
 
     private function hasActiveRecoveryCodes(int $userId): bool
     {
-        $recoveryFeature = $this->application->get('recoveryFeatureService');
+        $recoveryFeature = $this->application->get(RecoveryFeatureService::class);
 
-        return $recoveryFeature instanceof RecoveryFeatureService
-            && $recoveryFeature->getActiveRecoverySetId($userId) !== null;
+        return $recoveryFeature->getActiveRecoverySetId($userId) !== null;
     }
 }

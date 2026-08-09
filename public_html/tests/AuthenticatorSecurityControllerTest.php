@@ -120,12 +120,12 @@ final class AuthenticatorSecurityTestApplication extends Application
     ) {
     }
 
-    public function get(string $name): ?object
+    public function get(string $name): object
     {
         return match ($name) {
-            'authService' => $this->auth,
-            'translationService' => new AuthenticatorSecurityTestTranslation(),
-            default => null,
+            \app\Service\AuthService::class => $this->auth,
+            \app\Service\TranslationService::class => new AuthenticatorSecurityTestTranslation(),
+            default => throw new RuntimeException($name . ' is missing.'),
         };
     }
 }

@@ -34,34 +34,15 @@ class Account extends Controller
     public function __construct(Application $application)
     {
         parent::__construct($application);
-        $accountService = $application->get('accountService');
-        if (($accountService instanceof AccountService) === false) {
-            throw new \RuntimeException('accountService service is not available.');
-        }
-
-        $this->accountService = $accountService;
-        $userService = $application->get('userService');
-        if (($userService instanceof UserService) === false) {
-            throw new \RuntimeException('userService service is not available.');
-        }
-
-        $this->userService = $userService;
-        $authenticatorService = $application->get('authenticatorTotpService');
-        if (($authenticatorService instanceof AuthenticatorTOTPService) === false) {
-            throw new \RuntimeException('authenticatorTotpService service is not available.');
-        }
-
-        $this->authenticatorService = $authenticatorService;
-        $recoveryFeatureService = $application->get('recoveryFeatureService');
-        if (($recoveryFeatureService instanceof RecoveryFeatureService) === false) {
-            throw new \RuntimeException('recoveryFeatureService service is not available.');
-        }
-        $this->recoveryFeatureService = $recoveryFeatureService;
+        $this->accountService = $application->get(AccountService::class);
+        $this->userService = $application->get(UserService::class);
+        $this->authenticatorService = $application->get(AuthenticatorTOTPService::class);
+        $this->recoveryFeatureService = $application->get(RecoveryFeatureService::class);
     }
 
     public function __invoke(Request $request): Response
     {
-        $this->application->get('translationService')->setFile('account');
+        $this->application->get(\app\Service\TranslationService::class)->setFile('account');
         $auth = $this->auth();
 
         $redirect = $this->enforceAuthentication($request, $auth);
@@ -131,7 +112,7 @@ class Account extends Controller
 
     public function verifyEmailChange(Request $request): Response
     {
-        $this->application->get('translationService')->setFile('account');
+        $this->application->get(\app\Service\TranslationService::class)->setFile('account');
         $token = (string) $request->getRouteParameter('token', '');
         $status = AccountService::EMAIL_CHANGE_INVALID;
         if ($token !== '') {

@@ -40,23 +40,23 @@ final class DomainServiceProvider implements ServiceProvider
     {
         $secrets = new SecuritySecretDecoder();
 
-        $container->addService('dbh', fn(): Connection => new Connection());
-        $container->addService('userRepository', fn(): UserRepository => new UserRepository(
-            $container->getRegisteredService('dbh', Connection::class)
+        $container->set(\src\Data\Connection::class, fn(): Connection => new Connection());
+        $container->set(\src\Data\Repository\UserRepository::class, fn(): UserRepository => new UserRepository(
+            $container->get(\src\Data\Connection::class)
         ));
-        $container->addService('userEmailChangeRepository', fn(): UserEmailChangeRepository => new UserEmailChangeRepository(
-            $container->getRegisteredService('dbh', Connection::class)
+        $container->set(\src\Data\Repository\UserEmailChangeRepository::class, fn(): UserEmailChangeRepository => new UserEmailChangeRepository(
+            $container->get(\src\Data\Connection::class)
         ));
-        $container->addService('emailService', fn(): EmailService => new EmailService());
-        $container->addService('accountService', fn(): AccountService => new AccountService(
-            $container->getRegisteredService('userRepository', UserRepository::class),
-            $container->getRegisteredService('userEmailChangeRepository', UserEmailChangeRepository::class),
-            $container->getRegisteredService('emailService', EmailService::class)
+        $container->set(\src\Business\EmailService::class, fn(): EmailService => new EmailService());
+        $container->set(\src\Business\AccountService::class, fn(): AccountService => new AccountService(
+            $container->get(\src\Data\Repository\UserRepository::class),
+            $container->get(\src\Data\Repository\UserEmailChangeRepository::class),
+            $container->get(\src\Business\EmailService::class)
         ));
-        $container->addService('userService', fn(): UserService => new UserService(
-            $container->getRegisteredService('userRepository', UserRepository::class)
+        $container->set(\src\Business\UserService::class, fn(): UserService => new UserService(
+            $container->get(\src\Data\Repository\UserRepository::class)
         ));
-        $container->addService('totpService', fn(): TOTPService => new TOTPService());
+        $container->set(\src\Business\TOTPService::class, fn(): TOTPService => new TOTPService());
         $this->registerSecurityRepositories($container);
         $this->registerSecurityServices($container, $secrets);
         $this->registerAuthenticationServices($container);
@@ -64,87 +64,87 @@ final class DomainServiceProvider implements ServiceProvider
 
     private function registerSecurityRepositories(Container $container): void
     {
-        $container->addService('userAuthenticatorTotpRepository', fn(): UserAuthenticatorTOTPRepository => new UserAuthenticatorTOTPRepository(
-            $container->getRegisteredService('dbh', Connection::class)
+        $container->set(\src\Data\Repository\UserAuthenticatorTOTPRepository::class, fn(): UserAuthenticatorTOTPRepository => new UserAuthenticatorTOTPRepository(
+            $container->get(\src\Data\Connection::class)
         ));
-        $container->addService('emailTotpRepository', fn(): EmailTOTPRepository => new EmailTOTPRepository(
-            $container->getRegisteredService('dbh', Connection::class)
+        $container->set(\src\Data\Repository\EmailTOTPRepository::class, fn(): EmailTOTPRepository => new EmailTOTPRepository(
+            $container->get(\src\Data\Connection::class)
         ));
-        $container->addService('authenticationChallengeRepository', fn(): AuthenticationChallengeRepository => new AuthenticationChallengeRepository(
-            $container->getRegisteredService('dbh', Connection::class)
+        $container->set(\src\Data\Repository\AuthenticationChallengeRepository::class, fn(): AuthenticationChallengeRepository => new AuthenticationChallengeRepository(
+            $container->get(\src\Data\Connection::class)
         ));
-        $container->addService('authenticationRateLimitRepository', fn(): AuthenticationRateLimitRepository => new AuthenticationRateLimitRepository(
-            $container->getRegisteredService('dbh', Connection::class)
+        $container->set(\src\Data\Repository\AuthenticationRateLimitRepository::class, fn(): AuthenticationRateLimitRepository => new AuthenticationRateLimitRepository(
+            $container->get(\src\Data\Connection::class)
         ));
-        $container->addService('securityAuditEventRepository', fn(): SecurityAuditEventRepository => new SecurityAuditEventRepository(
-            $container->getRegisteredService('dbh', Connection::class)
+        $container->set(\src\Data\Repository\SecurityAuditEventRepository::class, fn(): SecurityAuditEventRepository => new SecurityAuditEventRepository(
+            $container->get(\src\Data\Connection::class)
         ));
-        $container->addService('recoveryCodeRepository', fn(): RecoveryCodeRepository => new RecoveryCodeRepository(
-            $container->getRegisteredService('dbh', Connection::class)
+        $container->set(\src\Data\Repository\RecoveryCodeRepository::class, fn(): RecoveryCodeRepository => new RecoveryCodeRepository(
+            $container->get(\src\Data\Connection::class)
         ));
     }
 
     private function registerSecurityServices(Container $container, SecuritySecretDecoder $secrets): void
     {
-        $container->addService('authenticationChallengeService', fn(): AuthenticationChallengeService => new AuthenticationChallengeService(
-            $container->getRegisteredService('dbh', Connection::class),
-            $container->getRegisteredService('authenticationChallengeRepository', AuthenticationChallengeRepository::class),
+        $container->set(\src\Business\AuthenticationChallengeService::class, fn(): AuthenticationChallengeService => new AuthenticationChallengeService(
+            $container->get(\src\Data\Connection::class),
+            $container->get(\src\Data\Repository\AuthenticationChallengeRepository::class),
             $secrets->getRequiredSecret('AUTH_CHALLENGE_PEPPER')
         ));
-        $container->addService('authenticationRateLimitService', fn(): AuthenticationRateLimitService => new AuthenticationRateLimitService(
-            $container->getRegisteredService('dbh', Connection::class),
-            $container->getRegisteredService('authenticationRateLimitRepository', AuthenticationRateLimitRepository::class),
+        $container->set(\src\Business\AuthenticationRateLimitService::class, fn(): AuthenticationRateLimitService => new AuthenticationRateLimitService(
+            $container->get(\src\Data\Connection::class),
+            $container->get(\src\Data\Repository\AuthenticationRateLimitRepository::class),
             $secrets->getRequiredSecret('AUTH_RATE_LIMIT_PEPPER')
         ));
-        $container->addService('securityAuditService', fn(): SecurityAuditService => new SecurityAuditService(
-            $container->getRegisteredService('securityAuditEventRepository', SecurityAuditEventRepository::class)
+        $container->set(\src\Business\SecurityAuditService::class, fn(): SecurityAuditService => new SecurityAuditService(
+            $container->get(\src\Data\Repository\SecurityAuditEventRepository::class)
         ));
-        $container->addService('recoveryCodeCodec', fn(): RecoveryCodeCodec => new RecoveryCodeCodec(
+        $container->set(\src\Business\RecoveryCodeCodec::class, fn(): RecoveryCodeCodec => new RecoveryCodeCodec(
             $secrets->getRequiredSecret('RECOVERY_CODE_PEPPER')
         ));
-        $container->addService('recoveryCodeService', fn(): RecoveryCodeService => new RecoveryCodeService(
-            $container->getRegisteredService('dbh', Connection::class),
-            $container->getRegisteredService('recoveryCodeRepository', RecoveryCodeRepository::class),
-            $container->getRegisteredService('recoveryCodeCodec', RecoveryCodeCodec::class),
-            $container->getRegisteredService('authenticationRateLimitService', AuthenticationRateLimitService::class),
-            $container->getRegisteredService('securityAuditService', SecurityAuditService::class)
+        $container->set(\src\Business\RecoveryCodeService::class, fn(): RecoveryCodeService => new RecoveryCodeService(
+            $container->get(\src\Data\Connection::class),
+            $container->get(\src\Data\Repository\RecoveryCodeRepository::class),
+            $container->get(\src\Business\RecoveryCodeCodec::class),
+            $container->get(\src\Business\AuthenticationRateLimitService::class),
+            $container->get(\src\Business\SecurityAuditService::class)
         ));
-        $container->addService('recoveryFeatureService', fn(): RecoveryFeatureService => new RecoveryFeatureService(
-            $container->getRegisteredService('dbh', Connection::class),
-            $container->getRegisteredService('authenticationChallengeService', AuthenticationChallengeService::class),
-            $container->getRegisteredService('recoveryCodeService', RecoveryCodeService::class),
-            $container->getRegisteredService('recoveryCodeRepository', RecoveryCodeRepository::class),
-            $container->getRegisteredService('userAuthenticatorTotpRepository', UserAuthenticatorTOTPRepository::class),
-            $container->getRegisteredService('userRepository', UserRepository::class),
-            $container->getRegisteredService('securityAuditService', SecurityAuditService::class)
+        $container->set(\src\Business\RecoveryFeatureService::class, fn(): RecoveryFeatureService => new RecoveryFeatureService(
+            $container->get(\src\Data\Connection::class),
+            $container->get(\src\Business\AuthenticationChallengeService::class),
+            $container->get(\src\Business\RecoveryCodeService::class),
+            $container->get(\src\Data\Repository\RecoveryCodeRepository::class),
+            $container->get(\src\Data\Repository\UserAuthenticatorTOTPRepository::class),
+            $container->get(\src\Data\Repository\UserRepository::class),
+            $container->get(\src\Business\SecurityAuditService::class)
         ));
     }
 
     private function registerAuthenticationServices(Container $container): void
     {
-        $container->addService('authenticatorTotpService', fn(): AuthenticatorTOTPService => new AuthenticatorTOTPService(
-            $container->getRegisteredService('totpService', TOTPService::class),
-            $container->getRegisteredService('userAuthenticatorTotpRepository', UserAuthenticatorTOTPRepository::class)
+        $container->set(\src\Business\AuthenticatorTOTPService::class, fn(): AuthenticatorTOTPService => new AuthenticatorTOTPService(
+            $container->get(\src\Business\TOTPService::class),
+            $container->get(\src\Data\Repository\UserAuthenticatorTOTPRepository::class)
         ));
-        $container->addService('emailTotpService', fn(): EmailTOTPService => new EmailTOTPService(
-            $container->getRegisteredService('totpService', TOTPService::class),
-            $container->getRegisteredService('emailTotpRepository', EmailTOTPRepository::class),
-            $container->getRegisteredService('sessionService', SessionService::class)
+        $container->set(\src\Business\EmailTOTPService::class, fn(): EmailTOTPService => new EmailTOTPService(
+            $container->get(\src\Business\TOTPService::class),
+            $container->get(\src\Data\Repository\EmailTOTPRepository::class),
+            $container->get(\app\Service\SessionService::class)
         ));
-        $container->addService('jwt', fn(): JWT => new JWT());
-        $container->addService('jwtService', fn(): JWTService => new JWTService(
-            $container->getRegisteredService('jwt', JWT::class),
-            $container->getRegisteredService('authService', AuthService::class),
-            $container->getRegisteredService('userService', UserService::class)
+        $container->set(\app\Service\JWT::class, fn(): JWT => new JWT());
+        $container->set(\app\Service\JWTService::class, fn(): JWTService => new JWTService(
+            $container->get(\app\Service\JWT::class),
+            $container->get(\app\Service\AuthService::class),
+            $container->get(\src\Business\UserService::class)
         ));
-        $container->addService('authEntryService', fn(): AuthEntryService => new AuthEntryService(
-            $container->getRegisteredService('userService', UserService::class),
-            $container->getRegisteredService('authenticatorTotpService', AuthenticatorTOTPService::class),
-            $container->getRegisteredService('emailTotpService', EmailTOTPService::class),
-            $container->getRegisteredService('totpService', TOTPService::class),
-            $container->getRegisteredService('emailService', EmailService::class),
-            $container->getRegisteredService('sessionService', SessionService::class),
-            $container->getRegisteredService('recoveryCodeService', RecoveryCodeService::class)
+        $container->set(\src\Business\AuthEntryService::class, fn(): AuthEntryService => new AuthEntryService(
+            $container->get(\src\Business\UserService::class),
+            $container->get(\src\Business\AuthenticatorTOTPService::class),
+            $container->get(\src\Business\EmailTOTPService::class),
+            $container->get(\src\Business\TOTPService::class),
+            $container->get(\src\Business\EmailService::class),
+            $container->get(\app\Service\SessionService::class),
+            $container->get(\src\Business\RecoveryCodeService::class)
         ));
     }
 }

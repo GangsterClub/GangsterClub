@@ -19,8 +19,8 @@ class Locale
 
     public function handle(Request $request, callable $next): Response
     {
-        $session = $this->application->get('sessionService');
-        $translationService = $this->application->get('translationService');
+        $session = $this->application->get(\app\Service\SessionService::class);
+        $translationService = $this->application->get(\app\Service\TranslationService::class);
         $fallbackLocale = $translationService->getFallbackLocale();
         $preferredLanguage = ($session->get('preferred_language', $this->getBrowserLocale($request)) ?? $fallbackLocale);
         if (array_key_exists($preferredLanguage, $translationService->getSupportedLanguages()) === false) {

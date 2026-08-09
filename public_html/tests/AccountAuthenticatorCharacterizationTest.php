@@ -104,13 +104,13 @@ final class AccountAuthenticatorTestApplication extends Application
         public AccountAuthenticatorTestEmail $email
     ) {}
 
-    public function get(string $name): ?object
+    public function get(string $name): object
     {
         return match ($name) {
-            'sessionService' => $this->session,
-            'emailTotpService' => $this->emailTotp,
-            'emailService' => $this->email,
-            default => null,
+            \app\Service\SessionService::class => $this->session,
+            \src\Business\EmailTOTPService::class => $this->emailTotp,
+            \src\Business\EmailService::class => $this->email,
+            default => throw new RuntimeException($name . ' is missing.'),
         };
     }
 }

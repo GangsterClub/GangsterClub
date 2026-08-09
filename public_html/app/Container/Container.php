@@ -6,7 +6,8 @@ namespace app\Container;
 
 class Container
 {
-    private array $container = [];
+    /** @var array<class-string, object> */
+    private array $services = [];
 
     public function register(ServiceProvider $provider): void
     {
@@ -15,14 +16,53 @@ class Container
 
     /**
      * @template T of object
-     * @param class-string<T> $className
+     * @param class-string<T> $id
+     * @param T|(\Closure(): T) $service
+     */
+    public function set(string $id, object $service): void
+    {
+        $this->assertServiceId($id);
+        $this->assertServiceType($id, $service);
+        $this->services[$id] = $service;
+    }
+
+    /** @param class-string $id */
+    public function has(string $id): bool
+    {
+        return array_key_exists($id, $this->services) === true;
+    }
+
+    /**
+     * @template T of object
+     * @param class-string<T> $id
      * @return T
      */
-    public function getRegisteredService(string $name, string $className): object
+    public function get(string $id): object
     {
-        $service = $this->get($name);
-        if (($service instanceof $className) === false) {
-            throw new \RuntimeException($name . ' service is not available.');
+        $service = $this->getOptional($id);
+        if ($service !== null) {
+            return $service;
+        }
+
+        throw new \RuntimeException($id . ' service is not registered.');
+    }
+
+    /**
+     * @template T of object
+     * @param class-string<T> $id
+     * @return T|null
+     */
+    public function getOptional(string $id): ?object
+    {
+        if ($this->has($id) === false) {
+            return null;
+        }
+
+        $service = $this->services[$id];
+        if ($service instanceof \Closure) {
+            $service = $service();
+            $this->assertServiceType($id, $service);
+            $this->services[$id] = $service;
         }
 
         return $service;
@@ -37,36 +77,21 @@ class Container
         return new $className($this);
     }
 
-    public function addService(string $name, object|callable|null $service): void
+    private function assertServiceType(string $id, mixed $service): void
     {
-        $this->container[$name] = $service;
+        if ($service instanceof \Closure || $service instanceof $id) {
+            return;
+        }
+
+        throw new \RuntimeException($id . ' service must resolve to an instance of ' . $id . '.');
     }
 
-    public function has(string $name): bool
+    private function assertServiceId(string $id): void
     {
-        return array_key_exists($name, $this->container) === true;
-    }
-
-    public function get(string $name): ?object
-    {
-        if (array_key_exists($name, $this->container) === false) {
-            return null;
+        if (class_exists($id) === true || interface_exists($id) === true) {
+            return;
         }
 
-        $service = $this->container[$name];
-        if (is_object($service) === true && ($service instanceof \Closure) === false) {
-            return $service;
-        }
-
-        if (is_callable($service) === true) {
-            $service = $service();
-            $this->container[$name] = $service;
-        }
-
-        if ($service !== null && is_object($service) === false) {
-            throw new \RuntimeException($name . ' service did not resolve to an object.');
-        }
-
-        return $service;
+        throw new \InvalidArgumentException($id . ' is not a class or interface.');
     }
 }

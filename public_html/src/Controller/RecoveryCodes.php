@@ -37,13 +37,13 @@ final class RecoveryCodes extends Controller
     public function __construct(Application $application)
     {
         parent::__construct($application);
-        $this->challenges = $this->service('authenticationChallengeService', AuthenticationChallengeService::class);
-        $this->recoveryCodes = $this->service('recoveryCodeService', RecoveryCodeService::class);
-        $this->feature = $this->service('recoveryFeatureService', RecoveryFeatureService::class);
-        $this->authenticators = $this->service('authenticatorTotpService', AuthenticatorTOTPService::class);
-        $this->emailTotp = $this->service('emailTotpService', EmailTOTPService::class);
-        $this->email = $this->service('emailService', EmailService::class);
-        $this->users = $this->service('userService', UserService::class);
+        $this->challenges = $application->get(AuthenticationChallengeService::class);
+        $this->recoveryCodes = $application->get(RecoveryCodeService::class);
+        $this->feature = $application->get(RecoveryFeatureService::class);
+        $this->authenticators = $application->get(AuthenticatorTOTPService::class);
+        $this->emailTotp = $application->get(EmailTOTPService::class);
+        $this->email = $application->get(EmailService::class);
+        $this->users = $application->get(UserService::class);
     }
 
     public function startEnrollment(Request $request): Response
@@ -272,7 +272,7 @@ final class RecoveryCodes extends Controller
     private function handleFlow(Request $request, User $user, bool $lostFlow): Response
     {
         $this->flowRedirectName = $lostFlow === true ? 'loginRecovery' : 'accountRecoveryCodes';
-        $this->application->get('translationService')->setFile('recovery');
+        $this->application->get(\app\Service\TranslationService::class)->setFile('recovery');
         $auth = $this->auth();
         $token = $auth->getSecurityChallengeToken();
         $purpose = $auth->getSecurityChallengePurpose();
@@ -988,7 +988,7 @@ final class RecoveryCodes extends Controller
 
     private function rateLimitContext(int $userId, object $challenge): AuthenticationRateLimitContext
     {
-        $session = $this->application->get('sessionService');
+        $session = $this->application->get(\app\Service\SessionService::class);
         return AuthenticationRateLimitContext::forUser(
             $userId,
             (string) $session->get('_IPaddress', '127.0.0.1'),
@@ -1055,16 +1055,5 @@ final class RecoveryCodes extends Controller
             'Pragma: no-cache',
             'Referrer-Policy: no-referrer',
         ];
-    }
-
-    /** @template T of object @param class-string<T> $class */
-    private function service(string $name, string $class): object
-    {
-        $service = $this->application->get($name);
-        if (($service instanceof $class) === false) {
-            throw new \RuntimeException($name . ' service is not available.');
-        }
-
-        return $service;
     }
 }

@@ -29,16 +29,16 @@ class Session
     public function handle(Request $request, callable $next): Response
     {
         $session = new SessionService($request);
-        $this->application->addService('sessionService', $session);
+        $this->application->set(\app\Service\SessionService::class, $session);
         $csrfService = new CsrfService($session);
-        $this->application->addService('csrfService', $csrfService);
-        $userRepository = $this->application->get('userRepository');
-        $this->application->addService(
-            'authService',
+        $this->application->set(\app\Service\CsrfService::class, $csrfService);
+        $userRepository = $this->application->get(\src\Data\Repository\UserRepository::class);
+        $this->application->set(
+            AuthService::class,
             new AuthService(
                 $session,
                 $csrfService,
-                $userRepository instanceof \src\Data\Repository\UserRepository ? $userRepository : null
+                $userRepository
             )
         );
         ini_set('session.save_handler', 'files');

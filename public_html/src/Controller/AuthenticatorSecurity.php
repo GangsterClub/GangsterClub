@@ -21,19 +21,8 @@ class AuthenticatorSecurity extends Controller
     {
         parent::__construct($application);
 
-        $authenticatorService = $application->get('authenticatorTotpService');
-        if (($authenticatorService instanceof AuthenticatorTOTPService) === false) {
-            throw new \RuntimeException('authenticatorTotpService service is not available.');
-        }
-
-        $this->authenticatorService = $authenticatorService;
-
-        $recoveryFeatureService = $application->get('recoveryFeatureService');
-        if (($recoveryFeatureService instanceof RecoveryFeatureService) === false) {
-            throw new \RuntimeException('recoveryFeatureService service is not available.');
-        }
-
-        $this->recoveryFeatureService = $recoveryFeatureService;
+        $this->authenticatorService = $application->get(AuthenticatorTOTPService::class);
+        $this->recoveryFeatureService = $application->get(RecoveryFeatureService::class);
     }
 
     public function startDisable(Request $request): Response
@@ -49,7 +38,7 @@ class AuthenticatorSecurity extends Controller
 
     public function disable(Request $request): Response
     {
-        $this->application->get('translationService')->setFile('account');
+        $this->application->get(\app\Service\TranslationService::class)->setFile('account');
 
         $auth = $this->auth();
         $userId = $auth->getAuthenticatedUserId();

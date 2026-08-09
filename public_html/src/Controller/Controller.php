@@ -23,16 +23,16 @@ class Controller
     public function __construct(Application $application)
     {
         $this->application = $application;
-        $this->twig = $this->application->get('twig');
+        $this->twig = $this->application->get(\Twig\Environment::class);
     }
 
     public function __destruct()
-    {
-        $session = $this->application->get('sessionService');
-        if (defined('REQUEST_METHOD') === true && REQUEST_METHOD === 'GET') {
-            $session->set('PREV_ROUTE', REQUEST_URI);
-        }
+{
+    if (defined('REQUEST_METHOD') === true && REQUEST_METHOD === 'GET') {
+        $session = $this->application->get(\app\Service\SessionService::class);
+        $session->set('PREV_ROUTE', REQUEST_URI);
     }
+}
 
     public function __invoke(Request $request): Response
     {
@@ -71,12 +71,12 @@ class Controller
 
     protected function auth(): AuthService
     {
-        return $this->application->get('authService');
+        return $this->application->get(\app\Service\AuthService::class);
     }
 
     protected function redirectPrevRoute(Request $request): Response
     {
-        $session = $this->application->get('sessionService');
+        $session = $this->application->get(\app\Service\SessionService::class);
         $prevRoute = ($session->get('PREV_ROUTE') ??
             ($request->server('HTTP_REFERER')) ??
             Router::path('home'));
@@ -91,11 +91,11 @@ class Controller
 
     protected function flash(string $bag, string $type, string $message): void
     {
-        $this->application->get('sessionService')->flash($bag, $type, $message);
+        $this->application->get(\app\Service\SessionService::class)->flash($bag, $type, $message);
     }
 
     protected function consumeFlash(string $bag): array
     {
-        return $this->application->get('sessionService')->consumeFlash($bag);
+        return $this->application->get(\app\Service\SessionService::class)->consumeFlash($bag);
     }
 }

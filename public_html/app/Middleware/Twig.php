@@ -30,21 +30,15 @@ class Twig
 
         $loader = new \Twig\Loader\FilesystemLoader(DOC_ROOT . '/src/View/');
         $twig = new \Twig\Environment($loader, ['cache' => $cache]);
-        $translation = $this->application->get('translationService');
-
-        if (($translation instanceof TranslationService) === false) {
-            throw new \RuntimeException(
-                'translationService service is not available.'
-            );
-        }
+        $translation = $this->application->get(TranslationService::class);
 
         $twig->addGlobal('docRoot', WEB_ROOT);
         $twig->addGlobal('assetVersion', $assetVersion);
         $twig->addGlobal('translation', $translation);
-        $twig->addGlobal('router', $this->application->get('router'));
+        $twig->addGlobal('router', $this->application->get(\app\Http\Router::class));
         $twig->addExtension(new \app\Twig\TranslationExtension());
-        $twig->addExtension(new \app\Twig\CsrfExtension($this->application->get('csrfService')));
-        $this->application->addService('twig', $twig);
+        $twig->addExtension(new \app\Twig\CsrfExtension($this->application->get(\app\Service\CsrfService::class)));
+        $this->application->set(\Twig\Environment::class, $twig);
         $response = $next($request);
         return $response;
     }

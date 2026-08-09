@@ -28,7 +28,7 @@ class Application extends Container
     {
         $this->register(new DomainServiceProvider());
         $this->register(new ApplicationServiceProvider());
-        $this->router = $this->getRegisteredService('router', Router::class);
+        $this->router = $this->get(\app\Http\Router::class);
     }
 
     private function configure(string $dir): void

@@ -20,10 +20,7 @@ class Csrf
 
     public function handle(Request $request, callable $next): Response
     {
-        $csrf = $this->application->get('csrfService');
-        if (($csrf instanceof CsrfService) === false) {
-            throw new \RuntimeException('The csrfService must be registered before the CSRF middleware runs.');
-        }
+        $csrf = $this->application->get(CsrfService::class);
 
         if ($csrf->isStateChangingMethod($request->getMethod()) === true && $csrf->isValidRequest($request) === false) {
             return $this->reject($request);
@@ -34,7 +31,7 @@ class Csrf
 
     private function reject(Request $request): Response
     {
-        $translation = $this->application->get('translationService');
+        $translation = $this->application->get(\app\Service\TranslationService::class);
         $title = $translation->get('csrf-title');
         $message = $translation->get('csrf-message');
         $action = $translation->get('csrf-action');
@@ -50,7 +47,7 @@ class Csrf
             );
         }
 
-        $twig = $this->application->get('twig');
+        $twig = $this->application->getOptional(\Twig\Environment::class);
         if ($twig instanceof \Twig\Environment) {
             return Response::html(
                 $twig->render(

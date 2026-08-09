@@ -164,17 +164,17 @@ final class AuthEntryTestApplication extends Application
         $this->recoveryFeature = new AuthEntryTestRecoveryFeature();
     }
 
-    public function get(string $name): ?object
+    public function get(string $name): object
     {
         return match ($name) {
-            'router' => $this->router,
-            'sessionService' => $this->session,
-            'authService' => $this->auth,
-            'translationService' => new AuthEntryTestTranslation(),
-            'twig' => new \Twig\Environment(new \Twig\Loader\ArrayLoader(['login.twig' => 'login', 'register.twig' => 'register'])),
-            'csrfService' => $this->csrf,
-            'recoveryFeatureService' => $this->recoveryFeature,
-            default => null,
+            \app\Http\Router::class => $this->router,
+            \app\Service\SessionService::class => $this->session,
+            \app\Service\AuthService::class => $this->auth,
+            \app\Service\TranslationService::class => new AuthEntryTestTranslation(),
+            \Twig\Environment::class => new \Twig\Environment(new \Twig\Loader\ArrayLoader(['login.twig' => 'login', 'register.twig' => 'register'])),
+            \app\Service\CsrfService::class => $this->csrf,
+            \src\Business\RecoveryFeatureService::class => $this->recoveryFeature,
+            default => throw new RuntimeException($name . ' is missing.'),
         };
     }
 }

@@ -46,13 +46,13 @@ final class AccountRedirectTestApplication extends Application
     {
     }
 
-    public function get(string $name): ?object
+    public function get(string $name): object
     {
-        if ($name === 'sessionService') {
+        if ($name === \app\Service\SessionService::class) {
             return new AccountRedirectTestSession();
         }
 
-        return null;
+        throw new RuntimeException($name . ' is missing.');
     }
 }
 
