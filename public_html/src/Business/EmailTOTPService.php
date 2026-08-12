@@ -1,103 +1,146 @@
-<?PHP
+<?php
 
 declare(strict_types=1);
 
 namespace src\Business;
 
 use src\Data\Repository\EmailTOTPRepository;
-use app\Service\SessionService;
 
 class EmailTOTPService
 {
-    private const DEFAULT_SESSION_KEY = 'TOTP_SECRET';
-
-    protected TOTPService $totp;
-
-    protected EmailTOTPRepository $emailTotpRepository;
-
-    protected SessionService $sessionService;
-
     public function __construct(
-        TOTPService $totp,
-        EmailTOTPRepository $emailTotpRepository,
-        SessionService $sessionService
+        protected TOTPService $totp,
+        protected EmailTOTPRepository $emailTotpRepository,
+        protected AuthenticationRateLimitService $rateLimitService
     ) {
-        $this->totp = $totp;
-        $this->emailTotpRepository = $emailTotpRepository;
-        $this->sessionService = $sessionService;
     }
 
-    /**
-     * Generate a {ENV:TOTP_DIGITS}-digit time-based {ENV:TOTP_PERIOD} TOTP for email and save it using the repository.
-     *
-     * @param int $userId
-     * @return string The generated TOTP of {ENV:TOTP_DIGITS}-digits.
-     */
-    public function generateEmailTOTP(int $userId): string
+    public function issue(int $userId, EmailTOTPPurpose $purpose, AuthenticationRateLimitContext $context): IssuedEmailTOTP
     {
-        return $this->generateEmailTOTPForSession($userId, self::DEFAULT_SESSION_KEY);
-    }
-
-    public function generateEmailTOTPForSession(int $userId, string $sessionKey): string
-    {
+        $this->assertContext($userId, $context);
+        $this->requirePermit($context, AuthenticationRateLimitAction::EMAIL_TOTP_ISSUE, $purpose, $this->issuancePolicies());
         $secret = $this->totp->generateSecret(TOTP_DIGITS, TOTP_PERIOD);
-        $this->sessionService->set($sessionKey, $secret);
-        $this->emailTotpRepository->storeTOTP(
+        $id = $this->emailTotpRepository->storeTOTP(
             $userId,
+            $purpose,
             $secret,
-            date('Y-m-d H:i:s', (time() + TOTP_PERIOD))
+            date('Y-m-d H:i:s', time() + TOTP_PERIOD)
         );
 
-        return $this->totp->generateTOTP($secret, TOTP_DIGITS, TOTP_PERIOD);
+        return new IssuedEmailTOTP($id, $this->totp->generateTOTP($secret, TOTP_DIGITS, TOTP_PERIOD));
     }
 
-    /**
-     * Verify the provided TOTP for a user and delete it upon successful authentication.
-     *
-     * @param int $userId
-     * @param string $totp
-     * @return bool True if the TOTP is valid, false otherwise.
-     */
-    public function verifyEmailTOTP(int $userId, string $totp): bool
-    {
-        return $this->verifyEmailTOTPForSession($userId, $totp, self::DEFAULT_SESSION_KEY);
-    }
-
-    public function verifyEmailTOTPForSession(
+    public function verify(
         int $userId,
-        string $totp,
-        string $sessionKey
+        EmailTOTPPurpose $purpose,
+        string $submittedCode,
+        AuthenticationRateLimitContext $context
     ): bool {
-        $candidates = $this->emailTotpRepository->findAllValidTOTPs($userId);
-
-        $secret = $this->sessionService->get($sessionKey);
-        if (is_string($secret) === true && $secret !== '') {
-            $totpRecord = $this->emailTotpRepository->findValidTOTP($userId, $secret);
-
-            if ($totpRecord !== false) {
-                $candidates = array_merge(
-                    [$totpRecord],
-                    array_filter(
-                        $candidates,
-                        static fn ($candidate) => (int) $candidate->id !== (int) $totpRecord->id
-                    )
-                );
-            }
-        }
-
-        foreach ($candidates as $totpRecord) {
-            if (strtotime($totpRecord->expires_at) < time()) {
+        $this->assertContext($userId, $context);
+        $this->requirePermit($context, AuthenticationRateLimitAction::EMAIL_TOTP_VERIFY, $purpose, $this->verificationPolicies());
+        foreach ($this->emailTotpRepository->findAllValidTOTPs($userId, $purpose) as $candidate) {
+            if ($this->matches($candidate, $submittedCode) === false) {
                 continue;
             }
-
-            $isValid = $this->totp->verifyTOTP($totpRecord->totp_secret, $totp, TOTP_DIGITS, TOTP_PERIOD);
-            if ((bool) $isValid === true) {
-                $this->emailTotpRepository->deleteTOTP((int) $totpRecord->id);
-                $this->sessionService->remove($sessionKey);
-                return true;
-            }
+            return $this->consumeMatch($candidate, $userId, $purpose, $context);
         }
 
         return false;
+    }
+
+    public function cancelIssued(IssuedEmailTOTP $issued): void
+    {
+        $this->emailTotpRepository->deleteTOTP($issued->id);
+    }
+
+    private function consumeMatch(
+        object $candidate,
+        int $userId,
+        EmailTOTPPurpose $purpose,
+        AuthenticationRateLimitContext $context
+    ): bool {
+        $consumed = $this->emailTotpRepository->consumeTOTP((int) $candidate->id, $userId, $purpose);
+        if ($consumed === true) {
+            $this->rateLimitService->resetAfterSuccessfulVerification(
+                $context,
+                AuthenticationRateLimitAction::EMAIL_TOTP_VERIFY,
+                $purpose->rateLimitPurpose()
+            );
+        }
+        return $consumed;
+    }
+
+    private function matches(object $candidate, string $submittedCode): bool
+    {
+        if (strtotime((string) $candidate->expires_at) < time()) {
+            return false;
+        }
+        return $this->totp->verifyTOTP(
+            (string) $candidate->totp_secret,
+            $submittedCode,
+            TOTP_DIGITS,
+            TOTP_PERIOD
+        ) === true;
+    }
+
+    /** @param array<string, RateLimitPolicy> $policies */
+    private function requirePermit(
+        AuthenticationRateLimitContext $context,
+        AuthenticationRateLimitAction $action,
+        EmailTOTPPurpose $purpose,
+        array $policies
+    ): void {
+        $decision = $this->rateLimitService->consumeAttempt(
+            $context,
+            $action,
+            $purpose->rateLimitPurpose(),
+            $policies
+        );
+        if ($decision->allowed === false) {
+            throw new RateLimitExceededException($action->value, $decision->retryAfterSeconds ?? 60);
+        }
+    }
+
+    private function assertContext(int $userId, AuthenticationRateLimitContext $context): void
+    {
+        if ($userId <= 0 || $context->matchesUserId($userId) === false) {
+            throw new \InvalidArgumentException('The Email TOTP owner must match the rate-limit account identity.');
+        }
+    }
+
+    /** @return array<string, RateLimitPolicy> */
+    private function issuancePolicies(): array
+    {
+        return [
+            AuthenticationRateLimitBucketDimension::ACCOUNT->value =>
+                new RateLimitPolicy(3, 600, 60),
+
+            AuthenticationRateLimitBucketDimension::CHALLENGE->value =>
+                new RateLimitPolicy(3, 600, 60),
+
+            AuthenticationRateLimitBucketDimension::SESSION->value =>
+                new RateLimitPolicy(6, 600, 60),
+
+            AuthenticationRateLimitBucketDimension::IP_ADDRESS->value =>
+                new RateLimitPolicy(20, 600, 60),
+        ];
+    }
+
+    /** @return array<string, RateLimitPolicy> */
+    private function verificationPolicies(): array
+    {
+        return [
+            AuthenticationRateLimitBucketDimension::ACCOUNT->value =>
+                new RateLimitPolicy(5, 900, 60),
+
+            AuthenticationRateLimitBucketDimension::CHALLENGE->value =>
+                new RateLimitPolicy(5, 900, 60),
+
+            AuthenticationRateLimitBucketDimension::SESSION->value =>
+                new RateLimitPolicy(10, 900, 60),
+
+            AuthenticationRateLimitBucketDimension::IP_ADDRESS->value =>
+                new RateLimitPolicy(50, 900, 60),
+        ];
     }
 }

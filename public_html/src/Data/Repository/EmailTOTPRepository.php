@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace src\Data\Repository;
 
+use src\Business\EmailTOTPPurpose;
 use src\Data\Connection;
 
 class EmailTOTPRepository
@@ -23,15 +24,16 @@ class EmailTOTPRepository
      * @param string $expiresAt
      * @return void
      */
-    public function storeTOTP(int $userId, string $secret, string $expiresAt): void
+    public function storeTOTP(int $userId, EmailTOTPPurpose $purpose, string $secret, string $expiresAt): int
     {
         $totpRecord = [
             'user_id' => $userId,
+            'purpose' => $purpose->value,
             'totp_secret' => $secret,
             'expires_at' => $expiresAt,
         ];
 
-        $this->dbh->table('email_totp')->insert($totpRecord);
+        return $this->dbh->table('email_totp')->insertGetId($totpRecord);
     }
 
     /**
@@ -41,10 +43,11 @@ class EmailTOTPRepository
      * @param string $secret
      * @return object|false The TOTP record if valid, false otherwise.
      */
-    public function findValidTOTP(int $userId, string $secret): object|false
+    public function findValidTOTP(int $userId, EmailTOTPPurpose $purpose, string $secret): object|false
     {
         return $this->dbh->table('email_totp')
             ->where('user_id', $userId)
+            ->where('purpose', $purpose->value)
             ->where('totp_secret', $secret)
             ->where('expires_at', '>=', date('Y-m-d H:i:s'))
             ->first();
@@ -56,10 +59,11 @@ class EmailTOTPRepository
      * @param int $userId
      * @return array
      */
-    public function findAllValidTOTPs(int $userId): array
+    public function findAllValidTOTPs(int $userId, EmailTOTPPurpose $purpose): array
     {
         return $this->dbh->table('email_totp')
             ->where('user_id', $userId)
+            ->where('purpose', $purpose->value)
             ->where('expires_at', '>=', date('Y-m-d H:i:s'))
             ->orderBy('created_at', 'DESC')
             ->get();
@@ -76,5 +80,15 @@ class EmailTOTPRepository
         $this->dbh->table('email_totp')
             ->where('id', $totpId)
             ->delete();
+    }
+
+    public function consumeTOTP(int $totpId, int $userId, EmailTOTPPurpose $purpose): bool
+    {
+        return $this->dbh->table('email_totp')
+            ->where('id', $totpId)
+            ->where('user_id', $userId)
+            ->where('purpose', $purpose->value)
+            ->where('expires_at', '>=', date('Y-m-d H:i:s'))
+            ->deleteAffected() === 1;
     }
 }

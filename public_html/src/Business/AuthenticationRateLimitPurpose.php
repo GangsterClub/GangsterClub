@@ -6,6 +6,7 @@ namespace src\Business;
 
 enum AuthenticationRateLimitPurpose: string
 {
+    case EMAIL_TOTP_LOGIN = 'email_totp_login';
     case AUTHENTICATOR_LOGIN = 'authenticator_login';
     case AUTHENTICATOR_ENROLLMENT = 'authenticator_enrollment';
     case INITIAL_RECOVERY_CODES = 'initial_recovery_codes';

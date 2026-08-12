@@ -46,6 +46,7 @@
             "@php tests/BearerAuthJWTTest.php",
             "@php tests/CsrfMiddlewareTest.php",
             "@php tests/ContainerProviderTest.php",
+            "@php tests/EmailTOTPServiceTest.php",
             "@php tests/JWTServiceTest.php",
             "@php tests/QueryBuilderSqlGenerationTest.php",
             "@php tests/RecoveryFeatureHttpTest.php",

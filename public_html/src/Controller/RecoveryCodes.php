@@ -15,6 +15,7 @@ use src\Business\AuthenticationRateLimitPurpose;
 use src\Business\AuthenticatorTOTPService;
 use src\Business\EmailService;
 use src\Business\EmailTOTPService;
+use src\Business\EmailTOTPPurpose;
 use src\Business\RateLimitExceededException;
 use src\Business\RecoveryCodeConsumptionResult;
 use src\Business\RecoveryCodeService;
@@ -75,11 +76,17 @@ final class RecoveryCodes extends Controller
             $auth->getSecurityChallengeBinding()
         );
         $auth->setSecurityChallenge($challenge['token'], $challenge['purpose']);
-        $code = $this->emailTotp->generateEmailTOTPForSession(
-            $user->getId(),
-            $auth->getSecurityEmailSessionKey()
-        );
-        if ($this->email->sendEmailTOTP($user->getEmail(), $code) === false) {
+        try {
+            $issued = $this->emailTotp->issue(
+                $user->getId(),
+                EmailTOTPPurpose::AUTHENTICATOR_ENROLLMENT,
+                $this->rateLimitContextForToken($user->getId(), $challenge['token'])
+            );
+        } catch (RateLimitExceededException $exception) {
+            return $this->rateLimitedStart($request, $exception, 'account');
+        }
+        if ($this->email->sendEmailTOTP($user->getEmail(), $issued->code) === false) {
+            $this->emailTotp->cancelIssued($issued);
             $this->challenges->cancel(
                 $challenge['token'],
                 $auth->getSecurityChallengeBinding(),
@@ -166,11 +173,17 @@ final class RecoveryCodes extends Controller
             $activeSetId
         );
         $auth->setSecurityChallenge($challenge['token'], $challenge['purpose']);
-        $code = $this->emailTotp->generateEmailTOTPForSession(
-            $userId,
-            $auth->getSecurityEmailSessionKey()
-        );
-        if ($this->email->sendEmailTOTP($user->getEmail(), $code) === false) {
+        try {
+            $issued = $this->emailTotp->issue(
+                $userId,
+                EmailTOTPPurpose::LOST_AUTHENTICATOR_RECOVERY,
+                $this->rateLimitContextForToken($userId, $challenge['token'])
+            );
+        } catch (RateLimitExceededException $exception) {
+            return $this->rateLimitedStart($request, $exception, 'login');
+        }
+        if ($this->email->sendEmailTOTP($user->getEmail(), $issued->code) === false) {
+            $this->emailTotp->cancelIssued($issued);
             $this->challenges->cancel(
                 $challenge['token'],
                 $auth->getSecurityChallengeBinding(),
@@ -389,10 +402,11 @@ final class RecoveryCodes extends Controller
     private function verifyEmail(Request $request, User $user, object $challenge, bool $lostFlow): Response
     {
         if ((string) $challenge->state !== 'email_verification_pending'
-            || $this->emailTotp->verifyEmailTOTPForSession(
+            || $this->emailTotp->verify(
                 $user->getId(),
+                $this->emailPurpose((string) $challenge->purpose),
                 $this->normalizeOtp((string) $request->post('email_code', '')),
-                $this->auth()->getSecurityEmailSessionKey()
+                $this->rateLimitContext($user->getId(), $challenge)
             ) === false
         ) {
             return $this->respond($request, false, (string) $challenge->state, 'recovery.email-code-invalid');
@@ -444,6 +458,15 @@ final class RecoveryCodes extends Controller
             'authenticator_configuration_presented',
             $configured !== null ? 'recovery.configure-authenticator' : 'recovery.challenge-expired'
         );
+    }
+
+    private function emailPurpose(string $challengePurpose): EmailTOTPPurpose
+    {
+        return match ($challengePurpose) {
+            AuthenticationChallengeService::PURPOSE_AUTHENTICATOR_ENROLLMENT => EmailTOTPPurpose::AUTHENTICATOR_ENROLLMENT,
+            AuthenticationChallengeService::PURPOSE_LOST_AUTHENTICATOR_RECOVERY => EmailTOTPPurpose::LOST_AUTHENTICATOR_RECOVERY,
+            default => throw new \DomainException('The challenge does not support Email TOTP verification.'),
+        };
     }
 
     private function verifyAuthenticator(
@@ -994,6 +1017,32 @@ final class RecoveryCodes extends Controller
             (string) $session->get('_IPaddress', '127.0.0.1'),
             $this->auth()->getSecurityChallengeBinding(),
             (string) $challenge->id
+        );
+    }
+
+    private function rateLimitContextForToken(int $userId, string $token): AuthenticationRateLimitContext
+    {
+        $session = $this->application->get(\app\Service\SessionService::class);
+        return AuthenticationRateLimitContext::forUser(
+            $userId,
+            (string) $session->get('_IPaddress', '127.0.0.1'),
+            $this->auth()->getSecurityChallengeBinding(),
+            $token
+        );
+    }
+
+    private function rateLimitedStart(Request $request, RateLimitExceededException $exception, string $redirectName): Response
+    {
+        $this->auth()->clearSecurityFlow();
+        return $this->respond(
+            $request,
+            false,
+            'rate_limited',
+            'recovery.rate-limited',
+            Router::path($redirectName),
+            429,
+            ['retryAfterSeconds' => $exception->retryAfterSeconds],
+            $redirectName
         );
     }
 

@@ -129,7 +129,7 @@ final class DomainServiceProvider implements ServiceProvider
         $container->set(\src\Business\EmailTOTPService::class, fn(): EmailTOTPService => new EmailTOTPService(
             $container->get(\src\Business\TOTPService::class),
             $container->get(\src\Data\Repository\EmailTOTPRepository::class),
-            $container->get(\app\Service\SessionService::class)
+            $container->get(\src\Business\AuthenticationRateLimitService::class)
         ));
         $container->set(\app\Service\JWT::class, fn(): JWT => new JWT());
         $container->set(\app\Service\JWTService::class, fn(): JWTService => new JWTService(

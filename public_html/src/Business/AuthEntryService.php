@@ -144,7 +144,12 @@ class AuthEntryService
             return $this->authenticatorService->verifyCode($userId, $otp);
         }
 
-        return $this->emailTotpService->verifyEmailTOTP($userId, $otp);
+        return $this->emailTotpService->verify(
+            $userId,
+            EmailTOTPPurpose::LOGIN,
+            $otp,
+            $this->rateLimitContext($userId)
+        );
     }
 
     private function shouldRequestAuthenticatorStep(AuthService $auth): bool
@@ -221,8 +226,16 @@ class AuthEntryService
 
     private function sendPersistedEmailOtp(int $userId, string $email): array
     {
-        $otp = $this->emailTotpService->generateEmailTOTP($userId);
-        return $this->sendOtpEmail($email, $otp);
+        $issued = $this->emailTotpService->issue(
+            $userId,
+            EmailTOTPPurpose::LOGIN,
+            $this->rateLimitContext($userId)
+        );
+        if ($this->emailService->sendEmailTOTP($email, $issued->code) === true) {
+            return ['status' => self::STATUS_EMAIL_OTP_SENT];
+        }
+        $this->emailTotpService->cancelIssued($issued);
+        return ['status' => self::STATUS_SEND_ERROR];
     }
 
     private function sendEmailOnlyOtp(string $email): array
@@ -255,5 +268,16 @@ class AuthEntryService
         }
 
         return $isValid;
+    }
+
+    private function rateLimitContext(int $userId): AuthenticationRateLimitContext
+    {
+        $ipAddress = (string) $this->sessionService->get('_IPaddress', '0.0.0.0');
+        $sessionIdentifier = (string) $this->sessionService->get('_security_rate_limit_id', '');
+        if ($sessionIdentifier === '') {
+            $sessionIdentifier = bin2hex(random_bytes(16));
+            $this->sessionService->set('_security_rate_limit_id', $sessionIdentifier);
+        }
+        return AuthenticationRateLimitContext::forUser($userId, $ipAddress, $sessionIdentifier);
     }
 }

@@ -89,11 +89,20 @@ class AuthEntryController extends Controller
         if ((bool) $submit === true && (bool) $email === true) {
             return $this->mapFirstStepResult(
                 'login',
-                $this->authEntryService()->beginLogin($auth, (string) $email)
+                $this->beginLoginSafely($auth, (string) $email)
             );
         }
 
         return null;
+    }
+
+    private function beginLoginSafely(AuthService $auth, string $email): array
+    {
+        try {
+            return $this->authEntryService()->beginLogin($auth, $email);
+        } catch (\src\Business\RateLimitExceededException) {
+            return ['status' => AuthEntryService::STATUS_EMAIL_OTP_SENT];
+        }
     }
 
     private function handleRegisterFirstStep(Request $request, AuthService $auth): ?Response
@@ -162,7 +171,12 @@ class AuthEntryController extends Controller
 
         if ((bool) $submit === true && (bool) $otp === true) {
             $otp = is_array($otp) === true ? implode('', $otp) : (string) $otp;
-            return $this->mapVerifyResult($mode, $this->authEntryService()->verify($auth, $mode, $otp));
+            try {
+                $result = $this->authEntryService()->verify($auth, $mode, $otp);
+            } catch (\src\Business\RateLimitExceededException) {
+                $result = ['status' => AuthEntryService::STATUS_INVALID_OTP];
+            }
+            return $this->mapVerifyResult($mode, $result);
         }
 
         return null;

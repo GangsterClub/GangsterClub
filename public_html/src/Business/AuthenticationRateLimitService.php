@@ -14,6 +14,7 @@ class AuthenticationRateLimitService
     private const MARIADB_DUPLICATE_ENTRY = 1062;
     private const MARIADB_LOCK_WAIT_TIMEOUT = 1205;
     private const MARIADB_DEADLOCK = 1213;
+    private const MAX_BACKOFF_MULTIPLIER = 16;
 
     public function __construct(
         private readonly Connection $connection,
@@ -64,7 +65,14 @@ class AuthenticationRateLimitService
         AuthenticationRateLimitContext $context,
         AuthenticationRateLimitPurpose $purpose
     ): void {
-        $action = AuthenticationRateLimitAction::RECOVERY_CODE_VERIFY;
+        $this->resetAfterSuccessfulVerification($context, AuthenticationRateLimitAction::RECOVERY_CODE_VERIFY, $purpose);
+    }
+
+    public function resetAfterSuccessfulVerification(
+        AuthenticationRateLimitContext $context,
+        AuthenticationRateLimitAction $action,
+        AuthenticationRateLimitPurpose $purpose
+    ): void {
         $buckets = $this->deriveBuckets($context, $action, $purpose);
         $persistencePurpose = $this->persistencePurpose($action, $purpose);
         $resetDimensions = [
@@ -203,9 +211,24 @@ class AuthenticationRateLimitService
             return new RateLimitDecision(true, $policy->maximumAttempts - 1, null);
         }
 
+        if ($blockedUntil instanceof \DateTimeImmutable) {
+            $attemptCount = (int) $record->attempt_count + 1;
+            $this->repository->update(
+                $bucketHash,
+                $persistencePurpose,
+                $attemptCount,
+                $this->format($windowStarted),
+                null,
+                $this->format($now)
+            );
+            return new RateLimitDecision(true, 0, null);
+        }
+
         $attemptCount = (int) $record->attempt_count;
         if ($attemptCount >= $policy->maximumAttempts) {
-            $newBlockedUntil = $now->modify('+' . $policy->blockSeconds . ' seconds');
+            ++$attemptCount;
+            $blockSeconds = $this->progressiveBlockSeconds($attemptCount, $policy);
+            $newBlockedUntil = $now->modify('+' . $blockSeconds . ' seconds');
             $this->repository->update(
                 $bucketHash,
                 $persistencePurpose,
@@ -214,7 +237,7 @@ class AuthenticationRateLimitService
                 $this->format($newBlockedUntil),
                 $this->format($now)
             );
-            return new RateLimitDecision(false, 0, $policy->blockSeconds, [$dimension]);
+            return new RateLimitDecision(false, 0, $blockSeconds, [$dimension]);
         }
 
         ++$attemptCount;
@@ -310,5 +333,13 @@ class AuthenticationRateLimitService
     private function format(\DateTimeImmutable $time): string
     {
         return $time->format('Y-m-d H:i:s');
+    }
+
+    private function progressiveBlockSeconds(int $attemptCount, RateLimitPolicy $policy): int
+    {
+        $excessAttempts = max(1, $attemptCount - $policy->maximumAttempts);
+        $multiplier = min(self::MAX_BACKOFF_MULTIPLIER, 2 ** min(4, $excessAttempts - 1));
+
+        return $policy->blockSeconds * $multiplier;
     }
 }

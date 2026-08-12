@@ -6,6 +6,7 @@ namespace app\Console;
 
 use src\Data\Connection;
 use src\Migration\AddBrowserSessionVersion;
+use src\Migration\AddEmailTOTPPurpose;
 use src\Migration\AddTwoStepVerificationPreference;
 use src\Migration\CreateAuthenticationChallenge;
 use src\Migration\CreateAuthenticationRateLimit;
@@ -25,6 +26,7 @@ final class MigrationPipelineFactory
 
         $pipeline->addMigration(new CreateUser($connection));
         $pipeline->addMigration(new CreateEmailTOTP($connection));
+        $pipeline->addMigration(new AddEmailTOTPPurpose($connection));
         $pipeline->addMigration(new CreateUserAuthenticatorTOTP($connection));
         $pipeline->addMigration(new CreateUserEmailChange($connection));
         $pipeline->addMigration(new CreateAuthenticationChallenge($connection));

@@ -117,11 +117,12 @@ final class RecoveryHttpEmail extends EmailService
 final class RecoveryHttpEmailTotp extends EmailTOTPService
 {
     public function __construct() {}
-    public function generateEmailTOTPForSession(int $userId, string $sessionKey): string { return '111111'; }
-    public function verifyEmailTOTPForSession(int $userId, string $totp, string $sessionKey): bool
+    public function issue(int $userId, \src\Business\EmailTOTPPurpose $purpose, \src\Business\AuthenticationRateLimitContext $context): \src\Business\IssuedEmailTOTP { return new \src\Business\IssuedEmailTOTP(1, '111111'); }
+    public function verify(int $userId, \src\Business\EmailTOTPPurpose $purpose, string $totp, \src\Business\AuthenticationRateLimitContext $context): bool
     {
         return $totp === '111111';
     }
+    public function cancelIssued(\src\Business\IssuedEmailTOTP $issued): void {}
 }
 
 final class RecoveryHttpAuthenticator extends AuthenticatorTOTPService

@@ -24,10 +24,12 @@ class CreateEmailTOTP extends \app\Console\Migration
         $sql = "CREATE TABLE IF NOT EXISTS `email_totp` (
             `id` INT AUTO_INCREMENT PRIMARY KEY,
             `user_id` INT(8) NOT NULL,
+            `purpose` VARCHAR(64) NOT NULL,
             `totp_secret` VARCHAR(255) NOT NULL,
             `expires_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE KEY `by_user_id_by_totp` (`user_id`, `totp_secret`)
+            UNIQUE KEY `by_user_id_by_totp` (`user_id`, `totp_secret`),
+            KEY `email_totp_active_intent` (`user_id`, `purpose`, `expires_at`, `created_at`)
         )";
         $this->execute($sql);
         $this->log("EmailTOTP created successfully.");
