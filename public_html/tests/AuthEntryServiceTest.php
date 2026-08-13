@@ -32,6 +32,7 @@ require_once __DIR__ . '/../src/Business/AuthenticationRateLimitAccountIdentifie
 require_once __DIR__ . '/../src/Business/AuthenticationRateLimitBucketDimension.php';
 require_once __DIR__ . '/../src/Business/AuthenticationRateLimitContext.php';
 require_once __DIR__ . '/../src/Business/AuthenticationRateLimitPurpose.php';
+require_once __DIR__ . '/../src/Business/AuthenticatorTOTPPurpose.php';
 require_once __DIR__ . '/../src/Business/EmailTOTPPurpose.php';
 require_once __DIR__ . '/../src/Business/IssuedEmailTOTP.php';
 require_once __DIR__ . '/../src/Business/EmailTOTPService.php';
@@ -60,7 +61,7 @@ final class FakeUserService extends UserService
     public function createUserByEmail(string $email, string $ipAddress, ?User $user = null): ?User { $this->createByEmailCalls++; return $this->byEmail[$email] = makeUser(42, $email, $email); }
     public function createUser(string $username, string $email, string $ipAddress): ?User { $this->createUserCalls++; return $this->byEmail[$email] = makeUser(43, $username, $email); }
 }
-final class FakeAuthenticatorService extends AuthenticatorTOTPService { public bool $enabled=false; public bool $valid=false; public function __construct() {} public function hasEnabledAuthenticator(int $userId): bool { return $this->enabled; } public function verifyCode(int $userId, string $code): bool { return $this->valid; } }
+final class FakeAuthenticatorService extends AuthenticatorTOTPService { public bool $enabled=false; public bool $valid=false; public function __construct() {} public function hasEnabledAuthenticator(int $userId): bool { return $this->enabled; } public function verify(int $userId, \src\Business\AuthenticatorTOTPPurpose $purpose, string $code, \src\Business\AuthenticationRateLimitContext $context): bool { return $this->valid; } }
 final class FakeEmailTOTPService extends EmailTOTPService {
     public bool $valid=true;
     public bool $cancelled=false;

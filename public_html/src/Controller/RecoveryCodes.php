@@ -13,6 +13,7 @@ use src\Business\AuthenticationChallengeService;
 use src\Business\AuthenticationRateLimitContext;
 use src\Business\AuthenticationRateLimitPurpose;
 use src\Business\AuthenticatorTOTPService;
+use src\Business\AuthenticatorTOTPPurpose;
 use src\Business\EmailService;
 use src\Business\EmailTOTPService;
 use src\Business\EmailTOTPPurpose;
@@ -482,7 +483,13 @@ final class RecoveryCodes extends Controller
         $purpose = (string) $challenge->purpose;
 
         if ($state === 'fresh_reauthentication_pending') {
-            if ($this->authenticators->verifyCode($user->getId(), $code) === false) {
+            $authenticatorPurpose = $this->freshReauthenticationPurpose($purpose);
+            if ($this->authenticators->verify(
+                $user->getId(),
+                $authenticatorPurpose,
+                $code,
+                $this->rateLimitContext($user->getId(), $challenge)
+            ) === false) {
                 return $this->respond($request, false, $state, 'recovery.authenticator-code-invalid');
             }
 
@@ -522,7 +529,15 @@ final class RecoveryCodes extends Controller
         $pendingSecret = $this->auth()->getPendingAuthenticatorSecret();
         if ($state !== $expectedState
             || $pendingSecret === null
-            || $this->authenticators->verifySecret($pendingSecret, $code) === false
+            || $this->authenticators->verifyPendingSecret(
+                $user->getId(),
+                $lostFlow === true
+                    ? AuthenticatorTOTPPurpose::LOST_AUTHENTICATOR_RECOVERY
+                    : AuthenticatorTOTPPurpose::AUTHENTICATOR_ENROLLMENT,
+                $pendingSecret,
+                $code,
+                $this->rateLimitContext($user->getId(), $challenge)
+            ) === false
         ) {
             return $this->respond($request, false, $state, 'recovery.authenticator-code-invalid');
         }
@@ -618,6 +633,17 @@ final class RecoveryCodes extends Controller
             200,
             ['remainingCount' => $result->remainingCount]
         );
+    }
+
+    private function freshReauthenticationPurpose(string $challengePurpose): AuthenticatorTOTPPurpose
+    {
+        return match ($challengePurpose) {
+            AuthenticationChallengeService::PURPOSE_INITIAL_RECOVERY_CODES =>
+                AuthenticatorTOTPPurpose::INITIAL_RECOVERY_CODES,
+            AuthenticationChallengeService::PURPOSE_REPLACE_RECOVERY_CODES =>
+                AuthenticatorTOTPPurpose::REPLACE_RECOVERY_CODES,
+            default => throw new \DomainException('The challenge does not support authenticator reauthentication.'),
+        };
     }
 
     private function confirmReplacement(

@@ -40,6 +40,7 @@
             "@php tests/AccountAuthenticatorCharacterizationTest.php",
             "@php tests/AccountRedirectStatusTest.php",
             "@php tests/AuthenticationRateLimitServiceTest.php",
+            "@php tests/AuthenticatorTOTPServiceTest.php",
             "@php tests/AuthenticatorSecurityControllerTest.php",
             "@php tests/AuthEntryControllerTest.php",
             "@php tests/AuthEntryServiceTest.php",

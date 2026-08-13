@@ -124,7 +124,8 @@ final class DomainServiceProvider implements ServiceProvider
     {
         $container->set(\src\Business\AuthenticatorTOTPService::class, fn(): AuthenticatorTOTPService => new AuthenticatorTOTPService(
             $container->get(\src\Business\TOTPService::class),
-            $container->get(\src\Data\Repository\UserAuthenticatorTOTPRepository::class)
+            $container->get(\src\Data\Repository\UserAuthenticatorTOTPRepository::class),
+            $container->get(\src\Business\AuthenticationRateLimitService::class)
         ));
         $container->set(\src\Business\EmailTOTPService::class, fn(): EmailTOTPService => new EmailTOTPService(
             $container->get(\src\Business\TOTPService::class),

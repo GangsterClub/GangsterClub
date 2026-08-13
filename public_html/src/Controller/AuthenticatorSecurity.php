@@ -9,6 +9,9 @@ use app\Http\Request;
 use app\Http\Response;
 use app\Http\Router;
 use src\Business\AuthenticatorTOTPService;
+use src\Business\AuthenticationRateLimitContext;
+use src\Business\AuthenticatorTOTPPurpose;
+use src\Business\RateLimitExceededException;
 use src\Business\RecoveryFeatureService;
 
 class AuthenticatorSecurity extends Controller
@@ -61,7 +64,7 @@ class AuthenticatorSecurity extends Controller
                 );
             }
 
-            if ($this->authenticatorService->verifyEnabledSecret($userId, $code) === false) {
+            if ($this->isDisableCodeValid($userId, $code) === false) {
                 return $this->disableFailure(
                     $request,
                     __('account.authenticator-disable-invalid-code')
@@ -119,6 +122,30 @@ class AuthenticatorSecurity extends Controller
                 ])
             )
         );
+    }
+
+    private function rateLimitContext(int $userId): AuthenticationRateLimitContext
+    {
+        $session = $this->application->get(\app\Service\SessionService::class);
+        return AuthenticationRateLimitContext::forUser(
+            $userId,
+            (string) $session->get('_IPaddress', '127.0.0.1'),
+            $this->auth()->getSecurityChallengeBinding()
+        );
+    }
+
+    private function isDisableCodeValid(int $userId, string $code): bool
+    {
+        try {
+            return $this->authenticatorService->verify(
+                $userId,
+                AuthenticatorTOTPPurpose::AUTHENTICATOR_DISABLE,
+                $code,
+                $this->rateLimitContext($userId)
+            );
+        } catch (RateLimitExceededException) {
+            return false;
+        }
     }
 
     private function disableFailure(Request $request, string $message): Response

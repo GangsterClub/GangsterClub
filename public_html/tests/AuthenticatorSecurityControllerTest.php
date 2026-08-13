@@ -65,23 +65,34 @@ final class AuthenticatorSecurityTestAuth extends AuthService
     {
         ++$this->csrfRotations;
     }
+
+    public function getSecurityChallengeBinding(): string
+    {
+        return 'security-binding';
+    }
 }
 
 final class AuthenticatorSecurityTestAuthenticator extends AuthenticatorTOTPService
 {
     public array $calls = [];
+    public bool $rateLimited = false;
 
     public function __construct()
     {
     }
 
-    public function verifyEnabledSecret(int $userId, string $code): bool
+    public function verify(int $userId, \src\Business\AuthenticatorTOTPPurpose $purpose, string $code, \src\Business\AuthenticationRateLimitContext $context): bool
     {
         $this->calls[] = [
-            'verifyEnabledSecret',
+            'verify',
             $userId,
+            $purpose,
             $code,
         ];
+
+        if ($this->rateLimited === true) {
+            throw new \src\Business\RateLimitExceededException('authenticator_totp_verify', 60);
+        }
 
         return true;
     }
@@ -113,6 +124,18 @@ final class AuthenticatorSecurityTestTranslation
     }
 }
 
+final class AuthenticatorSecurityTestSession extends \app\Service\SessionService
+{
+    public function __construct()
+    {
+    }
+
+    public function get(string $key, mixed $default = null): mixed
+    {
+        return $key === '_IPaddress' ? '192.0.2.50' : $default;
+    }
+}
+
 final class AuthenticatorSecurityTestApplication extends Application
 {
     public function __construct(
@@ -125,6 +148,7 @@ final class AuthenticatorSecurityTestApplication extends Application
         return match ($name) {
             \app\Service\AuthService::class => $this->auth,
             \app\Service\TranslationService::class => new AuthenticatorSecurityTestTranslation(),
+            \app\Service\SessionService::class => new AuthenticatorSecurityTestSession(),
             default => throw new RuntimeException($name . ' is missing.'),
         };
     }
@@ -226,6 +250,34 @@ assertAuthenticatorSecuritySame(
     [],
     $recovery->calls,
     'Malformed code must not disable anything.'
+);
+
+$authenticator->rateLimited = true;
+$response = $controller->disable(new AuthenticatorSecurityTestRequest(
+    ['authenticator_disable_code' => '123456'],
+    ['Accept' => 'application/json']
+));
+$payload = json_decode($response->getContent(), true);
+
+assertAuthenticatorSecuritySame(
+    422,
+    $response->getStatusCode(),
+    'Rate-limited authenticator disable should use the existing invalid-code response.'
+);
+assertAuthenticatorSecuritySame(
+    false,
+    $payload['success'] ?? null,
+    'Rate-limited authenticator disable should report failure.'
+);
+assertAuthenticatorSecuritySame(
+    \src\Business\AuthenticatorTOTPPurpose::AUTHENTICATOR_DISABLE,
+    $authenticator->calls[0][2] ?? null,
+    'Authenticator disable must pass the dedicated authenticator purpose.'
+);
+assertAuthenticatorSecuritySame(
+    [],
+    $recovery->calls,
+    'Rate-limited verification must not disable the authenticator.'
 );
 
 fwrite(STDOUT, "AuthenticatorSecurity controller tests passed.\n");

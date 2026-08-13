@@ -141,7 +141,12 @@ class AuthEntryService
         }
 
         if ($auth->isLoginAuthenticatorRequired() === true) {
-            return $this->authenticatorService->verifyCode($userId, $otp);
+            return $this->authenticatorService->verify(
+                $userId,
+                AuthenticatorTOTPPurpose::LOGIN,
+                $otp,
+                $this->rateLimitContext($userId)
+            );
         }
 
         return $this->emailTotpService->verify(

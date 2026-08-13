@@ -133,11 +133,11 @@ final class RecoveryHttpAuthenticator extends AuthenticatorTOTPService
     {
         return 'PENDINGSECRETVALUE';
     }
-    public function verifySecret(string $secret, string $code, int $digits = AUTHENTICATOR_TOTP_DIGITS, int $period = AUTHENTICATOR_TOTP_PERIOD): bool
+    public function verifyPendingSecret(int $userId, \src\Business\AuthenticatorTOTPPurpose $purpose, string $secret, string $code, \src\Business\AuthenticationRateLimitContext $context, int $digits = AUTHENTICATOR_TOTP_DIGITS, int $period = AUTHENTICATOR_TOTP_PERIOD): bool
     {
         return $secret === 'PENDINGSECRETVALUE' && $code === '123456';
     }
-    public function verifyCode(int $userId, string $code): bool
+    public function verify(int $userId, \src\Business\AuthenticatorTOTPPurpose $purpose, string $code, \src\Business\AuthenticationRateLimitContext $context): bool
     {
         return $this->hasEnabledAuthenticator($userId) && $code === '654321';
     }

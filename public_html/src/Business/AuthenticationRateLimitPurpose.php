@@ -12,4 +12,5 @@ enum AuthenticationRateLimitPurpose: string
     case INITIAL_RECOVERY_CODES = 'initial_recovery_codes';
     case REPLACE_RECOVERY_CODES = 'replace_recovery_codes';
     case LOST_AUTHENTICATOR_RECOVERY = 'lost_authenticator_recovery';
+    case AUTHENTICATOR_DISABLE = 'authenticator_disable';
 }
