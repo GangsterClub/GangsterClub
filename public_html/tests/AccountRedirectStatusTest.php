@@ -13,6 +13,8 @@ defined('APP_BASE') || define('APP_BASE', '/game');
 defined('WEB_ROOT') || define('WEB_ROOT', APP_BASE . '/');
 defined('APP_MAX_AGE') || define('APP_MAX_AGE', 7200);
 
+require DOC_ROOT . '/vendor/autoload.php';
+
 spl_autoload_register(static function (string $class): void {
     $prefixes = [
         'app\\' => DOC_ROOT . '/app/',
