@@ -21,6 +21,7 @@ use src\Business\EmailTOTPService;
 use src\Business\RecoveryCodeCodec;
 use src\Business\RecoveryCodeService;
 use src\Business\RecoveryFeatureService;
+use src\Business\RecoveryFlowService;
 use src\Business\SecurityAuditService;
 use src\Business\TOTPService;
 use src\Business\UserService;
@@ -126,6 +127,10 @@ final class DomainServiceProvider implements ServiceProvider
             $container->get(\src\Business\TOTPService::class),
             $container->get(\src\Data\Repository\UserAuthenticatorTOTPRepository::class),
             $container->get(\src\Business\AuthenticationRateLimitService::class)
+        ));
+        $container->set(\src\Business\RecoveryFlowService::class, fn(): RecoveryFlowService => new RecoveryFlowService(
+            $container->get(\src\Business\AuthenticationChallengeService::class),
+            $container->get(\src\Business\AuthenticatorTOTPService::class)
         ));
         $container->set(\src\Business\EmailTOTPService::class, fn(): EmailTOTPService => new EmailTOTPService(
             $container->get(\src\Business\TOTPService::class),

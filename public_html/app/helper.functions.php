@@ -31,45 +31,79 @@ function loadEnv(string $envFilePath): void
         throw new \RuntimeException("Env file not found: " . htmlspecialchars($envFilePath, ENT_QUOTES, 'UTF-8'));
     }
 
-    $envContent = file($envFilePath, (FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES));
+    $envContent = file($envFilePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($envContent as $line) {
-        $line = trim($line);
-        if (strpos($line, '#') === 0) {
+        $parsed = parseEnvLine(trim($line));
+        if ($parsed === null) {
             continue;
         }
 
-        [
-            $key,
-            $value,
-        ] = array_map('trim', explode('=', $line, 2));
-        if ((bool) preg_match('/^["\'](.*)["\']$/', $value, $matches) === true) {
-            $value = $matches[1];
-        }
-
-        $value = preg_replace_callback(
-            '/\$\{([A-Z_]+)\}/',
-            fn($matches) => (bool) getenv($matches[1]) === true ? getenv($matches[1]) : $matches[0],
-            $value
-        );
-
-        $lowerValue = strtolower($value);
-        if ($lowerValue === 'true') {
-            $value = true;
-        } else if ($lowerValue === 'false') {
-            $value = false;
-        } else if ($lowerValue === 'null') {
-            $value = null;
-        } else if ((bool) is_numeric($lowerValue) === true) {
-            $value = (int) $lowerValue;
-        }
-
-        putenv("{$key}={$value}");
-        $_ENV[$key] = $value;
-        define($key, $value);
-        //$_SERVER[$key] = $value; // Optionally set in $_SERVER superglobal.
+        assignEnvValue($parsed['key'], $parsed['value']);
     } //end foreach
 
     $loaded[$resolvedPath] = true;
+}
+
+function parseEnvLine(string $line): ?array
+{
+    if (strpos($line, '#') === 0) {
+        return null;
+    }
+
+    [$key, $value] = array_map('trim', explode('=', $line, 2));
+    return [
+        'key' => $key,
+        'value' => normalizeEnvValue(expandEnvReferences(unquoteEnvValue($value))),
+    ];
+}
+
+function unquoteEnvValue(string $value): string
+{
+    if (preg_match('/^["\'](.*)["\']$/', $value, $matches) === 1) {
+        return $matches[1];
+    }
+
+    return $value;
+}
+
+function expandEnvReferences(string $value): string
+{
+    return preg_replace_callback(
+        '/\$\{([A-Z_]+)\}/',
+        static function (array $matches): string {
+            $environmentValue = getenv($matches[1]);
+            return $environmentValue !== false && (bool) $environmentValue === true
+                ? $environmentValue
+                : $matches[0];
+        },
+        $value
+    ) ?? $value;
+}
+
+function normalizeEnvValue(string $value): string|int|bool|null
+{
+    $lowerValue = strtolower($value);
+    if ($lowerValue === 'true') {
+        return true;
+    }
+    if ($lowerValue === 'false') {
+        return false;
+    }
+    if ($lowerValue === 'null') {
+        return null;
+    }
+    if (is_numeric($lowerValue) === true) {
+        return (int) $lowerValue;
+    }
+
+    return $value;
+}
+
+function assignEnvValue(string $key, string|int|bool|null $value): void
+{
+    putenv("{$key}={$value}");
+    $_ENV[$key] = $value;
+    define($key, $value);
 }
 
 function seoUrl($string = ""): string

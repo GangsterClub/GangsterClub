@@ -11,6 +11,10 @@ use src\Data\Repository\UserRepository;
 
 class RecoveryFeatureService
 {
+    public const COMPLETION_SUCCESS = 'success';
+    public const COMPLETION_FAILED = 'failed';
+    public const COMPLETION_REAUTHENTICATION_EXPIRED = 'reauthentication_expired';
+
     public function __construct(
         private readonly Connection $connection,
         private readonly AuthenticationChallengeService $challengeService,
@@ -36,6 +40,102 @@ class RecoveryFeatureService
     public function getUnusedRecoveryCodeCount(int $userId): int
     {
         return $this->recoveryCodeRepository->countActiveUnused($userId);
+    }
+
+    public function completeAcknowledgedFlow(
+        int $userId,
+        int $pendingSetId,
+        object $challenge,
+        ?string $pendingSecret,
+        string $challengeToken,
+        string $sessionBinding,
+        bool $lostFlow
+    ): string {
+        $purpose = (string) $challenge->purpose;
+        if ($purpose === AuthenticationChallengeService::PURPOSE_AUTHENTICATOR_ENROLLMENT) {
+            return $this->enrollmentCompletionStatus(
+                $userId,
+                $pendingSetId,
+                $pendingSecret,
+                $challengeToken,
+                $sessionBinding
+            );
+        }
+        if ($lostFlow === true) {
+            return $this->lostAuthenticatorCompletionStatus(
+                $userId,
+                $pendingSetId,
+                $challenge,
+                $pendingSecret,
+                $challengeToken,
+                $sessionBinding
+            );
+        }
+        if ($this->challengeService->isFreshReauthentication($challenge, $purpose) === false) {
+            return self::COMPLETION_REAUTHENTICATION_EXPIRED;
+        }
+
+        $expectedSetId = $challenge->baseline_recovery_code_set_id === null
+            ? null
+            : (int) $challenge->baseline_recovery_code_set_id;
+        $completed = $this->completeRecoverySetActivation(
+            $userId,
+            $pendingSetId,
+            $expectedSetId,
+            $challengeToken,
+            $sessionBinding,
+            $purpose
+        );
+        return $this->completionStatus($completed);
+    }
+
+    private function enrollmentCompletionStatus(
+        int $userId,
+        int $pendingSetId,
+        ?string $pendingSecret,
+        string $challengeToken,
+        string $sessionBinding
+    ): string {
+        if ($pendingSecret === null) {
+            return self::COMPLETION_FAILED;
+        }
+
+        return $this->completionStatus($this->completeEnrollment(
+            $userId,
+            $pendingSetId,
+            $pendingSecret,
+            $challengeToken,
+            $sessionBinding
+        ));
+    }
+
+    private function lostAuthenticatorCompletionStatus(
+        int $userId,
+        int $pendingSetId,
+        object $challenge,
+        ?string $pendingSecret,
+        string $challengeToken,
+        string $sessionBinding
+    ): string {
+        if ($pendingSecret === null) {
+            return self::COMPLETION_FAILED;
+        }
+
+        $version = $this->completeLostAuthenticatorReplacement(
+            $userId,
+            $pendingSetId,
+            (int) ($challenge->baseline_recovery_code_set_id ?? 0),
+            (int) ($challenge->baseline_authenticator_generation ?? 0),
+            $pendingSecret,
+            $challengeToken,
+            $sessionBinding
+        );
+        return $this->completionStatus($version !== null);
+    }
+
+    private function completionStatus(bool $completed): string
+    {
+        return $completed === true ? self::COMPLETION_SUCCESS : self::COMPLETION_FAILED;
     }
 
     public function completeEnrollment(

@@ -159,40 +159,20 @@ class RecoveryCodeService
             }
 
             $pendingSet = $this->repository->findSetForUpdate($setId);
-            if ($pendingSet === false
-                || (int) $pendingSet->user_id !== $userId
-                || $pendingSet->status !== 'pending'
-                || $pendingSet->displayed_at === null
-            ) {
+            if ($this->isActivatablePendingSet($pendingSet, $userId, $expectedActiveSetId) === false) {
                 return false;
             }
 
-            $replacesSetId = $pendingSet->replaces_recovery_code_set_id === null
-                ? null
-                : (int) $pendingSet->replaces_recovery_code_set_id;
-            if ($replacesSetId !== $expectedActiveSetId) {
+            if ($this->matchesAuthenticatorGeneration($pendingSet, $userId) === false) {
                 return false;
             }
 
-            $authenticatorGeneration = $this->repository->findAuthenticatorGenerationForUpdate($userId);
-            if ($authenticatorGeneration === null
-                || $authenticatorGeneration !== (int) $pendingSet->authenticator_generation
-            ) {
-                return false;
-            }
-
-            $state = $this->repository->findStateForUpdate($userId);
-            $activeSetId = $state === false || $state->active_recovery_code_set_id === null
-                ? null
-                : (int) $state->active_recovery_code_set_id;
-            if ($activeSetId !== $expectedActiveSetId) {
+            if ($this->getLockedActiveSetId($userId) !== $expectedActiveSetId) {
                 return false;
             }
 
             $now = $this->format($this->now());
-            if ($expectedActiveSetId !== null
-                && $this->repository->invalidateSet($expectedActiveSetId, $now) === false
-            ) {
+            if ($this->invalidateReplacedSet($expectedActiveSetId, $now) === false) {
                 return false;
             }
 
@@ -214,6 +194,43 @@ class RecoveryCodeService
 
             return true;
         });
+    }
+
+    private function isActivatablePendingSet(object|false $pendingSet, int $userId, ?int $expectedSetId): bool
+    {
+        if ($pendingSet === false) {
+            return false;
+        }
+
+        $replacesSetId = $pendingSet->replaces_recovery_code_set_id === null
+            ? null
+            : (int) $pendingSet->replaces_recovery_code_set_id;
+        return (int) $pendingSet->user_id === $userId
+            && $pendingSet->status === 'pending'
+            && $pendingSet->displayed_at !== null
+            && $replacesSetId === $expectedSetId;
+    }
+
+    private function matchesAuthenticatorGeneration(object $pendingSet, int $userId): bool
+    {
+        $generation = $this->repository->findAuthenticatorGenerationForUpdate($userId);
+        return $generation !== null
+            && $generation === (int) $pendingSet->authenticator_generation;
+    }
+
+    private function getLockedActiveSetId(int $userId): ?int
+    {
+        $state = $this->repository->findStateForUpdate($userId);
+        if ($state === false || $state->active_recovery_code_set_id === null) {
+            return null;
+        }
+
+        return (int) $state->active_recovery_code_set_id;
+    }
+
+    private function invalidateReplacedSet(?int $setId, string $now): bool
+    {
+        return $setId === null || $this->repository->invalidateSet($setId, $now) === true;
     }
 
     public function invalidatePendingSet(int $userId, int $setId, string $reason): bool

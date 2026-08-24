@@ -434,6 +434,21 @@ assertSecuritySame(
     (int) $pdo->query('SELECT active_recovery_code_set_id FROM user_recovery_code_state')->fetchColumn(),
     'The old set must remain active while a replacement is pending.'
 );
+assertSecuritySame(
+    false,
+    $recoveryService->activatePendingSet(42, $replacementSet->setId, null),
+    'A replacement must reject a stale expected-active-set value.'
+);
+assertSecuritySame(
+    $firstSet->setId,
+    (int) $pdo->query('SELECT active_recovery_code_set_id FROM user_recovery_code_state')->fetchColumn(),
+    'An expected-active-set mismatch must preserve the current active set.'
+);
+assertSecuritySame(
+    'pending',
+    (string) $pdo->query('SELECT status FROM recovery_code_set WHERE id = ' . $replacementSet->setId)->fetchColumn(),
+    'An expected-active-set mismatch must leave the replacement pending.'
+);
 assertSecurityTrue(
     $recoveryService->activatePendingSet(42, $replacementSet->setId, $firstSet->setId),
     'Replacement acknowledgement should atomically swap active sets.'

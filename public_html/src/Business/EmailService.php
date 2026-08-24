@@ -110,4 +110,25 @@ class EmailService
             return false;
         }
     }
+
+    public function sendRecoveryCompletionNotification(
+        string $toEmail,
+        string $purpose,
+        bool $lostFlow
+    ): void {
+        if (in_array($purpose, [
+            AuthenticationChallengeService::PURPOSE_REPLACE_RECOVERY_CODES,
+            AuthenticationChallengeService::PURPOSE_LOST_AUTHENTICATOR_RECOVERY,
+        ], true) === false) {
+            return;
+        }
+
+        $this->sendSecurityNotification(
+            $toEmail,
+            $lostFlow === true ? 'Authenticator replaced' : 'Recovery codes replaced',
+            $lostFlow === true
+                ? 'Your authenticator and recovery-code set were replaced. Other browser sessions were revoked.'
+                : 'A new recovery-code set is active. All previous recovery codes are now invalid.'
+        );
+    }
 }

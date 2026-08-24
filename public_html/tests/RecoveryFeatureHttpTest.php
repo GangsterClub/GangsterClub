@@ -19,6 +19,7 @@ use src\Business\EmailTOTPService;
 use src\Business\RecoveryCodeCodec;
 use src\Business\RecoveryCodeService;
 use src\Business\RecoveryFeatureService;
+use src\Business\RecoveryFlowService;
 use src\Business\SecurityAuditService;
 use src\Business\TOTPService;
 use src\Business\UserService;
@@ -323,6 +324,8 @@ $recoveryService = new RecoveryCodeService(
     $rateService,
     $auditService
 );
+$authenticatorService = new RecoveryHttpAuthenticator($authenticatorRepository);
+$flowService = new RecoveryFlowService($challengeService, $authenticatorService);
 $featureService = new RecoveryFeatureService(
     $connection,
     $challengeService,
@@ -332,7 +335,6 @@ $featureService = new RecoveryFeatureService(
     $userRepository,
     $auditService
 );
-$authenticatorService = new RecoveryHttpAuthenticator($authenticatorRepository);
 $emailTotp = new RecoveryHttpEmailTotp();
 $email = new RecoveryHttpEmail();
 $users = new UserService($userRepository);
@@ -346,6 +348,7 @@ $makeController = static function (RecoveryHttpSession $session) use (
     $rateService,
     $recoveryService,
     $featureService,
+    $flowService,
     $authenticatorService,
     $emailTotp,
     $email,
@@ -366,6 +369,7 @@ $makeController = static function (RecoveryHttpSession $session) use (
         \src\Business\AuthenticationRateLimitService::class => $rateService,
         \src\Business\RecoveryCodeService::class => $recoveryService,
         \src\Business\RecoveryFeatureService::class => $featureService,
+        \src\Business\RecoveryFlowService::class => $flowService,
         \src\Business\AuthenticatorTOTPService::class => $authenticatorService,
         \src\Business\EmailTOTPService::class => $emailTotp,
         \src\Business\EmailService::class => $email,

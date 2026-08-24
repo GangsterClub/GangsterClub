@@ -13,14 +13,16 @@ use src\Business\AuthenticationChallengeService;
 use src\Business\AuthenticationRateLimitContext;
 use src\Business\AuthenticationRateLimitPurpose;
 use src\Business\AuthenticatorTOTPService;
-use src\Business\AuthenticatorTOTPPurpose;
 use src\Business\EmailService;
 use src\Business\EmailTOTPService;
 use src\Business\EmailTOTPPurpose;
 use src\Business\RateLimitExceededException;
 use src\Business\RecoveryCodeConsumptionResult;
 use src\Business\RecoveryCodeService;
+use src\Business\RecoveryAuthenticatorVerificationResult;
 use src\Business\RecoveryFeatureService;
+use src\Business\RecoveryFlowChallengeResult;
+use src\Business\RecoveryFlowService;
 use src\Business\UserService;
 use src\Entity\User;
 
@@ -31,6 +33,7 @@ final class RecoveryCodes extends Controller
     private AuthenticationChallengeService $challenges;
     private RecoveryCodeService $recoveryCodes;
     private RecoveryFeatureService $feature;
+    private RecoveryFlowService $flow;
     private AuthenticatorTOTPService $authenticators;
     private EmailTOTPService $emailTotp;
     private EmailService $email;
@@ -42,6 +45,7 @@ final class RecoveryCodes extends Controller
         $this->challenges = $application->get(AuthenticationChallengeService::class);
         $this->recoveryCodes = $application->get(RecoveryCodeService::class);
         $this->feature = $application->get(RecoveryFeatureService::class);
+        $this->flow = $application->get(RecoveryFlowService::class);
         $this->authenticators = $application->get(AuthenticatorTOTPService::class);
         $this->emailTotp = $application->get(EmailTOTPService::class);
         $this->email = $application->get(EmailService::class);
@@ -293,30 +297,35 @@ final class RecoveryCodes extends Controller
         $expectedPurpose = $lostFlow === true
             ? AuthenticationChallengeService::PURPOSE_LOST_AUTHENTICATOR_RECOVERY
             : $purpose;
-        if ($token === null || $purpose === null || $purpose !== $expectedPurpose) {
+        $flowChallenge = $this->flow->resolveChallenge(
+            $user->getId(),
+            $token,
+            $purpose,
+            $expectedPurpose,
+            $auth->getSecurityChallengeBinding(),
+            $auth->getPendingAuthenticatorSecret()
+        );
+        if ($flowChallenge->status === RecoveryFlowChallengeResult::UNAVAILABLE) {
             return $this->flowUnavailable($request, $lostFlow);
         }
-        $this->flowFlashBag = $this->flashBagForPurpose($purpose);
+        $this->flowFlashBag = $this->flashBagForPurpose((string) $purpose);
         $this->consumeFlash('recovery');
 
-        $challenge = $this->challenges->getActive(
-            $token,
-            $auth->getSecurityChallengeBinding(),
-            $purpose
-        );
-        if ($challenge === null || (int) $challenge->user_id !== $user->getId()) {
+        if ($flowChallenge->status === RecoveryFlowChallengeResult::EXPIRED) {
             $this->cleanupAbandonedFlow($auth, $user->getId());
             return $this->flowUnavailable($request, $lostFlow, 'recovery.challenge-expired');
         }
-        if ($this->pendingAuthenticatorSecretIsRequired($challenge) === true
-            && $auth->getPendingAuthenticatorSecret() === null
-        ) {
+        if ($flowChallenge->status === RecoveryFlowChallengeResult::PENDING_SECRET_MISSING) {
             $this->cleanupAbandonedFlow($auth, $user->getId());
             return $this->flowUnavailable(
                 $request,
                 $lostFlow,
                 'recovery.pending-authenticator-secret-lost'
             );
+        }
+        $challenge = $flowChallenge->challenge;
+        if ($challenge === null) {
+            return $this->flowUnavailable($request, $lostFlow);
         }
 
         if (strtoupper($request->getMethod()) === 'POST') {
@@ -476,85 +485,49 @@ final class RecoveryCodes extends Controller
         object $challenge,
         bool $lostFlow
     ): Response {
-        $state = (string) $challenge->state;
         $code = $this->normalizeOtp((string) $request->post('authenticator_code', ''));
         $token = $this->auth()->getSecurityChallengeToken() ?? '';
         $binding = $this->auth()->getSecurityChallengeBinding();
-        $purpose = (string) $challenge->purpose;
-
-        if ($state === 'fresh_reauthentication_pending') {
-            $authenticatorPurpose = $this->freshReauthenticationPurpose($purpose);
-            if ($this->authenticators->verify(
-                $user->getId(),
-                $authenticatorPurpose,
-                $code,
-                $this->rateLimitContext($user->getId(), $challenge)
-            ) === false) {
-                return $this->respond($request, false, $state, 'recovery.authenticator-code-invalid');
-            }
-
-            $fresh = $this->challenges->transition(
-                $token,
-                $binding,
-                $purpose,
-                'fresh_reauthentication_pending',
-                'freshly_reauthenticated'
-            );
-            if ($fresh === null) {
-                return $this->respond($request, false, 'expired', 'recovery.challenge-expired');
-            }
-
-            if ($purpose === AuthenticationChallengeService::PURPOSE_INITIAL_RECOVERY_CODES) {
-                return $this->generateAndPresent($request, $user, $fresh, 'freshly_reauthenticated', false);
-            }
-
-            $warning = $this->challenges->transition(
-                $token,
-                $binding,
-                $purpose,
-                'freshly_reauthenticated',
-                'replacement_warning_presented'
-            );
+        $result = $this->flow->verifyAuthenticator(
+            $user->getId(),
+            $challenge,
+            $lostFlow,
+            $this->auth()->getPendingAuthenticatorSecret(),
+            $code,
+            $this->rateLimitContext($user->getId(), $challenge),
+            $token,
+            $binding
+        );
+        if ($result->status === RecoveryAuthenticatorVerificationResult::INVALID) {
             return $this->respond(
                 $request,
-                $warning !== null,
-                'replacement_warning_presented',
-                $warning !== null ? 'recovery.replacement-warning' : 'recovery.challenge-expired'
+                false,
+                (string) $challenge->state,
+                'recovery.authenticator-code-invalid'
             );
         }
-
-        $expectedState = $lostFlow === true
-            ? 'new_authenticator_configuration_presented'
-            : 'authenticator_configuration_presented';
-        $pendingSecret = $this->auth()->getPendingAuthenticatorSecret();
-        if ($state !== $expectedState
-            || $pendingSecret === null
-            || $this->authenticators->verifyPendingSecret(
-                $user->getId(),
-                $lostFlow === true
-                    ? AuthenticatorTOTPPurpose::LOST_AUTHENTICATOR_RECOVERY
-                    : AuthenticatorTOTPPurpose::AUTHENTICATOR_ENROLLMENT,
-                $pendingSecret,
-                $code,
-                $this->rateLimitContext($user->getId(), $challenge)
-            ) === false
-        ) {
-            return $this->respond($request, false, $state, 'recovery.authenticator-code-invalid');
+        if ($result->status === RecoveryAuthenticatorVerificationResult::EXPIRED) {
+            return $this->respond($request, false, 'expired', 'recovery.challenge-expired');
         }
-
-        $verifiedState = $lostFlow === true ? 'new_authenticator_verified' : 'authenticator_verified';
-        $verified = $this->challenges->transition(
-            $token,
-            $binding,
-            $purpose,
-            $expectedState,
-            $verifiedState
-        );
-        if ($verified === null) {
+        if ($result->status === RecoveryAuthenticatorVerificationResult::WARNING_PRESENTED) {
+            return $this->respond(
+                $request,
+                true,
+                'replacement_warning_presented',
+                'recovery.replacement-warning'
+            );
+        }
+        if ($result->challenge === null || $result->expectedState === null) {
             return $this->respond($request, false, 'expired', 'recovery.challenge-expired');
         }
 
-        return $this->generateAndPresent($request, $user, $verified, $verifiedState, $lostFlow);
+        return $this->generateAndPresent(
+            $request,
+            $user,
+            $result->challenge,
+            $result->expectedState,
+            $lostFlow
+        );
     }
 
     private function verifyLostRecoveryCode(Request $request, User $user, object $challenge): Response
@@ -633,17 +606,6 @@ final class RecoveryCodes extends Controller
             200,
             ['remainingCount' => $result->remainingCount]
         );
-    }
-
-    private function freshReauthenticationPurpose(string $challengePurpose): AuthenticatorTOTPPurpose
-    {
-        return match ($challengePurpose) {
-            AuthenticationChallengeService::PURPOSE_INITIAL_RECOVERY_CODES =>
-                AuthenticatorTOTPPurpose::INITIAL_RECOVERY_CODES,
-            AuthenticationChallengeService::PURPOSE_REPLACE_RECOVERY_CODES =>
-                AuthenticatorTOTPPurpose::REPLACE_RECOVERY_CODES,
-            default => throw new \DomainException('The challenge does not support authenticator reauthentication.'),
-        };
     }
 
     private function confirmReplacement(
@@ -786,68 +748,28 @@ final class RecoveryCodes extends Controller
             return $this->respond($request, false, (string) $challenge->state, 'recovery.codes-display-unavailable');
         }
 
-        $completed = false;
-        if ($purpose === AuthenticationChallengeService::PURPOSE_AUTHENTICATOR_ENROLLMENT) {
-            $secret = $auth->getPendingAuthenticatorSecret();
-            $completed = $secret !== null && $this->feature->completeEnrollment(
-                $user->getId(),
-                $setId,
-                $secret,
-                $token,
-                $binding
-            );
-        } elseif ((bool) $lostFlow === true) {
-            $secret = $auth->getPendingAuthenticatorSecret();
-            $activeSetId = (int) ($challenge->baseline_recovery_code_set_id ?? 0);
-            $generation = (int) ($challenge->baseline_authenticator_generation ?? 0);
-            $version = $secret === null ? null : $this->feature->completeLostAuthenticatorReplacement(
-                $user->getId(),
-                $setId,
-                $activeSetId,
-                $generation,
-                $secret,
-                $token,
-                $binding
-            );
-            $completed = $version !== null;
-            if ($completed === true) {
-                $auth->loginUser($user->getId());
-            }
-        } else {
-            if ($this->challenges->isFreshReauthentication($challenge, $purpose) === false) {
-                return $this->respond($request, false, 'expired', 'recovery.reauthentication-expired');
-            }
-            $expectedActiveSetId = $challenge->baseline_recovery_code_set_id === null
-                ? null
-                : (int) $challenge->baseline_recovery_code_set_id;
-            $completed = $this->feature->completeRecoverySetActivation(
-                $user->getId(),
-                $setId,
-                $expectedActiveSetId,
-                $token,
-                $binding,
-                $purpose
-            );
+        $completionStatus = $this->feature->completeAcknowledgedFlow(
+            $user->getId(),
+            $setId,
+            $challenge,
+            $auth->getPendingAuthenticatorSecret(),
+            $token,
+            $binding,
+            $lostFlow
+        );
+        if ($completionStatus === RecoveryFeatureService::COMPLETION_REAUTHENTICATION_EXPIRED) {
+            return $this->respond($request, false, 'expired', 'recovery.reauthentication-expired');
         }
-
-        if ($completed === false) {
+        if ($completionStatus === RecoveryFeatureService::COMPLETION_FAILED) {
             return $this->respond($request, false, (string) $challenge->state, 'recovery.activation-failed');
+        }
+        if ($lostFlow === true) {
+            $auth->loginUser($user->getId());
         }
 
         $auth->clearSecurityFlow();
         $auth->rotateCsrfToken();
-        if (in_array($purpose, [
-            AuthenticationChallengeService::PURPOSE_REPLACE_RECOVERY_CODES,
-            AuthenticationChallengeService::PURPOSE_LOST_AUTHENTICATOR_RECOVERY,
-        ], true) === true) {
-            $this->email->sendSecurityNotification(
-                $user->getEmail(),
-                $lostFlow === true ? 'Authenticator replaced' : 'Recovery codes replaced',
-                $lostFlow === true
-                    ? 'Your authenticator and recovery-code set were replaced. Other browser sessions were revoked.'
-                    : 'A new recovery-code set is active. All previous recovery codes are now invalid.'
-            );
-        }
+        $this->email->sendRecoveryCompletionNotification($user->getEmail(), $purpose, $lostFlow);
 
         return $this->respond(
             $request,
@@ -1098,23 +1020,6 @@ final class RecoveryCodes extends Controller
             'unavailableLabel' => __('recovery.codes-unavailable-action'),
             'cancelLabel' => __('recovery.cancel'),
         ];
-    }
-
-    private function pendingAuthenticatorSecretIsRequired(object $challenge): bool
-    {
-        $state = (string) $challenge->state;
-        if (in_array($state, [
-            'authenticator_configuration_presented',
-            'authenticator_verified',
-            'new_authenticator_configuration_presented',
-            'new_authenticator_verified',
-            'new_recovery_codes_presented_unacknowledged',
-        ], true) === true) {
-            return true;
-        }
-
-        return (string) $challenge->purpose === AuthenticationChallengeService::PURPOSE_AUTHENTICATOR_ENROLLMENT
-            && $state === 'recovery_codes_presented_unacknowledged';
     }
 
     private function expectsJson(Request $request): bool

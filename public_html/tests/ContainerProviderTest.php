@@ -185,6 +185,7 @@ $expectedIds = [
     \src\Business\RecoveryCodeCodec::class,
     \src\Business\RecoveryCodeService::class,
     \src\Business\RecoveryFeatureService::class,
+    \src\Business\RecoveryFlowService::class,
     \src\Business\AuthenticatorTOTPService::class,
     \src\Business\EmailTOTPService::class,
     \app\Service\JWT::class,

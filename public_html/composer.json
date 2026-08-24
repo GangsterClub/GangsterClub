@@ -49,6 +49,7 @@
             "@php tests/ContainerProviderTest.php",
             "@php tests/EmailTOTPServiceTest.php",
             "@php tests/JWTServiceTest.php",
+            "@php tests/HelperFunctionsTest.php",
             "@php tests/QueryBuilderSqlGenerationTest.php",
             "@php tests/RecoveryFeatureHttpTest.php",
             "@php tests/SecurityFoundationTest.php",
