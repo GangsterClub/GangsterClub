@@ -38,23 +38,21 @@ class JWTService
     public function authorize(string $jwtToken): array
     {
         try {
-            $payload = $this->jwt->decode($jwtToken);
-        } catch (ExpiredException $e) {
-            return $this->authorizeExpiredToken($e->getPayload());
-        } catch (SignatureInvalidException $e) {
-            return $this->unauthorizedResult('Signature verification failed');
-        } catch (BeforeValidException $e) {
-            return $this->unauthorizedResult('Token cannot yet be used');
-        } catch (UnexpectedValueException $e) {
-            return $this->unauthorizedResult('Invalid access token');
-        }
+            try {
+                $payload = $this->jwt->decode($jwtToken);
+            } catch (ExpiredException $e) {
+                return $this->authorizeExpiredToken($e->getPayload());
+            } catch (SignatureInvalidException $e) {
+                return $this->unauthorizedResult('Signature verification failed');
+            } catch (BeforeValidException $e) {
+                return $this->unauthorizedResult('Token cannot yet be used');
+            }
 
-        $identityResponse = $this->authorizePayloadIdentity($payload);
-        if ($identityResponse !== null) {
-            return $identityResponse;
-        }
+            $identityResponse = $this->authorizePayloadIdentity($payload);
+            if ($identityResponse !== null) {
+                return $identityResponse;
+            }
 
-        try {
             try {
                 $this->jwt->validateClaims($payload);
             } catch (ExpiredException) {
@@ -66,7 +64,7 @@ class JWTService
             $refreshedToken = (bool) $this->jwt->shouldRefresh($payload) === true
                 ? $this->jwt->refresh($payload)
                 : $jwtToken;
-        } catch (UnexpectedValueException $e) {
+        } catch (UnexpectedValueException) {
             return $this->unauthorizedResult('Invalid access token');
         }
 

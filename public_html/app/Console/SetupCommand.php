@@ -85,7 +85,7 @@ final class SetupCommand
         try {
             $bytesWritten = fwrite($handle, $contents);
 
-            if ($bytesWritten === false || $bytesWritten !== strlen($contents)) {
+            if ($bytesWritten !== strlen($contents)) {
                 throw new RuntimeException(
                     'Unable to write the complete .env file.'
                 );
