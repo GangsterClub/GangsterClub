@@ -55,16 +55,14 @@ class JWTService
         }
 
         try {
-            $this->jwt->validateClaims($payload);
-        } catch (ExpiredException) {
-            return $this->authorizeExpiredToken($payload);
-        } catch (BeforeValidException) {
-            return $this->unauthorizedResult('Token cannot yet be used');
-        } catch (UnexpectedValueException) {
-            return $this->unauthorizedResult('Invalid access token');
-        }
+            try {
+                $this->jwt->validateClaims($payload);
+            } catch (ExpiredException) {
+                return $this->authorizeExpiredToken($payload);
+            } catch (BeforeValidException) {
+                return $this->unauthorizedResult('Token cannot yet be used');
+            }
 
-        try {
             $refreshedToken = (bool) $this->jwt->shouldRefresh($payload) === true
                 ? $this->jwt->refresh($payload)
                 : $jwtToken;

@@ -100,15 +100,11 @@ class SessionService extends \SessionHandler
 
         $obsolete = $this->get('_obsolete');
         $expires = $this->get('_expires');
-        if (isset($obsolete) === true && isset($expires) === false) {
-            return false;
+        if (isset($obsolete) === false) {
+            return true;
         }
 
-        if (isset($obsolete) === true && isset($expires) === true && $expires < time()) {
-            return false;
-        }
-
-        return true;
+        return isset($expires) === true && $expires >= time();
     }
 
     protected function preventHijacking(): bool
