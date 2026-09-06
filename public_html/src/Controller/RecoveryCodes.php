@@ -726,10 +726,10 @@ final class RecoveryCodes extends Controller
             'recovery.codes-generated',
             null,
             200,
-            array_merge([
+            [
                 'remainingCount' => count($result->codes),
                 'codes' => $result->codes,
-            ], $this->oneTimeDisplayLabels())
+            ]
         );
     }
 
@@ -834,10 +834,10 @@ final class RecoveryCodes extends Controller
             'recovery.codes-regenerated',
             null,
             200,
-            array_merge([
+            [
                 'remainingCount' => count($result->codes),
                 'codes' => $result->codes,
-            ], $this->oneTimeDisplayLabels())
+            ]
         );
     }
 
@@ -1008,18 +1008,6 @@ final class RecoveryCodes extends Controller
     private function normalizeOtp(string $code): string
     {
         return preg_replace('/\s+/', '', $code) ?? '';
-    }
-
-    private function oneTimeDisplayLabels(): array
-    {
-        return [
-            'displayWarning' => __('recovery.save-codes-warning'),
-            'codesListLabel' => __('recovery.codes-list-label'),
-            'acknowledgementLabel' => __('recovery.saved-codes-acknowledgement'),
-            'activateLabel' => __('recovery.activate'),
-            'unavailableLabel' => __('recovery.codes-unavailable-action'),
-            'cancelLabel' => __('recovery.cancel'),
-        ];
     }
 
     private function expectsJson(Request $request): bool

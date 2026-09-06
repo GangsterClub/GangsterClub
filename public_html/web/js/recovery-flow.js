@@ -149,26 +149,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderCodes = (payload, csrfToken) => {
         const panel = document.querySelector('#recovery-flow-modal .modal-panel');
-        if (!panel) {
-            return;
+        const template = document.getElementById('recovery-codes-presented-template');
+        if (!panel || !(template instanceof HTMLTemplateElement)) {
+            throw new Error('Recovery-code modal template is unavailable.');
         }
 
-        Array.from(panel.children).forEach((child) => {
-            if (child.tagName !== 'HEADER' && !child.matches('[data-modal-status]')) {
-                child.remove();
-            }
-        });
+        const content = template.content.cloneNode(true);
+        const list = content.querySelector('[data-recovery-codes-list]');
+        const warning = content.querySelector('[data-recovery-codes-warning]');
+        const forms = Array.from(content.querySelectorAll('[data-recovery-form]'));
+        const csrfInputs = forms.map((form) =>
+            form.querySelector('input[name="_csrf_token"]')
+        );
+        if (!list || !warning || forms.length !== 3 || csrfInputs.some((input) => !input)) {
+            throw new Error('Recovery-code modal template is incomplete.');
+        }
 
-        const warning = document.createElement('p');
-        warning.className =
-            'my-4 rounded border border-red-400 bg-red-50 p-4 font-bold text-red-900 dark:bg-red-950/30 dark:text-red-100';
-        warning.textContent = payload.displayWarning || '';
-        panel.appendChild(warning);
-
-        const list = document.createElement('ol');
-        list.className =
-            'my-5 grid gap-2 rounded border border-gray-300 p-4 font-mono text-lg sm:grid-cols-2 dark:border-gray-700';
-        list.setAttribute('aria-label', payload.codesListLabel || '');
         payload.codes.forEach((code) => {
             const item = document.createElement('li');
             const codeElement = document.createElement('code');
@@ -176,48 +172,19 @@ document.addEventListener('DOMContentLoaded', () => {
             item.appendChild(codeElement);
             list.appendChild(item);
         });
-        panel.appendChild(list);
 
-        const acknowledgement = document.createElement('form');
-        acknowledgement.method = 'POST';
-        acknowledgement.className = 'space-y-4';
-        acknowledgement.innerHTML =
-            '<input type="hidden" name="_csrf_token">' +
-            '<input type="hidden" name="action" value="acknowledge">' +
-            '<label class="flex items-start gap-2"><input type="checkbox" name="saved_codes" value="1" required>' +
-            '<span></span></label>' +
-            '<button class="btn-primary w-full" type="submit"></button>';
-        acknowledgement.querySelector('input[name="_csrf_token"]').value = csrfToken;
-        acknowledgement.querySelector('span').textContent = payload.acknowledgementLabel || '';
-        acknowledgement.querySelector('button').textContent = payload.activateLabel || '';
-        panel.appendChild(acknowledgement);
-        bindForm(acknowledgement);
+        csrfInputs.forEach((input) => {
+            input.value = csrfToken;
+        });
 
-        const unavailable = document.createElement('form');
-        unavailable.method = 'POST';
-        unavailable.className = 'mt-3';
-        unavailable.innerHTML =
-            '<input type="hidden" name="_csrf_token">' +
-            '<input type="hidden" name="action" value="codes_unavailable">' +
-            '<button class="text-sm underline" type="submit"></button>';
-        unavailable.querySelector('input[name="_csrf_token"]').value = csrfToken;
-        unavailable.querySelector('button').textContent = payload.unavailableLabel || '';
-        panel.appendChild(unavailable);
-        bindForm(unavailable);
+        Array.from(panel.children).forEach((child) => {
+            if (child.tagName !== 'HEADER' && !child.matches('[data-modal-status]')) {
+                child.remove();
+            }
+        });
 
-        const cancel = document.createElement('form');
-        cancel.method = 'POST';
-        cancel.className = 'mt-3';
-        cancel.innerHTML =
-            '<input type="hidden" name="_csrf_token">' +
-            '<input type="hidden" name="action" value="cancel">' +
-            '<button class="btn-secondary w-full" type="submit"></button>';
-        cancel.querySelector('input[name="_csrf_token"]').value = csrfToken;
-        cancel.querySelector('button').textContent = payload.cancelLabel || '';
-        panel.appendChild(cancel);
-        bindForm(cancel);
-
-        warning.setAttribute('tabindex', '-1');
+        panel.appendChild(content);
+        forms.forEach(bindForm);
         warning.focus();
     };
 

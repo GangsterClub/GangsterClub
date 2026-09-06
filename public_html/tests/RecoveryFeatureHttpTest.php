@@ -458,6 +458,18 @@ recoveryAssertTrue(
     'authenticator_code' => '654321',
 ])));
 recoveryAssertSame('recovery_codes_presented_unacknowledged', $payload['state'], 'Initial setup must generate a pending displayed set.');
+recoveryAssertSame(
+    [],
+    array_values(array_intersect([
+        'displayWarning',
+        'codesListLabel',
+        'acknowledgementLabel',
+        'activateLabel',
+        'unavailableLabel',
+        'cancelLabel',
+    ], array_keys($payload))),
+    'The one-time response must not duplicate Twig-owned presentation labels.'
+);
 $initialCodes = array_map('strval', $payload['codes'] ?? []);
 recoveryAssertSame(10, count($initialCodes), 'Initial setup must generate ten codes.');
 recoveryAssertTrue(
@@ -717,13 +729,21 @@ recoveryAssertTrue(
     'Both authenticated and lost-authenticator HTTP routes must remain registered.'
 );
 $flowTemplate = file_get_contents(__DIR__ . '/../src/View/recovery-flow.twig');
+$codesTemplate = file_get_contents(__DIR__ . '/../src/View/partial/recovery-codes-presented.twig');
 $authEntryTemplate = file_get_contents(__DIR__ . '/../src/View/partial/auth-entry.twig');
 recoveryAssertTrue(
-    is_string($flowTemplate)
-    && str_contains($flowTemplate, 'csrf_field()')
-    && str_contains($flowTemplate, 'data-recovery-form')
-    && str_contains($flowTemplate, 'codes_unavailable'),
-    'The modal flow must retain CSRF forms, progressive enhancement hooks, and lost-display recovery.'
+    is_string($flowTemplate) === true
+    && str_contains($flowTemplate, "include 'partial/recovery-codes-presented.twig'") === true
+    && str_contains($flowTemplate, 'recovery-codes-presented-template') === true,
+    'The ordinary and enhanced modal paths must use the canonical recovery-code partial.'
+);
+recoveryAssertTrue(
+    is_string($codesTemplate) === true
+    && substr_count($codesTemplate, 'csrf_field()') === 3
+    && substr_count($codesTemplate, 'data-recovery-form') === 3
+    && str_contains($codesTemplate, 'recovery.save-codes-warning') === true
+    && str_contains($codesTemplate, 'recovery.permanent-lockout-warning') === true,
+    'The canonical partial must retain all protected forms and both recovery-code warnings.'
 );
 recoveryAssertTrue(
     is_string($authEntryTemplate)
@@ -734,12 +754,16 @@ recoveryAssertTrue(
 $enhancementScript = file_get_contents(__DIR__ . '/../web/js/recovery-flow.js');
 $accountTemplate = file_get_contents(__DIR__ . '/../src/View/account.twig');
 recoveryAssertTrue(
-    is_string($enhancementScript)
-    && str_contains($enhancementScript, 'control.disabled = busy')
-    && str_contains($enhancementScript, 'status.focus()')
-    && str_contains($enhancementScript, "Accept: 'application/json'")
-    && str_contains($enhancementScript, '[data-security-modal-form]'),
-    'Progressive enhancement must lock active controls, manage focus, and request structured JSON.'
+    is_string($enhancementScript) === true
+    && str_contains($enhancementScript, 'control.disabled = busy') === true
+    && str_contains($enhancementScript, 'status.focus()') === true
+    && str_contains($enhancementScript, "Accept: 'application/json'") === true
+    && str_contains($enhancementScript, '[data-security-modal-form]') === true
+    && str_contains($enhancementScript, 'template.content.cloneNode(true)') === true
+    && str_contains($enhancementScript, 'codeElement.textContent = String(code)') === true
+    && str_contains($enhancementScript, 'forms.forEach(bindForm)') === true
+    && str_contains($enhancementScript, 'innerHTML') === false,
+    'Progressive enhancement must safely clone the Twig markup, bind its forms, and avoid HTML parsing sinks.'
 );
 recoveryAssertTrue(
     is_string($accountTemplate)
@@ -748,5 +772,50 @@ recoveryAssertTrue(
     && str_contains($accountTemplate, 'recovery-replacement-warning-title'),
     'Account-security dialogs must share in-modal status handling and the polished warning composition.'
 );
+
+$partialTwig = new Twig\Environment(
+    new Twig\Loader\FilesystemLoader(__DIR__ . '/../src/View'),
+    ['autoescape' => 'html']
+);
+$partialTwig->addFunction(new Twig\TwigFunction('__', static fn (string $key): string => match ($key) {
+    'recovery.save-codes-warning' => '<img src=x onerror=alert(1)>',
+    'recovery.permanent-lockout-warning' => '<script>alert(2)</script>',
+    default => $key,
+}));
+$partialTwig->addFunction(new Twig\TwigFunction(
+    'csrf_field',
+    static fn (): Twig\Markup => new Twig\Markup(
+        '<input type="hidden" name="_csrf_token" value="csrf-test-token">',
+        'UTF-8'
+    ),
+    ['is_safe' => ['html']]
+));
+$partialHtml = $partialTwig->render('partial/recovery-codes-presented.twig', [
+    'flow' => ['codes' => ['SAFE-CODE', '<svg onload=alert(3)>']],
+]);
+recoveryAssertTrue(
+    str_contains($partialHtml, '<img src=x onerror=alert(1)>') === false
+    && str_contains($partialHtml, '<script>alert(2)</script>') === false
+    && str_contains($partialHtml, '<svg onload=alert(3)>') === false
+    && str_contains($partialHtml, '&lt;svg onload=alert(3)&gt;') === true,
+    'Twig must escape recovery codes and translated values in the ordinary response.'
+);
+$partialDocument = new DOMDocument();
+$partialDocument->loadHTML('<!doctype html><html><body>' . $partialHtml . '</body></html>');
+$partialXpath = new DOMXPath($partialDocument);
+$forms = $partialXpath->query('//form[@data-recovery-form]');
+recoveryAssertSame(3, $forms->length, 'The canonical state must contain acknowledgement, unavailable, and cancel forms.');
+$expectedActions = ['acknowledge', 'codes_unavailable', 'cancel'];
+foreach ($expectedActions as $index => $expectedAction) {
+    $form = $forms->item($index);
+    recoveryAssertSame('POST', $form?->getAttribute('method'), 'Every canonical recovery-code form must post.');
+    $action = $partialXpath->query('.//input[@name="action"]', $form)->item(0);
+    $csrf = $partialXpath->query('.//input[@name="_csrf_token"]', $form)->item(0);
+    recoveryAssertSame($expectedAction, $action?->getAttribute('value'), 'Canonical form actions must retain their order.');
+    recoveryAssertSame('csrf-test-token', $csrf?->getAttribute('value'), 'Every canonical form must carry the CSRF token.');
+}
+$savedCodes = $partialXpath->query('//input[@name="saved_codes"]')->item(0);
+recoveryAssertSame('1', $savedCodes?->getAttribute('value'), 'Acknowledgement must preserve the saved_codes value.');
+recoveryAssertTrue($savedCodes?->hasAttribute('required') === true, 'Acknowledgement must remain required.');
 
 fwrite(STDOUT, "Recovery Feature HTTP tests passed.\n");
