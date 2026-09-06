@@ -115,17 +115,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (payload.success && Array.isArray(payload.codes)) {
                     renderCodes(payload, payload.csrfToken || csrfToken);
                 } else if (payload.success && payload.redirect) {
-                    let baseUri = document.querySelector("base").href;
-                    baseUri = baseUri.substr(0, baseUri.length-1);
-                    const redirectAllowList = [
-                        baseUri + '/login/recovery',
-                        baseUri + '/account/recovery-codes'
-                    ];
-                    if (redirectAllowList.indexOf(payload.redirect) > -1) {
-                        window.location.assign(payload.redirect);
-                    } else {
-                        window.location.assign('/login');
+                    const configuredBase = new URL(
+                        document.querySelector('base').href,
+                        window.location.href
+                    );
+                    const basePath = configuredBase.pathname.endsWith('/')
+                        ? configuredBase.pathname
+                        : `${configuredBase.pathname}/`;
+                    const appBase = new URL(basePath, window.location.origin);
+                    const recoveryUrl = new URL('login/recovery', appBase).href;
+                    const recoveryCodesUrl = new URL('account/recovery-codes', appBase).href;
+                    const loginUrl = new URL('login', appBase).href;
+                    let redirectTarget = loginUrl;
+
+                    if (payload.redirect === recoveryUrl) {
+                        redirectTarget = recoveryUrl;
+                    } else if (payload.redirect === recoveryCodesUrl) {
+                        redirectTarget = recoveryCodesUrl;
                     }
+
+                    window.location.assign(redirectTarget);
                 }
             } catch (error) {
                 console.error(error);
