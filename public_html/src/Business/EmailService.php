@@ -23,7 +23,7 @@ class EmailService
             $this->mailer->isSMTP();
             $this->mailer->Host = MAIL_HOST;
             $this->mailer->SMTPAuth = true;
-            $this->mailer->Username = MAIL_ADDR;
+            $this->mailer->Username = MAIL_USER;
             $this->mailer->Password = MAIL_PASS;
             $this->mailer->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mailPort = 587;
@@ -35,7 +35,7 @@ class EmailService
             }
 
             $this->mailer->Port = $mailPort;
-            $this->mailer->setFrom(MAIL_ADDR, APP_NAME);
+            $this->mailer->setFrom(MAIL_FROM, APP_NAME);
         } catch (Exception $e) {
             error_log("Mailer Error: {$this->mailer->ErrorInfo}");
         }

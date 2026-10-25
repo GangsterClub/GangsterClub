@@ -9,6 +9,7 @@ use app\Http\Request;
 use app\Http\Response;
 use app\Http\Router;
 use app\Service\AuthService;
+use app\Service\FlashBag;
 
 class Controller
 {
@@ -91,11 +92,21 @@ class Controller
 
     protected function flash(string $bag, string $type, string $message): void
     {
-        $this->application->get(\app\Service\SessionService::class)->flash($bag, $type, $message);
+        $this->flashBag()->add($bag, $type, $message);
     }
 
     protected function consumeFlash(string $bag): array
     {
-        return $this->application->get(\app\Service\SessionService::class)->consumeFlash($bag);
+        return $this->flashBag()->consume($bag);
+    }
+
+    private function flashBag(): FlashBag
+    {
+        $flashBag = $this->application->getOptional(FlashBag::class);
+        if ($flashBag instanceof FlashBag) {
+            return $flashBag;
+        }
+
+        return new FlashBag($this->application->get(\app\Service\SessionService::class));
     }
 }

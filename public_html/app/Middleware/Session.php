@@ -9,6 +9,9 @@ use app\Http\Request;
 use app\Http\Response;
 use app\Service\AuthService;
 use app\Service\CsrfService;
+use app\Service\FlashBag;
+use app\Service\PendingAuthenticationSession;
+use app\Service\SecurityFlowSession;
 use app\Service\SessionService;
 
 class Session
@@ -30,15 +33,22 @@ class Session
     {
         $session = new SessionService($request);
         $this->application->set(\app\Service\SessionService::class, $session);
+        $this->application->set(FlashBag::class, new FlashBag($session));
         $csrfService = new CsrfService($session);
         $this->application->set(\app\Service\CsrfService::class, $csrfService);
+        $pendingAuthentication = new PendingAuthenticationSession($session);
+        $securityFlow = new SecurityFlowSession($session);
+        $this->application->set(PendingAuthenticationSession::class, $pendingAuthentication);
+        $this->application->set(SecurityFlowSession::class, $securityFlow);
         $userRepository = $this->application->get(\src\Data\Repository\UserRepository::class);
         $this->application->set(
             AuthService::class,
             new AuthService(
                 $session,
                 $csrfService,
-                $userRepository
+                $userRepository,
+                $pendingAuthentication,
+                $securityFlow
             )
         );
         ini_set('session.save_handler', 'files');

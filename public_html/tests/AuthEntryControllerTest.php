@@ -44,6 +44,7 @@ use app\Http\Response;
 use app\Http\Router;
 use app\Service\AuthService;
 use app\Service\CsrfService;
+use app\Service\FlashBag;
 use app\Service\YamlCacheService;
 use src\Business\AuthenticationRateLimitContext;
 use src\Business\AuthEntryService;
@@ -74,11 +75,18 @@ require_once __DIR__ . '/../app/Http/Request.php';
 require_once __DIR__ . '/../app/Http/Response.php';
 require_once __DIR__ . '/../app/Http/Router.php';
 require_once __DIR__ . '/../app/Service/SessionService.php';
+require_once __DIR__ . '/../app/Service/FlashBag.php';
 require_once __DIR__ . '/../app/Service/CsrfService.php';
 require_once __DIR__ . '/../app/Service/YamlCacheService.php';
 require_once __DIR__ . '/../app/Service/AuthSessionKeys.php';
+require_once __DIR__ . '/../app/Service/PendingAuthenticationSession.php';
+require_once __DIR__ . '/../app/Service/SecurityFlowSession.php';
 require_once __DIR__ . '/../app/Service/AuthService.php';
 require_once __DIR__ . '/../src/Controller/Controller.php';
+require_once __DIR__ . '/../src/Controller/AuthEntry/RegistrationFormState.php';
+require_once __DIR__ . '/../src/Controller/AuthEntry/AuthEntryResultResponder.php';
+require_once __DIR__ . '/../src/Controller/AuthEntry/AuthEntryRequestHandler.php';
+require_once __DIR__ . '/../src/Controller/AuthEntry/AuthEntryViewModelFactory.php';
 require_once __DIR__ . '/../src/Controller/AuthEntryController.php';
 require_once __DIR__ . '/../src/Business/AuthEntryService.php';
 require_once __DIR__ . '/../src/Business/AuthenticationRateLimitBucketDimension.php';
@@ -101,9 +109,18 @@ final class AuthEntryTestSession extends \app\Service\SessionService
     public function set(string $key, mixed $value): void
     {
         $this->values[$key] = $this->sanitizeValue($value);
+        if ($key === '_flash_messages') {
+            $this->flashes = $this->values[$key];
+        }
     }
 
-    public function remove(string $key): void { unset($this->values[$key]); }
+    public function remove(string $key): void
+    {
+        unset($this->values[$key]);
+        if ($key === '_flash_messages') {
+            $this->flashes = [];
+        }
+    }
 
     private function sanitizeValue(mixed $value): mixed
     {
@@ -247,9 +264,9 @@ function runController(string $mode, array $post, array $result): array
 (new Router())->load(DOC_ROOT . '/src/resources/routes.yaml');
 $unsupportedFlashRejected = false;
 try {
-    (new ReflectionClass(\app\Service\SessionService::class))
-        ->newInstanceWithoutConstructor()
-        ->flash('login', 'unsupported', 'message');
+    $session = (new ReflectionClass(\app\Service\SessionService::class))
+        ->newInstanceWithoutConstructor();
+    (new FlashBag($session))->add('login', 'unsupported', 'message');
 } catch (InvalidArgumentException) {
     $unsupportedFlashRejected = true;
 }
@@ -312,8 +329,9 @@ assertContainsValue('login.otp-email-sent', $flashes['register']['success'] ?? [
 
 
 $app = new AuthEntryTestApplication();
-$app->auth->setPendingLoginEmail('pending@example.test');
-$app->auth->setPendingUserId(null);
+$pending = new \app\Service\PendingAuthenticationSession($app->session);
+$pending->setEmail('pending@example.test');
+$pending->setUserId(null);
 $response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'register');
 assertSameValue(200, $response->getStatusCode(), 'Pending registration OTP page should render successfully.');
 assertSameValue(true, \Twig\Environment::$lastVars['awaitingOtp'] ?? null, 'Pending email-only registration should expose awaitingOtp even without a pending user id.');
@@ -338,9 +356,10 @@ assertSameValue([['verify', 'login', '123456']], $calls, 'Verify should concaten
 assertContainsValue('success-authenticated', $flashes['account']['success'] ?? [], 'Verify success should flash account success.');
 
 $app = new AuthEntryTestApplication();
-$app->auth->setPendingLoginEmail('recovery@example.test');
-$app->auth->setPendingUserId(42);
-$app->auth->setLoginAuthenticatorRequired(true);
+$pending = new \app\Service\PendingAuthenticationSession($app->session);
+$pending->setEmail('recovery@example.test');
+$pending->setUserId(42);
+$pending->setAuthenticatorRequired(true);
 $service = new FakeAuthEntryService();
 $service->queue[] = [
     'status' => AuthEntryService::STATUS_AUTHENTICATED,
@@ -366,9 +385,10 @@ assertContainsValue(
 );
 
 $app = new AuthEntryTestApplication();
-$app->auth->setPendingLoginEmail('recovery@example.test');
-$app->auth->setPendingUserId(42);
-$app->auth->setLoginAuthenticatorRequired(true);
+$pending = new \app\Service\PendingAuthenticationSession($app->session);
+$pending->setEmail('recovery@example.test');
+$pending->setUserId(42);
+$pending->setAuthenticatorRequired(true);
 $service = new FakeAuthEntryService();
 $service->queue[] = ['status' => AuthEntryService::STATUS_INVALID_RECOVERY_CODE];
 $response = (new TestAuthEntryController($app, $service))->handle(
@@ -414,9 +434,10 @@ assertResponseNotContains(
 );
 
 $app = new AuthEntryTestApplication();
-$app->auth->setPendingLoginEmail('recovery@example.test');
-$app->auth->setPendingUserId(42);
-$app->auth->setLoginAuthenticatorRequired(true);
+$pending = new \app\Service\PendingAuthenticationSession($app->session);
+$pending->setEmail('recovery@example.test');
+$pending->setUserId(42);
+$pending->setAuthenticatorRequired(true);
 $app->recoveryFeature->activeSetId = null;
 $service = new FakeAuthEntryService();
 $response = (new TestAuthEntryController($app, $service))->handle(new AuthEntryTestRequest([]), 'login');

@@ -14,11 +14,17 @@ use app\Service\SessionService;
 use src\Business\AccountService;
 use src\Business\AuthenticationChallengeService;
 use src\Business\AuthenticationRateLimitService;
+use src\Business\AuthenticationRateLimitKeyFactory;
+use src\Business\DatabaseRetryClassifier;
 use src\Business\AuthEntryService;
+use src\Business\AuthEntryOtpService;
 use src\Business\EmailService;
 use src\Business\AuthenticatorTOTPService;
+use src\Business\AuthenticatorVerificationThrottle;
 use src\Business\EmailTOTPService;
 use src\Business\RecoveryCodeCodec;
+use src\Business\RecoveryCodeGenerator;
+use src\Business\RecoveryCodeRateLimiter;
 use src\Business\RecoveryCodeService;
 use src\Business\RecoveryFeatureService;
 use src\Business\RecoveryFlowService;
@@ -29,9 +35,12 @@ use src\Data\Connection;
 use src\Data\Repository\AuthenticationChallengeRepository;
 use src\Data\Repository\AuthenticationRateLimitRepository;
 use src\Data\Repository\EmailTOTPRepository;
-use src\Data\Repository\RecoveryCodeRepository;
+use src\Data\Repository\RecoveryCodeHashRepository;
+use src\Data\Repository\RecoveryCodeSetRepository;
+use src\Data\Repository\UserRecoveryCodeStateRepository;
 use src\Data\Repository\SecurityAuditEventRepository;
 use src\Data\Repository\UserEmailChangeRepository;
+use src\Data\Repository\UserLockRepository;
 use src\Data\Repository\UserRepository;
 use src\Data\Repository\UserAuthenticatorTOTPRepository;
 
@@ -80,13 +89,26 @@ final class DomainServiceProvider implements ServiceProvider
         $container->set(\src\Data\Repository\SecurityAuditEventRepository::class, fn(): SecurityAuditEventRepository => new SecurityAuditEventRepository(
             $container->get(\src\Data\Connection::class)
         ));
-        $container->set(\src\Data\Repository\RecoveryCodeRepository::class, fn(): RecoveryCodeRepository => new RecoveryCodeRepository(
+        $container->set(\src\Data\Repository\RecoveryCodeSetRepository::class, fn(): RecoveryCodeSetRepository => new RecoveryCodeSetRepository(
+            $container->get(\src\Data\Connection::class)
+        ));
+        $container->set(\src\Data\Repository\RecoveryCodeHashRepository::class, fn(): RecoveryCodeHashRepository => new RecoveryCodeHashRepository(
+            $container->get(\src\Data\Connection::class)
+        ));
+        $container->set(\src\Data\Repository\UserRecoveryCodeStateRepository::class, fn(): UserRecoveryCodeStateRepository => new UserRecoveryCodeStateRepository(
+            $container->get(\src\Data\Connection::class)
+        ));
+        $container->set(\src\Data\Repository\UserLockRepository::class, fn(): UserLockRepository => new UserLockRepository(
             $container->get(\src\Data\Connection::class)
         ));
     }
 
     private function registerSecurityServices(Container $container, SecuritySecretDecoder $secrets): void
     {
+        $container->set(\src\Business\AuthenticationRateLimitKeyFactory::class, fn(): AuthenticationRateLimitKeyFactory => new AuthenticationRateLimitKeyFactory(
+            $secrets->getRequiredSecret('AUTH_RATE_LIMIT_PEPPER')
+        ));
+        $container->set(\src\Business\DatabaseRetryClassifier::class, fn(): DatabaseRetryClassifier => new DatabaseRetryClassifier());
         $container->set(\src\Business\AuthenticationChallengeService::class, fn(): AuthenticationChallengeService => new AuthenticationChallengeService(
             $container->get(\src\Data\Connection::class),
             $container->get(\src\Data\Repository\AuthenticationChallengeRepository::class),
@@ -95,7 +117,10 @@ final class DomainServiceProvider implements ServiceProvider
         $container->set(\src\Business\AuthenticationRateLimitService::class, fn(): AuthenticationRateLimitService => new AuthenticationRateLimitService(
             $container->get(\src\Data\Connection::class),
             $container->get(\src\Data\Repository\AuthenticationRateLimitRepository::class),
-            $secrets->getRequiredSecret('AUTH_RATE_LIMIT_PEPPER')
+            $secrets->getRequiredSecret('AUTH_RATE_LIMIT_PEPPER'),
+            null,
+            $container->get(\src\Business\AuthenticationRateLimitKeyFactory::class),
+            $container->get(\src\Business\DatabaseRetryClassifier::class)
         ));
         $container->set(\src\Business\SecurityAuditService::class, fn(): SecurityAuditService => new SecurityAuditService(
             $container->get(\src\Data\Repository\SecurityAuditEventRepository::class)
@@ -103,30 +128,51 @@ final class DomainServiceProvider implements ServiceProvider
         $container->set(\src\Business\RecoveryCodeCodec::class, fn(): RecoveryCodeCodec => new RecoveryCodeCodec(
             $secrets->getRequiredSecret('RECOVERY_CODE_PEPPER')
         ));
+        $container->set(\src\Business\RecoveryCodeGenerator::class, fn(): RecoveryCodeGenerator => new RecoveryCodeGenerator(
+            $container->get(\src\Business\RecoveryCodeCodec::class)
+        ));
+        $container->set(\src\Business\RecoveryCodeRateLimiter::class, fn(): RecoveryCodeRateLimiter => new RecoveryCodeRateLimiter(
+            $container->get(\src\Business\AuthenticationRateLimitService::class)
+        ));
         $container->set(\src\Business\RecoveryCodeService::class, fn(): RecoveryCodeService => new RecoveryCodeService(
             $container->get(\src\Data\Connection::class),
-            $container->get(\src\Data\Repository\RecoveryCodeRepository::class),
+            $container->get(\src\Data\Repository\RecoveryCodeSetRepository::class),
+            $container->get(\src\Data\Repository\RecoveryCodeHashRepository::class),
+            $container->get(\src\Data\Repository\UserRecoveryCodeStateRepository::class),
+            $container->get(\src\Data\Repository\UserRepository::class),
+            $container->get(\src\Data\Repository\UserLockRepository::class),
+            $container->get(\src\Data\Repository\UserAuthenticatorTOTPRepository::class),
             $container->get(\src\Business\RecoveryCodeCodec::class),
             $container->get(\src\Business\AuthenticationRateLimitService::class),
-            $container->get(\src\Business\SecurityAuditService::class)
+            $container->get(\src\Business\SecurityAuditService::class),
+            null,
+            $container->get(\src\Business\RecoveryCodeGenerator::class),
+            $container->get(\src\Business\RecoveryCodeRateLimiter::class)
         ));
         $container->set(\src\Business\RecoveryFeatureService::class, fn(): RecoveryFeatureService => new RecoveryFeatureService(
             $container->get(\src\Data\Connection::class),
             $container->get(\src\Business\AuthenticationChallengeService::class),
             $container->get(\src\Business\RecoveryCodeService::class),
-            $container->get(\src\Data\Repository\RecoveryCodeRepository::class),
+            $container->get(\src\Data\Repository\RecoveryCodeSetRepository::class),
+            $container->get(\src\Data\Repository\RecoveryCodeHashRepository::class),
+            $container->get(\src\Data\Repository\UserRecoveryCodeStateRepository::class),
             $container->get(\src\Data\Repository\UserAuthenticatorTOTPRepository::class),
             $container->get(\src\Data\Repository\UserRepository::class),
+            $container->get(\src\Data\Repository\UserLockRepository::class),
             $container->get(\src\Business\SecurityAuditService::class)
         ));
     }
 
     private function registerAuthenticationServices(Container $container): void
     {
+        $container->set(\src\Business\AuthenticatorVerificationThrottle::class, fn(): AuthenticatorVerificationThrottle => new AuthenticatorVerificationThrottle(
+            $container->get(\src\Business\AuthenticationRateLimitService::class)
+        ));
         $container->set(\src\Business\AuthenticatorTOTPService::class, fn(): AuthenticatorTOTPService => new AuthenticatorTOTPService(
             $container->get(\src\Business\TOTPService::class),
             $container->get(\src\Data\Repository\UserAuthenticatorTOTPRepository::class),
-            $container->get(\src\Business\AuthenticationRateLimitService::class)
+            $container->get(\src\Business\AuthenticationRateLimitService::class),
+            $container->get(\src\Business\AuthenticatorVerificationThrottle::class)
         ));
         $container->set(\src\Business\RecoveryFlowService::class, fn(): RecoveryFlowService => new RecoveryFlowService(
             $container->get(\src\Business\AuthenticationChallengeService::class),
@@ -136,6 +182,12 @@ final class DomainServiceProvider implements ServiceProvider
             $container->get(\src\Business\TOTPService::class),
             $container->get(\src\Data\Repository\EmailTOTPRepository::class),
             $container->get(\src\Business\AuthenticationRateLimitService::class)
+        ));
+        $container->set(\src\Business\AuthEntryOtpService::class, fn(): AuthEntryOtpService => new AuthEntryOtpService(
+            $container->get(\src\Business\EmailTOTPService::class),
+            $container->get(\src\Business\TOTPService::class),
+            $container->get(\src\Business\EmailService::class),
+            $container->get(\app\Service\SessionService::class)
         ));
         $container->set(\app\Service\JWT::class, fn(): JWT => new JWT());
         $container->set(\app\Service\JWTService::class, fn(): JWTService => new JWTService(
@@ -150,7 +202,9 @@ final class DomainServiceProvider implements ServiceProvider
             $container->get(\src\Business\TOTPService::class),
             $container->get(\src\Business\EmailService::class),
             $container->get(\app\Service\SessionService::class),
-            $container->get(\src\Business\RecoveryCodeService::class)
+            $container->get(\src\Business\RecoveryCodeService::class),
+            $container->get(\app\Service\PendingAuthenticationSession::class),
+            $container->get(\src\Business\AuthEntryOtpService::class)
         ));
     }
 }

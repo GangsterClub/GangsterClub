@@ -6,6 +6,11 @@ namespace src\Data;
 
 use InvalidArgumentException;
 
+/**
+ * Fluent query API whose cohesive surface intentionally spans read and write operations.
+ *
+ * @SuppressWarnings(PHPMD.TooManyMethods)
+ */
 class QueryBuilder
 {
     private const IDENTIFIER_PATTERN = '/^[A-Za-z_][A-Za-z0-9_]*$/';

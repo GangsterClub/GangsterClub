@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace src\Business;
 
 use src\Data\Connection;
-use src\Data\Repository\RecoveryCodeRepository;
+use src\Data\Repository\RecoveryCodeHashRepository;
+use src\Data\Repository\RecoveryCodeSetRepository;
+use src\Data\Repository\UserRecoveryCodeStateRepository;
 use src\Data\Repository\UserAuthenticatorTOTPRepository;
 use src\Data\Repository\UserRepository;
+use src\Data\Repository\UserLockRepository;
 
 class RecoveryFeatureService
 {
@@ -19,9 +22,12 @@ class RecoveryFeatureService
         private readonly Connection $connection,
         private readonly AuthenticationChallengeService $challengeService,
         private readonly RecoveryCodeService $recoveryCodeService,
-        private readonly RecoveryCodeRepository $recoveryCodeRepository,
+        private readonly RecoveryCodeSetRepository $recoveryCodeSets,
+        private readonly RecoveryCodeHashRepository $recoveryCodes,
+        private readonly UserRecoveryCodeStateRepository $recoveryState,
         private readonly UserAuthenticatorTOTPRepository $authenticatorRepository,
         private readonly UserRepository $userRepository,
+        private readonly UserLockRepository $userLocks,
         private readonly SecurityAuditService $auditService
     ) {
     }
@@ -34,12 +40,16 @@ class RecoveryFeatureService
 
     public function getActiveRecoverySetId(int $userId): ?int
     {
-        return $this->recoveryCodeRepository->getActiveSetId($userId);
+        $setId = $this->recoveryState->getActiveSetId($userId);
+        return $setId !== null && $this->recoveryCodeSets->findActive($setId, $userId) !== false
+            ? $setId
+            : null;
     }
 
     public function getUnusedRecoveryCodeCount(int $userId): int
     {
-        return $this->recoveryCodeRepository->countActiveUnused($userId);
+        $setId = $this->getActiveRecoverySetId($userId);
+        return $setId === null ? 0 : $this->recoveryCodes->countUnused($setId);
     }
 
     public function completeAcknowledgedFlow(
@@ -152,7 +162,7 @@ class RecoveryFeatureService
             $challengeToken,
             $sessionBinding
         ): bool {
-            if ($this->recoveryCodeRepository->lockUser($userId) === false
+            if ($this->userLocks->lock($userId) === false
                 || $this->authenticatorRepository->findByUserId($userId) !== false
             ) {
                 return false;
@@ -280,7 +290,7 @@ class RecoveryFeatureService
             $challengeToken,
             $sessionBinding
         ): ?int {
-            if ($this->recoveryCodeRepository->lockUser($userId) === false) {
+            if ($this->userLocks->lock($userId) === false) {
                 return null;
             }
 
@@ -343,16 +353,16 @@ class RecoveryFeatureService
     public function disableAuthenticatorAndRecoveryCodes(int $userId): bool
     {
         return $this->connection->transaction(function () use ($userId): bool {
-            if ($this->recoveryCodeRepository->lockUser($userId) === false) {
+            if ($this->userLocks->lock($userId) === false) {
                 return false;
             }
 
             $now = date('Y-m-d H:i:s');
-            $activeSet = $this->recoveryCodeRepository->findActiveSetForUpdate($userId);
+            $activeSet = $this->findActiveSetForUpdate($userId);
 
             if (
                 $activeSet !== false
-                && $this->recoveryCodeRepository->invalidateSet(
+                && $this->recoveryCodeSets->invalidate(
                     (int) $activeSet->id,
                     $now
                 ) === false
@@ -362,7 +372,7 @@ class RecoveryFeatureService
                 );
             }
 
-            if ($this->recoveryCodeRepository->clearActiveSet($userId, $now) === false) {
+            if ($this->recoveryState->clearActiveSet($userId, $now) === false) {
                 throw new \RuntimeException(
                     'Unable to clear recovery-code state during authenticator removal.'
                 );
@@ -383,5 +393,20 @@ class RecoveryFeatureService
 
             return true;
         });
+    }
+
+    private function findActiveSetForUpdate(int $userId): object|false
+    {
+        $setId = $this->recoveryState->getActiveSetId($userId, true);
+        if ($setId === null) {
+            return false;
+        }
+        $set = $this->recoveryCodeSets->findActive($setId, $userId, true);
+        $authenticator = $this->authenticatorRepository->findByUserIdForUpdate($userId);
+        return $set !== false
+            && $authenticator !== false
+            && (int) $authenticator->generation === (int) $set->authenticator_generation
+                ? $set
+                : false;
     }
 }

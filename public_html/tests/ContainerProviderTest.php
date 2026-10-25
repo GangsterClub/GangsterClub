@@ -178,14 +178,20 @@ $expectedIds = [
     \src\Data\Repository\AuthenticationChallengeRepository::class,
     \src\Data\Repository\AuthenticationRateLimitRepository::class,
     \src\Data\Repository\SecurityAuditEventRepository::class,
-    \src\Data\Repository\RecoveryCodeRepository::class,
+    \src\Data\Repository\RecoveryCodeSetRepository::class,
+    \src\Data\Repository\RecoveryCodeHashRepository::class,
+    \src\Data\Repository\UserRecoveryCodeStateRepository::class,
+    \src\Data\Repository\UserLockRepository::class,
     \src\Business\AuthenticationChallengeService::class,
     \src\Business\AuthenticationRateLimitService::class,
     \src\Business\SecurityAuditService::class,
     \src\Business\RecoveryCodeCodec::class,
+    \src\Business\RecoveryCodeGenerator::class,
+    \src\Business\RecoveryCodeRateLimiter::class,
     \src\Business\RecoveryCodeService::class,
     \src\Business\RecoveryFeatureService::class,
     \src\Business\RecoveryFlowService::class,
+    \src\Business\AuthEntryOtpService::class,
     \src\Business\AuthenticatorTOTPService::class,
     \src\Business\EmailTOTPService::class,
     \app\Service\JWT::class,
@@ -205,6 +211,10 @@ $domainServices->set(
 $domainServices->set(
     \app\Service\AuthService::class,
     containerProviderInstanceWithoutConstructor(AuthService::class)
+);
+$domainServices->set(
+    \app\Service\PendingAuthenticationSession::class,
+    containerProviderInstanceWithoutConstructor(\app\Service\PendingAuthenticationSession::class)
 );
 $domainServices->set(
     \src\Business\UserService::class,

@@ -12,11 +12,15 @@ class MigrationDataPreserver
 {
     private PDO $pdo;
 
-    private string $snapshotDirectory;
+    private MigrationSnapshotStore $snapshotStore;
+    private MigrationTableRestorer $tableRestorer;
 
-    private string $snapshotFile;
-
-    public function __construct(Connection $connection, ?string $snapshotDirectory = null)
+    public function __construct(
+        Connection $connection,
+        ?string $snapshotDirectory = null,
+        ?MigrationSnapshotStore $snapshotStore = null,
+        ?MigrationTableRestorer $tableRestorer = null
+    )
     {
         $pdo = $connection->getConnection();
         if ($pdo === null) {
@@ -25,19 +29,15 @@ class MigrationDataPreserver
 
         $this->pdo = $pdo;
         $baseDirectory = $snapshotDirectory ?? dirname(__DIR__) . '/storage/tmp/migrations';
-        $this->snapshotDirectory = rtrim($baseDirectory, DIRECTORY_SEPARATOR);
-        $this->snapshotFile = $this->snapshotDirectory . '/latest_snapshot.json';
-
-        if (is_dir($this->snapshotDirectory) === false) {
-            mkdir($this->snapshotDirectory, 0770, true);
-        }
+        $this->snapshotStore = $snapshotStore ?? new MigrationSnapshotStore($baseDirectory);
+        $this->tableRestorer = $tableRestorer ?? new MigrationTableRestorer($pdo);
     }
 
     public function backup(array $tables): bool
     {
         $tables = $this->normaliseTables($tables);
         if ($tables === []) {
-            $this->deleteSnapshot();
+            $this->snapshotStore->delete();
             return false;
         }
 
@@ -57,28 +57,28 @@ class MigrationDataPreserver
         }
 
         if ($payload['tables'] === []) {
-            $this->deleteSnapshot();
+            $this->snapshotStore->delete();
             return false;
         }
 
-        $this->writeSnapshot($payload);
+        $this->snapshotStore->write($payload);
         return true;
     }
 
     public function restore(?array $allowedTables = null): void
     {
-        if (is_file($this->snapshotFile) === false) {
+        if ($this->snapshotStore->exists() === false) {
             return;
         }
 
-        $payload = json_decode((string)file_get_contents($this->snapshotFile), true);
-        if (json_last_error() !== JSON_ERROR_NONE || isset($payload['tables']) === false) {
-            $this->deleteSnapshot();
+        $payload = $this->snapshotStore->read();
+        if ($payload === null || isset($payload['tables']) === false) {
+            $this->snapshotStore->delete();
             return;
         }
 
         if ($allowedTables === null) {
-            $this->deleteSnapshot();
+            $this->snapshotStore->delete();
             return;
         }
 
@@ -94,101 +94,22 @@ class MigrationDataPreserver
                 continue;
             }
 
-            $this->restoreTableRows($table, $rows);
+            $this->tableRestorer->restore($table, $rows);
         }
 
-        $this->deleteSnapshot();
+        $this->snapshotStore->delete();
     }
 
     public function hasSnapshot(): bool
     {
-        return is_file($this->snapshotFile);
-    }
-
-    private function restoreTableRows(string $table, array $rows): void
-    {
-        if ($rows === []) {
-            return;
-        }
-
-        if ($this->isValidIdentifier($table) === false) {
-            return;
-        }
-
-        $columns = $this->describeTable($table);
-        if ($columns === []) {
-            return;
-        }
-
-        $this->pdo->beginTransaction();
-        try {
-            foreach ($rows as $row) {
-                $this->insertRow($table, $columns, $row);
-            }
-            $this->pdo->commit();
-        } catch (\Throwable $throwable) {
-            $this->pdo->rollBack();
-            throw $throwable;
-        }
-    }
-
-    private function insertRow(string $table, array $tableColumns, array $row): void
-    {
-        if ($this->isValidIdentifier($table) === false) {
-            return;
-        }
-
-        $tableColumns = array_values(array_filter($tableColumns, [$this, 'isValidIdentifier']));
-        if ($tableColumns === []) {
-            return;
-        }
-
-        $insertColumns = array_values(array_intersect($tableColumns, array_keys($row)));
-        if ($insertColumns === []) {
-            return;
-        }
-
-        $quotedColumns = implode(', ', array_map([$this, 'quoteIdentifier'], $insertColumns));
-        $placeholders = implode(', ', array_fill(0, count($insertColumns), '?'));
-        $sql = sprintf(
-            'INSERT INTO %s (%s) VALUES (%s)',
-            $this->quoteIdentifier($table),
-            $quotedColumns,
-            $placeholders
-        );
-
-        $statement = $this->pdo->prepare($sql);
-        $values = [];
-        foreach ($insertColumns as $column) {
-            $values[] = $row[$column] ?? null;
-        }
-
-        $statement->execute($values);
+        return $this->snapshotStore->exists();
     }
 
     private function fetchTableData(string $table): array
     {
-        $statement = $this->pdo->query('SELECT * FROM ' . $this->quoteIdentifier($table));
+        $statement = $this->pdo->query('SELECT * FROM `' . str_replace('`', '``', $table) . '`');
         $data = $statement->fetchAll(PDO::FETCH_ASSOC);
         return $data === false ? [] : $data;
-    }
-
-    private function describeTable(string $table): array
-    {
-        $statement = $this->pdo->query('DESCRIBE ' . $this->quoteIdentifier($table));
-        $columns = [];
-        foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $column) {
-            if (isset($column['Field']) === true) {
-                $columns[] = $column['Field'];
-            }
-        }
-
-        return $columns;
-    }
-
-    private function quoteIdentifier(string $identifier): string
-    {
-        return '`' . str_replace('`', '``', $identifier) . '`';
     }
 
     private function tableExists(string $table): bool
@@ -208,20 +129,5 @@ class MigrationDataPreserver
     private function isValidIdentifier(string $identifier): bool
     {
         return preg_match('/^[A-Za-z0-9_]+$/', $identifier) === 1;
-    }
-
-    private function writeSnapshot(array $payload): void
-    {
-        file_put_contents(
-            $this->snapshotFile,
-            json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
-        );
-    }
-
-    private function deleteSnapshot(): void
-    {
-        if (is_file($this->snapshotFile) === true) {
-            unlink($this->snapshotFile);
-        }
     }
 }

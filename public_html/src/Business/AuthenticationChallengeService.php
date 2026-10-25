@@ -150,47 +150,55 @@ class AuthenticationChallengeService
             throw new \DomainException('The requested authentication challenge transition is not allowed.');
         }
 
-        return $this->connection->transaction(function () use (
+        return $this->connection->transaction(fn (): ?object => $this->transitionLocked(
             $rawToken,
             $sessionId,
             $purpose,
             $expectedState,
             $nextState
-        ): ?object {
-            $record = $this->repository->findBoundForUpdate(
-                $this->hashToken($rawToken),
-                $this->hashSession($sessionId)
-            );
-            if ($record === false
-                || $record->purpose !== $purpose
-                || $record->state !== $expectedState
-                || $this->isActive($record) === false
-            ) {
-                return null;
-            }
+        ));
+    }
 
-            $now = $this->now();
-            $reauthenticatedAt = $nextState === 'freshly_reauthenticated'
-                ? $this->format($now)
-                : null;
-            $completedAt = in_array($nextState, ['completed', 'replacement_completed'], true)
-                ? $this->format($now)
-                : null;
-            if ($this->repository->transition(
-                (int) $record->id,
-                $expectedState,
-                $nextState,
-                $this->format($now),
-                $reauthenticatedAt,
-                $completedAt
-            ) === false) {
-                return null;
-            }
+    private function transitionLocked(
+        string $rawToken,
+        string $sessionId,
+        string $purpose,
+        string $expectedState,
+        string $nextState
+    ): ?object {
+        $record = $this->repository->findBoundForUpdate(
+            $this->hashToken($rawToken),
+            $this->hashSession($sessionId)
+        );
+        if ($record === false
+            || $record->purpose !== $purpose
+            || $record->state !== $expectedState
+            || $this->isActive($record) === false
+        ) {
+            return null;
+        }
 
-            $bound = $this->repository->findBound($this->hashToken($rawToken), $this->hashSession($sessionId));
+        $now = $this->now();
+        $reauthenticatedAt = $nextState === 'freshly_reauthenticated' ? $this->format($now) : null;
+        $completedAt = in_array($nextState, ['completed', 'replacement_completed'], true)
+            ? $this->format($now)
+            : null;
+        if ($this->repository->transition(
+            (int) $record->id,
+            $expectedState,
+            $nextState,
+            $this->format($now),
+            $reauthenticatedAt,
+            $completedAt
+        ) === false) {
+            return null;
+        }
 
-            return $bound === false ? null : $bound;
-        });
+        $bound = $this->repository->findBound(
+            $this->hashToken($rawToken),
+            $this->hashSession($sessionId)
+        );
+        return $bound === false ? null : $bound;
     }
 
     public function cancel(string $rawToken, string $sessionId, string $purpose): bool

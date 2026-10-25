@@ -9,23 +9,26 @@ use src\Data\Repository\AuthenticationRateLimitRepository;
 
 class AuthenticationRateLimitService
 {
-    private const HASH_DOMAIN = 'gco-auth-rate-limit:v1';
     private const MAX_TRANSACTION_ATTEMPTS = 3;
-    private const MARIADB_DUPLICATE_ENTRY = 1062;
-    private const MARIADB_LOCK_WAIT_TIMEOUT = 1205;
-    private const MARIADB_DEADLOCK = 1213;
     private const MAX_BACKOFF_MULTIPLIER = 16;
 
     public function __construct(
         private readonly Connection $connection,
         private readonly AuthenticationRateLimitRepository $repository,
         private readonly string $pepper,
-        private readonly ?\Closure $clock = null
+        private readonly ?\Closure $clock = null,
+        ?AuthenticationRateLimitKeyFactory $keyFactory = null,
+        ?DatabaseRetryClassifier $retryClassifier = null
     ) {
         if (strlen($pepper) < 32) {
             throw new \InvalidArgumentException('The rate-limit pepper must contain at least 32 bytes.');
         }
+        $this->keyFactory = $keyFactory ?? new AuthenticationRateLimitKeyFactory($pepper);
+        $this->retryClassifier = $retryClassifier ?? new DatabaseRetryClassifier();
     }
+
+    private readonly AuthenticationRateLimitKeyFactory $keyFactory;
+    private readonly DatabaseRetryClassifier $retryClassifier;
 
     /**
      * @param array<string, RateLimitPolicy> $policies
@@ -36,8 +39,8 @@ class AuthenticationRateLimitService
         AuthenticationRateLimitPurpose $purpose,
         array $policies
     ): RateLimitDecision {
-        $buckets = $this->deriveBuckets($context, $action, $purpose);
-        $persistencePurpose = $this->persistencePurpose($action, $purpose);
+        $buckets = $this->keyFactory->buckets($context, $action, $purpose);
+        $persistencePurpose = $this->keyFactory->persistencePurpose($action, $purpose);
 
         for ($attempt = 1; $attempt <= self::MAX_TRANSACTION_ATTEMPTS; ++$attempt) {
             try {
@@ -47,8 +50,8 @@ class AuthenticationRateLimitService
                     $policies
                 );
             } catch (\PDOException $exception) {
-                $retryable = $this->isUniqueConstraintViolation($exception)
-                    || $this->isRetryableTransactionFailure($exception);
+                $retryable = $this->retryClassifier->isUniqueConstraintViolation($exception)
+                    || $this->retryClassifier->isRetryableTransactionFailure($exception);
 
                 if ($attempt >= self::MAX_TRANSACTION_ATTEMPTS || $retryable === false) {
                     throw $exception;
@@ -73,8 +76,8 @@ class AuthenticationRateLimitService
         AuthenticationRateLimitAction $action,
         AuthenticationRateLimitPurpose $purpose
     ): void {
-        $buckets = $this->deriveBuckets($context, $action, $purpose);
-        $persistencePurpose = $this->persistencePurpose($action, $purpose);
+        $buckets = $this->keyFactory->buckets($context, $action, $purpose);
+        $persistencePurpose = $this->keyFactory->persistencePurpose($action, $purpose);
         $resetDimensions = [
             AuthenticationRateLimitBucketDimension::ACCOUNT->value,
             AuthenticationRateLimitBucketDimension::SESSION->value,
@@ -97,7 +100,7 @@ class AuthenticationRateLimitService
                 return;
             } catch (\PDOException $exception) {
                 if ($attempt >= self::MAX_TRANSACTION_ATTEMPTS
-                    || $this->isRetryableTransactionFailure($exception) === false
+                    || $this->retryClassifier->isRetryableTransactionFailure($exception) === false
                 ) {
                     throw $exception;
                 }
@@ -255,72 +258,6 @@ class AuthenticationRateLimitService
             max(0, $policy->maximumAttempts - $attemptCount),
             null
         );
-    }
-
-    /** @return array<int, array{dimension: string, hash: string}> */
-    private function deriveBuckets(
-        AuthenticationRateLimitContext $context,
-        AuthenticationRateLimitAction $action,
-        AuthenticationRateLimitPurpose $purpose
-    ): array {
-        $buckets = [];
-        foreach ($context->dimensionValues() as $dimension => $canonicalIdentifier) {
-            $material = implode("\0", [
-                self::HASH_DOMAIN,
-                'action=' . $action->value,
-                'purpose=' . $purpose->value,
-                'dimension=' . $dimension,
-                'identifier=' . $canonicalIdentifier,
-            ]);
-            $buckets[] = [
-                'dimension' => $dimension,
-                'hash' => hash_hmac('sha256', $material, $this->pepper),
-            ];
-        }
-
-        $dimensionOrder = array_flip([
-            AuthenticationRateLimitBucketDimension::ACCOUNT->value,
-            AuthenticationRateLimitBucketDimension::IP_ADDRESS->value,
-            AuthenticationRateLimitBucketDimension::SESSION->value,
-            AuthenticationRateLimitBucketDimension::CHALLENGE->value,
-        ]);
-        usort(
-            $buckets,
-            static fn (array $left, array $right): int =>
-                $dimensionOrder[$left['dimension']] <=> $dimensionOrder[$right['dimension']]
-        );
-
-        return $buckets;
-    }
-
-    private function persistencePurpose(
-        AuthenticationRateLimitAction $action,
-        AuthenticationRateLimitPurpose $purpose
-    ): string {
-        return $action->value . '.' . $purpose->value;
-    }
-
-    private function isUniqueConstraintViolation(\PDOException $exception): bool
-    {
-        $errorInfo = $exception->errorInfo;
-
-        return (string) $exception->getCode() === '23000'
-            && is_array($errorInfo)
-            && (int) ($errorInfo[1] ?? 0) === self::MARIADB_DUPLICATE_ENTRY;
-    }
-
-    private function isRetryableTransactionFailure(\PDOException $exception): bool
-    {
-        $errorInfo = $exception->errorInfo;
-        if (is_array($errorInfo) === false) {
-            return false;
-        }
-
-        $sqlState = (string) ($errorInfo[0] ?? '');
-        $driverCode = (int) ($errorInfo[1] ?? 0);
-
-        return ($driverCode === self::MARIADB_DEADLOCK && $sqlState === '40001')
-            || ($driverCode === self::MARIADB_LOCK_WAIT_TIMEOUT && $sqlState === 'HY000');
     }
 
     private function now(): \DateTimeImmutable
