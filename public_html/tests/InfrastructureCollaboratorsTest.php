@@ -30,7 +30,7 @@ final class FailingRestoreStatement extends PDOStatement
     public function __construct(private readonly bool $describe = false) {}
     public function fetchAll(int $mode = PDO::FETCH_DEFAULT, mixed ...$args): array
     {
-        return $this->describe ? [['Field' => 'id']] : [];
+        return $this->describe === true ? [['Field' => 'id']] : [];
     }
     public function execute(?array $params = null): bool
     {

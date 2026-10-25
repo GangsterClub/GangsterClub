@@ -75,6 +75,6 @@ final class PendingAuthenticationSession
     private function getString(string $key): ?string
     {
         $value = $this->session->get($key);
-        return is_string($value) && $value !== '' ? $value : null;
+        return is_string($value) === true && $value !== '' ? $value : null;
     }
 }

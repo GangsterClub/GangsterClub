@@ -44,7 +44,7 @@ final class AuthEntryResultResponder
         if ($status === AuthEntryService::STATUS_AUTHENTICATED) {
             $this->flash->add('account', 'success', $this->translate($mode, 'success-authenticated'));
             $remaining = $result['remainingCount'] ?? null;
-            if (is_int($remaining) && $remaining <= 3) {
+            if (is_int($remaining) === true && $remaining <= 3) {
                 $key = $remaining <= 1 ? 'recovery-code-one-remaining' : 'recovery-code-low-count';
                 $this->flash->add('account', 'success', __('login.' . $key, ['count' => (string) $remaining]));
             }

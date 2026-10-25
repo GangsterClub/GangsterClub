@@ -15,7 +15,8 @@ final class RecoveryCodeGenerator
     {
         $codes = [];
         $hashes = [];
-        while (count($codes) < $count) {
+        $generatedCount = 0;
+        while ($generatedCount < $count) {
             $code = $this->codec->generate();
             $normalized = $this->codec->normalize($code);
             if ($normalized === null) {
@@ -23,11 +24,12 @@ final class RecoveryCodeGenerator
             }
 
             $hash = $this->codec->hash($normalized);
-            if (isset($hashes[$hash])) {
+            if (isset($hashes[$hash]) === true) {
                 continue;
             }
             $codes[] = $code;
             $hashes[$hash] = $hash;
+            ++$generatedCount;
         }
 
         return ['codes' => $codes, 'hashes' => array_values($hashes)];

@@ -43,7 +43,7 @@ final class RecoveryCodeSetRepository
             ->where('user_id', $userId)
             ->where('status', 'active')
             ->where('acknowledged_at', 'IS NOT', null);
-        return ($lock ? $query->lockForUpdate() : $query)->first();
+        return ($lock === true ? $query->lockForUpdate() : $query)->first();
     }
 
     public function activate(int $setId, string $acknowledgedAt): bool

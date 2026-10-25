@@ -58,7 +58,7 @@ final class AuthEntryRequestHandler
         if ((bool) $submit !== true || (bool) $otp !== true) {
             return null;
         }
-        $otp = is_array($otp) ? implode('', $otp) : (string) $otp;
+        $otp = is_array($otp) === true ? implode('', $otp) : (string) $otp;
         try {
             return $this->entries->verify($this->auth, $mode, $otp);
         } catch (\src\Business\RateLimitExceededException) {
@@ -89,7 +89,7 @@ final class AuthEntryRequestHandler
         if (in_array($result['status'] ?? null, [
             AuthEntryService::STATUS_VALIDATION_ERROR,
             AuthEntryService::STATUS_SEND_ERROR,
-        ], true)) {
+        ], true) === true) {
             $this->registrationForm->remember($username, $email);
         } else {
             $this->registrationForm->forget();

@@ -32,15 +32,15 @@ final class FlashBag
         $this->store($messages);
 
         return [
-            'errors' => is_array($bagMessages['errors'] ?? null) ? $bagMessages['errors'] : [],
-            'success' => is_array($bagMessages['success'] ?? null) ? $bagMessages['success'] : [],
+            'errors' => is_array($bagMessages['errors'] ?? null) === true ? $bagMessages['errors'] : [],
+            'success' => is_array($bagMessages['success'] ?? null) === true ? $bagMessages['success'] : [],
         ];
     }
 
     private function all(): array
     {
         $messages = $this->session->get(self::SESSION_KEY, []);
-        return is_array($messages) ? $messages : [];
+        return is_array($messages) === true ? $messages : [];
     }
 
     private function store(array $messages): void

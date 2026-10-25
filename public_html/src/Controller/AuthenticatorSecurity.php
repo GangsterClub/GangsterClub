@@ -142,7 +142,7 @@ class AuthenticatorSecurity extends Controller
 
     private function securityFlow(): SecurityFlowSession
     {
-        if (isset($this->securityFlow)) {
+        if (isset($this->securityFlow) === true) {
             return $this->securityFlow;
         }
         return new SecurityFlowSession(

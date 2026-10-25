@@ -31,7 +31,7 @@ final class AuthEntryViewModelFactory
             'usernamePattern' => str_replace('_-', '_\-', AuthEntryService::REGISTRATION_USERNAME_PATTERN),
             'awaitingOtp' => $email !== null,
             'uUID' => $userId,
-            'totp' => is_string($totp) ? str_split($totp) : [],
+            'totp' => is_string($totp) === true ? str_split($totp) : [],
             'UID' => $auth->getAuthenticatedUserId(),
             'loginRecoveryAvailable' => $mode === AuthEntryService::MODE_LOGIN
                 && $this->pending->isAuthenticatorRequired()

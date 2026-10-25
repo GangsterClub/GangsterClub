@@ -25,8 +25,8 @@ final class RegistrationFormState
             return [];
         }
         return [
-            'username' => is_string($stored['username'] ?? null) ? $stored['username'] : '',
-            'email' => is_string($stored['email'] ?? null) ? $stored['email'] : null,
+            'username' => is_string($stored['username'] ?? null) === true ? $stored['username'] : '',
+            'email' => is_string($stored['email'] ?? null) === true ? $stored['email'] : null,
         ];
     }
 

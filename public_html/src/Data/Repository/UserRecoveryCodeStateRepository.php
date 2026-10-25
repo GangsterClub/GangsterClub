@@ -13,7 +13,7 @@ final class UserRecoveryCodeStateRepository
     public function find(int $userId, bool $lock = false): object|false
     {
         $query = $this->connection->table('user_recovery_code_state')->where('user_id', $userId);
-        return ($lock ? $query->lockForUpdate() : $query)->first();
+        return ($lock === true ? $query->lockForUpdate() : $query)->first();
     }
 
     public function getActiveSetId(int $userId, bool $lock = false): ?int

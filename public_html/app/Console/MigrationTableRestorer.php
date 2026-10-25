@@ -62,7 +62,7 @@ final class MigrationTableRestorer
         $statement = $this->pdo->query('DESCRIBE ' . $this->quote($table));
         $columns = [];
         foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $column) {
-            if (isset($column['Field'])) {
+            if (isset($column['Field']) === true) {
                 $columns[] = $column['Field'];
             }
         }

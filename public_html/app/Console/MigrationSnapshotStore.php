@@ -29,7 +29,7 @@ final class MigrationSnapshotStore
         }
 
         $payload = json_decode((string) file_get_contents($this->snapshotFile), true);
-        return json_last_error() === JSON_ERROR_NONE && is_array($payload) ? $payload : null;
+? To avoid th        return json_last_error() === JSON_ERROR_NONE && is_array($payload) === true ? $payload : null;
     }
 
     public function write(array $payload): void
@@ -42,7 +42,7 @@ final class MigrationSnapshotStore
 
     public function delete(): void
     {
-        if ($this->exists()) {
+        if ($this->exists() === true) {
             unlink($this->snapshotFile);
         }
     }

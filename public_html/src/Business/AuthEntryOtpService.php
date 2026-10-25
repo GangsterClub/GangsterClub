@@ -24,7 +24,7 @@ final class AuthEntryOtpService
         AuthenticationRateLimitContext $context
     ): array {
         $issued = $this->emailTotpService->issue($userId, EmailTOTPPurpose::LOGIN, $context);
-        if ($this->emailService->sendEmailTOTP($email, $issued->code)) {
+        if ($this->emailService->sendEmailTOTP($email, $issued->code) === true) {
             return ['status' => AuthEntryService::STATUS_EMAIL_OTP_SENT];
         }
         $this->emailTotpService->cancelIssued($issued);
@@ -37,7 +37,7 @@ final class AuthEntryOtpService
         $this->sessionService->set(self::PENDING_EMAIL_ONLY_SECRET, $secret);
         $otp = $this->totpService->generateTOTP($secret, TOTP_DIGITS, TOTP_PERIOD);
         return [
-            'status' => $this->emailService->sendEmailTOTP($email, $otp)
+            'status' => $this->emailService->sendEmailTOTP($email, $otp) === true
                 ? AuthEntryService::STATUS_EMAIL_OTP_SENT
                 : AuthEntryService::STATUS_SEND_ERROR,
         ];
@@ -51,7 +51,7 @@ final class AuthEntryOtpService
         }
 
         $isValid = $this->totpService->verifyTOTP($secret, $otp, TOTP_DIGITS, TOTP_PERIOD);
-        if ($isValid) {
+        if ($isValid === true) {
             $this->sessionService->remove(self::PENDING_EMAIL_ONLY_SECRET);
         }
         return $isValid;
