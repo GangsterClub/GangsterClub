@@ -29,7 +29,11 @@ final class MigrationSnapshotStore
         }
 
         $payload = json_decode((string) file_get_contents($this->snapshotFile), true);
-? To avoid th        return json_last_error() === JSON_ERROR_NONE && is_array($payload) === true ? $payload : null;
+        if (json_last_error() !== JSON_ERROR_NONE || is_array($payload) === false) {
+            return null;
+        }
+
+        return $payload;
     }
 
     public function write(array $payload): void
