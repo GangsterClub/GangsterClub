@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace app\Http;
 
+/**
+ * Input-source adapter exposing one accessor per supported PHP superglobal.
+ *
+ * @SuppressWarnings(PHPMD.TooManyMethods)
+ */
 class Superglobal
 {
     //protected array $globals;

@@ -8,6 +8,8 @@ use app\Http\Request;
 use app\Http\Response;
 use app\Http\Router;
 use src\Business\RecoveryCodeService;
+use app\Service\PendingAuthenticationSession;
+use app\Service\SecurityFlowSession;
 
 class Logout extends Controller
 {
@@ -19,8 +21,13 @@ class Logout extends Controller
             return Response::redirect(Router::path($routeName), 303);
         }
 
-        $pendingSetId = $auth->getPendingRecoverySetId();
-        $flowUserId = $auth->getAuthenticatedUserId() ?? $auth->getPendingUserId();
+        $session = $this->application->get(\app\Service\SessionService::class);
+        $securityFlow = $this->application->getOptional(SecurityFlowSession::class)
+            ?? new SecurityFlowSession($session);
+        $pendingAuthentication = $this->application->getOptional(PendingAuthenticationSession::class)
+            ?? new PendingAuthenticationSession($session);
+        $pendingSetId = $securityFlow->getPendingRecoverySetId();
+        $flowUserId = $auth->getAuthenticatedUserId() ?? $pendingAuthentication->getUserId();
         $recoveryCodes = $this->application->get(RecoveryCodeService::class);
         if ($pendingSetId !== null
             && $flowUserId !== null

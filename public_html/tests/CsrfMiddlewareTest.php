@@ -26,6 +26,8 @@ require __DIR__ . '/../app/Http/Request.php';
 require __DIR__ . '/../app/Http/Response.php';
 require __DIR__ . '/../app/Service/SessionService.php';
 require __DIR__ . '/../app/Service/AuthSessionKeys.php';
+require __DIR__ . '/../app/Service/PendingAuthenticationSession.php';
+require __DIR__ . '/../app/Service/SecurityFlowSession.php';
 require __DIR__ . '/../app/Service/AuthService.php';
 require __DIR__ . '/../app/Service/CsrfService.php';
 require __DIR__ . '/../app/Service/TranslationService.php';
@@ -207,8 +209,9 @@ assertSameValue(204, $response->getStatusCode(), 'Valid X-CSRF-Token headers sho
 $session = new CsrfTestSession();
 $csrf = new CsrfService($session);
 $auth = new AuthService($session, $csrf);
-$auth->setPendingLoginEmail('immediate@example.test');
-assertSameValue('immediate@example.test', $auth->getPendingLoginEmail(), 'AuthService should work immediately without later container registration.');
+$pendingAuthentication = new \app\Service\PendingAuthenticationSession($session);
+$pendingAuthentication->setEmail('immediate@example.test');
+assertSameValue('immediate@example.test', $pendingAuthentication->getEmail(), 'Pending authentication state should work immediately without later container registration.');
 
 $tokenBeforeLogin = $csrf->getToken();
 $auth->loginUser(123);

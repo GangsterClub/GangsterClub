@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use app\Container\Application;
 use app\Http\Request;
+use app\Http\Response;
 use app\Http\Router;
 use app\Service\AuthService;
 use app\Service\AuthSessionKeys;
@@ -23,13 +24,17 @@ use src\Business\RecoveryFlowService;
 use src\Business\SecurityAuditService;
 use src\Business\TOTPService;
 use src\Business\UserService;
-use src\Controller\RecoveryCodes;
+use src\Controller\AccountRecoveryCodesController;
+use src\Controller\LostAuthenticatorRecoveryController;
 use src\Data\Connection;
 use src\Data\Repository\AuthenticationChallengeRepository;
 use src\Data\Repository\AuthenticationRateLimitRepository;
-use src\Data\Repository\RecoveryCodeRepository;
+use src\Data\Repository\RecoveryCodeHashRepository;
+use src\Data\Repository\RecoveryCodeSetRepository;
+use src\Data\Repository\UserRecoveryCodeStateRepository;
 use src\Data\Repository\SecurityAuditEventRepository;
 use src\Data\Repository\UserAuthenticatorTOTPRepository;
+use src\Data\Repository\UserLockRepository;
 use src\Data\Repository\UserRepository;
 
 require_once __DIR__ . '/../vendor/autoload.php';
@@ -66,18 +71,28 @@ final class RecoveryHttpSession extends SessionService
 
     public function __construct() {}
     public function get(string $key, mixed $default = null): mixed { return $this->values[$key] ?? $default; }
-    public function set(string $key, mixed $value): void { $this->values[$key] = $value; }
-    public function remove(string $key): void { unset($this->values[$key]); }
+    public function set(string $key, mixed $value): void
+    {
+        $this->values[$key] = $value;
+        if ($key === '_flash_messages') {
+            $this->flashes = $value;
+        }
+    }
+    public function remove(string $key): void
+    {
+        unset($this->values[$key]);
+        if ($key === '_flash_messages') {
+            $this->flashes = [];
+        }
+    }
     public function regenerate(): void { $this->values['_regenerated'] = ($this->values['_regenerated'] ?? 0) + 1; }
-    public function flash(string $bag, string $type, string $message): void { $this->flashes[$bag][$type][] = $message; }
+    public function flash(string $bag, string $type, string $message): void
+    {
+        (new \app\Service\FlashBag($this))->add($bag, $type, $message);
+    }
     public function consumeFlash(string $bag): array
     {
-        $messages = $this->flashes[$bag] ?? ['errors' => [], 'success' => []];
-        unset($this->flashes[$bag]);
-        return [
-            'errors' => $messages['errors'] ?? [],
-            'success' => $messages['success'] ?? [],
-        ];
+        return (new \app\Service\FlashBag($this))->consume($bag);
     }
 }
 
@@ -91,6 +106,23 @@ final class RecoveryHttpRequest extends Request
     public function post(string $key, $default = null): mixed { return $this->fields[$key] ?? $default; }
     public function getMethod(): string { return $this->testMethod; }
     public function getHeader(string $key): mixed { return $this->testHeaders[$key] ?? null; }
+}
+
+final class RecoveryHttpControllerHarness
+{
+    public function __construct(
+        private readonly AccountRecoveryCodesController $accountController,
+        private readonly LostAuthenticatorRecoveryController $lostController
+    ) {}
+
+    public function __call(string $method, array $arguments): Response
+    {
+        return match ($method) {
+            'startLostAuthenticator' => $this->lostController->start(...$arguments),
+            'lostAuthenticator' => $this->lostController->recovery(...$arguments),
+            default => $this->accountController->{$method}(...$arguments),
+        };
+    }
 }
 
 final class RecoveryHttpTranslation
@@ -301,8 +333,11 @@ $pdo->exec("INSERT INTO user_authenticator_totp
 
 (new Router())->load(DOC_ROOT . '/src/resources/routes.yaml');
 $userRepository = new UserRepository($connection);
+$userLocks = new UserLockRepository($connection);
 $authenticatorRepository = new UserAuthenticatorTOTPRepository($connection);
-$recoveryRepository = new RecoveryCodeRepository($connection);
+$recoverySets = new RecoveryCodeSetRepository($connection);
+$recoveryCodes = new RecoveryCodeHashRepository($connection);
+$recoveryState = new UserRecoveryCodeStateRepository($connection);
 $challengeRepository = new AuthenticationChallengeRepository($connection);
 $rateRepository = new AuthenticationRateLimitRepository($connection);
 $auditRepository = new SecurityAuditEventRepository($connection);
@@ -319,7 +354,12 @@ $rateService = new AuthenticationRateLimitService(
 $auditService = new SecurityAuditService($auditRepository);
 $recoveryService = new RecoveryCodeService(
     $connection,
-    $recoveryRepository,
+    $recoverySets,
+    $recoveryCodes,
+    $recoveryState,
+    $userRepository,
+    $userLocks,
+    $authenticatorRepository,
     new RecoveryCodeCodec(str_repeat('recovery-pepper-', 3)),
     $rateService,
     $auditService
@@ -330,9 +370,12 @@ $featureService = new RecoveryFeatureService(
     $connection,
     $challengeService,
     $recoveryService,
-    $recoveryRepository,
+    $recoverySets,
+    $recoveryCodes,
+    $recoveryState,
     $authenticatorRepository,
     $userRepository,
+    $userLocks,
     $auditService
 );
 $emailTotp = new RecoveryHttpEmailTotp();
@@ -375,15 +418,19 @@ $makeController = static function (RecoveryHttpSession $session) use (
         \src\Business\EmailService::class => $email,
         \src\Business\UserService::class => $users,
     ]);
-    return [new RecoveryCodes($application), $auth];
+    return [new RecoveryHttpControllerHarness(
+        new AccountRecoveryCodesController($application),
+        new LostAuthenticatorRecoveryController($application)
+    ), $auth];
 };
 
 // Recovery presentation messages remain scoped to their destination and challenge purpose.
 $flashSession = new RecoveryHttpSession();
 [$flashController, $flashAuth] = $makeController($flashSession);
-$flashAuth->setPendingLoginEmail('lost-session@example.test');
-$flashAuth->setPendingUserId(3);
-$flashAuth->setLoginAuthenticatorRequired(true);
+$flashPending = new \app\Service\PendingAuthenticationSession($flashSession);
+$flashPending->setEmail('lost-session@example.test');
+$flashPending->setUserId(3);
+$flashPending->setAuthenticatorRequired(true);
 for ($attempt = 0; $attempt < 5; ++$attempt) {
     $unavailableLostResponse = $flashController->startLostAuthenticator(
         new RecoveryHttpRequest('POST')
@@ -637,9 +684,10 @@ $oldBrowserAuth->loginUser(2);
 
 $lostSession = new RecoveryHttpSession();
 [$lostController, $lostAuth] = $makeController($lostSession);
-$lostAuth->setPendingLoginEmail('existing@example.test');
-$lostAuth->setPendingUserId(2);
-$lostAuth->setLoginAuthenticatorRequired(true);
+$lostPending = new \app\Service\PendingAuthenticationSession($lostSession);
+$lostPending->setEmail('existing@example.test');
+$lostPending->setUserId(2);
+$lostPending->setAuthenticatorRequired(true);
 [, $payload] = recoveryJsonResponse(fn () => $lostController->startLostAuthenticator(recoveryPost([])));
 recoveryAssertSame('email_verification_pending', $payload['state'], 'Lost-authenticator replacement must begin with email verification.');
 recoveryJsonResponse(fn () => $lostController->lostAuthenticator(recoveryPost([
@@ -762,7 +810,10 @@ recoveryAssertTrue(
     && str_contains($enhancementScript, 'template.content.cloneNode(true)') === true
     && str_contains($enhancementScript, 'codeElement.textContent = String(code)') === true
     && str_contains($enhancementScript, 'forms.forEach(bindForm)') === true
-    && str_contains($enhancementScript, 'innerHTML') === false,
+    && str_contains($enhancementScript, 'innerHTML') === false
+    && str_contains($enhancementScript, 'outerHTML') === false
+    && str_contains($enhancementScript, 'insertAdjacentHTML') === false
+    && str_contains($enhancementScript, 'renderCodes') === false,
     'Progressive enhancement must safely clone the Twig markup, bind its forms, and avoid HTML parsing sinks.'
 );
 recoveryAssertTrue(

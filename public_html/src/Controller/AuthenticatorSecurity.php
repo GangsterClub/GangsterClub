@@ -13,12 +13,14 @@ use src\Business\AuthenticationRateLimitContext;
 use src\Business\AuthenticatorTOTPPurpose;
 use src\Business\RateLimitExceededException;
 use src\Business\RecoveryFeatureService;
+use app\Service\SecurityFlowSession;
 
 class AuthenticatorSecurity extends Controller
 {
     private AuthenticatorTOTPService $authenticatorService;
 
     private RecoveryFeatureService $recoveryFeatureService;
+    private SecurityFlowSession $securityFlow;
 
     public function __construct(Application $application)
     {
@@ -26,6 +28,10 @@ class AuthenticatorSecurity extends Controller
 
         $this->authenticatorService = $application->get(AuthenticatorTOTPService::class);
         $this->recoveryFeatureService = $application->get(RecoveryFeatureService::class);
+        $securityFlow = $application->getOptional(SecurityFlowSession::class);
+        $this->securityFlow = $securityFlow instanceof SecurityFlowSession
+            ? $securityFlow
+            : new SecurityFlowSession($application->get(\app\Service\SessionService::class));
     }
 
     public function startDisable(Request $request): Response
@@ -78,7 +84,7 @@ class AuthenticatorSecurity extends Controller
                 );
             }
 
-            $auth->setPendingAuthenticatorSecret(null);
+            $this->securityFlow()->setPendingAuthenticatorSecret(null);
             $auth->rotateCsrfToken();
 
             if ($this->expectsStructuredResponse($request) === true) {
@@ -130,7 +136,17 @@ class AuthenticatorSecurity extends Controller
         return AuthenticationRateLimitContext::forUser(
             $userId,
             (string) $session->get('_IPaddress', '127.0.0.1'),
-            $this->auth()->getSecurityChallengeBinding()
+            $this->securityFlow()->getChallengeBinding()
+        );
+    }
+
+    private function securityFlow(): SecurityFlowSession
+    {
+        if (isset($this->securityFlow)) {
+            return $this->securityFlow;
+        }
+        return new SecurityFlowSession(
+            $this->application->get(\app\Service\SessionService::class)
         );
     }
 

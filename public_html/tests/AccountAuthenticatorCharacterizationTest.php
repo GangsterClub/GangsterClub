@@ -5,6 +5,7 @@ declare(strict_types=1);
 use app\Container\Application;
 use app\Http\Request;
 use app\Service\AuthService;
+use app\Service\SecurityFlowSession;
 use app\Service\AuthSessionKeys;
 use app\Service\CsrfService;
 use app\Service\SessionService;
@@ -151,7 +152,7 @@ function runAuthenticatorCase(bool $enabled, array $fields): array
 
     return [
         'messages' => (new ReflectionProperty(Account::class, 'accountMessages'))->getValue($account),
-        'pending' => $auth->getPendingAuthenticatorSecret(),
+        'pending' => (new SecurityFlowSession($session))->getPendingAuthenticatorSecret(),
         'emailPending' => $session->get(AuthSessionKeys::AUTHENTICATOR_SETUP_EMAIL_SECRET),
         'authenticatorCalls' => $authenticator->calls,
         'emailTotpCalls' => $emailTotp->calls,

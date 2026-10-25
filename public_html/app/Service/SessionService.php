@@ -8,8 +8,6 @@ use app\Http\Request;
 
 class SessionService extends \SessionHandler
 {
-    private const FLASH_TYPES = ['errors', 'success'];
-
     private ?string $ipAddress;
     private string $userAgent;
 
@@ -169,52 +167,6 @@ class SessionService extends \SessionHandler
         }
 
         return $value;
-    }
-
-    public function flash(string $bag, string $type, string $message): void
-    {
-        if (in_array($type, self::FLASH_TYPES, true) === false) {
-            throw new \InvalidArgumentException('Unsupported flash message type.');
-        }
-
-        $messages = $this->getFlashMessages();
-        $messages[$bag][$type][] = $message;
-        $this->storeFlashMessages($messages);
-    }
-
-    public function consumeFlash(string $bag): array
-    {
-        $messages = $this->getFlashMessages();
-        $bagMessages = $messages[$bag] ?? [];
-        unset($messages[$bag]);
-        $this->storeFlashMessages($messages);
-
-        return [
-            'errors' => is_array($bagMessages['errors'] ?? null) === true ? $bagMessages['errors'] : [],
-            'success' => is_array($bagMessages['success'] ?? null) === true ? $bagMessages['success'] : [],
-        ];
-    }
-
-    private function getFlashMessages(): array
-    {
-        if (session_status() !== PHP_SESSION_ACTIVE) {
-            return [];
-        }
-
-        $messages = $_SESSION['_flash_messages'] ?? [];
-        return is_array($messages) === true ? $messages : [];
-    }
-
-    private function storeFlashMessages(array $messages): void
-    {
-        if ($messages === []) {
-            $this->remove('_flash_messages');
-            return;
-        }
-
-        if (session_status() === PHP_SESSION_ACTIVE) {
-            $_SESSION['_flash_messages'] = $messages;
-        }
     }
 
     public function has(string $key): bool

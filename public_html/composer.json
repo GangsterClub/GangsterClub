@@ -50,6 +50,7 @@
             "@php tests/EmailTOTPServiceTest.php",
             "@php tests/JWTServiceTest.php",
             "@php tests/HelperFunctionsTest.php",
+            "@php tests/InfrastructureCollaboratorsTest.php",
             "@php tests/QueryBuilderSqlGenerationTest.php",
             "@php tests/RecoveryFeatureHttpTest.php",
             "@php tests/SecurityFoundationTest.php",
@@ -57,9 +58,6 @@
             "@php tests/SessionServiceConstructorProductionTest.php",
             "@php tests/SessionServiceConstructorNonProductionTest.php",
             "@php tests/SessionServiceConstructorDevelopmentTest.php"
-        ],
-        "check": [
-            "@test"
         ]
     }
 }

@@ -22,6 +22,12 @@ class UserAuthenticatorTOTPRepository
             ->first();
     }
 
+    public function findByUserIdForUpdate(int $userId): object|false
+    {
+        return $this->dbh->table('user_authenticator_totp')
+            ->where('user_id', $userId)->lockForUpdate()->first();
+    }
+
     public function upsertSecret(int $userId, string $secret, int $digits, int $period): bool
     {
         $existing = $this->findByUserId($userId);

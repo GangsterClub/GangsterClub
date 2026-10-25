@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if (payload.success && Array.isArray(payload.codes)) {
-                    renderCodes(payload, payload.csrfToken || csrfToken);
+                    displayRecoveryCodes(payload.codes, payload.csrfToken || csrfToken);
                 } else if (payload.success && payload.redirect) {
                     const configuredBase = new URL(
                         document.querySelector('base').href,
@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const renderCodes = (payload, csrfToken) => {
+    const displayRecoveryCodes = (codes, csrfToken) => {
         const panel = document.querySelector('#recovery-flow-modal .modal-panel');
         const template = document.getElementById('recovery-codes-presented-template');
         if (!panel || !(template instanceof HTMLTemplateElement)) {
@@ -174,7 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
             throw new Error('Recovery-code modal template is incomplete.');
         }
 
-        payload.codes.forEach((code) => {
+        codes.forEach((code) => {
             const item = document.createElement('li');
             const codeElement = document.createElement('code');
             codeElement.textContent = String(code);

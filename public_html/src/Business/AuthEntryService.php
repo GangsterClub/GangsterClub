@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace src\Business;
 
 use app\Service\AuthService;
+use app\Service\PendingAuthenticationSession;
 use app\Service\SessionService;
 use src\Entity\User;
 
@@ -24,8 +25,6 @@ class AuthEntryService
 
     private const PENDING_REGISTRATION_USERNAME = 'PENDING_REGISTRATION_USERNAME';
     private const PENDING_CREATE_BY_EMAIL = 'PENDING_CREATE_BY_EMAIL';
-    private const PENDING_EMAIL_ONLY_SECRET = 'PENDING_EMAIL_ONLY_TOTP_SECRET';
-
     public function __construct(
         private readonly UserService $userService,
         private readonly AuthenticatorTOTPService $authenticatorService,
@@ -33,40 +32,52 @@ class AuthEntryService
         private readonly TOTPService $totpService,
         private readonly EmailService $emailService,
         private readonly SessionService $sessionService,
-        private readonly ?RecoveryCodeService $recoveryCodeService = null
+        private readonly ?RecoveryCodeService $recoveryCodeService = null,
+        ?PendingAuthenticationSession $pendingAuthentication = null,
+        ?AuthEntryOtpService $otp = null
     ) {
+        $this->pendingAuthentication = $pendingAuthentication ?? new PendingAuthenticationSession($sessionService);
+        $this->otp = $otp ?? new AuthEntryOtpService(
+            $emailTotpService,
+            $totpService,
+            $emailService,
+            $sessionService
+        );
     }
+
+    private readonly PendingAuthenticationSession $pendingAuthentication;
+    private readonly AuthEntryOtpService $otp;
 
     public function beginLogin(AuthService $auth, string $email): array
     {
         $email = trim($email);
         $user = $this->userService->getUserByEmail($email);
 
-        $auth->setPendingLoginEmail($email);
-        $auth->setPendingLoginTotp(null);
-        $auth->setLoginAuthenticatorRequired(false);
-        $auth->setLoginTwoStepRequired(false);
+        $this->pendingAuthentication->setEmail($email);
+        $this->pendingAuthentication->setTotp(null);
+        $this->pendingAuthentication->setAuthenticatorRequired(false);
+        $this->pendingAuthentication->setTwoStepRequired(false);
 
         if ($user !== null) {
             $userId = (int) $user->getId();
-            $auth->setPendingUserId($userId);
+            $this->pendingAuthentication->setUserId($userId);
             $this->sessionService->remove(self::PENDING_CREATE_BY_EMAIL);
 
             if ($this->authenticatorService->hasEnabledAuthenticator($userId) === true) {
                 if ($user->isTwoStepVerificationRequired() === true) {
-                    $auth->setLoginTwoStepRequired(true);
-                    return $this->sendPersistedEmailOtp($userId, $email);
+                    $this->pendingAuthentication->setTwoStepRequired(true);
+                    return $this->otp->issuePersisted($userId, $email, $this->rateLimitContext($userId));
                 }
-                $auth->setLoginAuthenticatorRequired(true);
+                $this->pendingAuthentication->setAuthenticatorRequired(true);
                 return ['status' => self::STATUS_AUTHENTICATOR_CODE_REQUIRED];
             }
 
-            return $this->sendPersistedEmailOtp($userId, $email);
+            return $this->otp->issuePersisted($userId, $email, $this->rateLimitContext($userId));
         }
 
-        $auth->setPendingUserId(null);
+        $this->pendingAuthentication->setUserId(null);
         $this->sessionService->set(self::PENDING_CREATE_BY_EMAIL, true);
-        return $this->sendEmailOnlyOtp($email);
+        return $this->otp->issueEmailOnly($email);
     }
 
     public function beginRegistration(AuthService $auth, string $username, string $email): array
@@ -90,32 +101,32 @@ class AuthEntryService
             return ['status' => self::STATUS_VALIDATION_ERROR, 'error' => 'duplicate-username'];
         }
 
-        $auth->setPendingLoginEmail($email);
-        $auth->setPendingLoginTotp(null);
-        $auth->setPendingUserId(null);
-        $auth->setLoginAuthenticatorRequired(false);
+        $this->pendingAuthentication->setEmail($email);
+        $this->pendingAuthentication->setTotp(null);
+        $this->pendingAuthentication->setUserId(null);
+        $this->pendingAuthentication->setAuthenticatorRequired(false);
         $this->sessionService->set(self::PENDING_REGISTRATION_USERNAME, $username);
         $this->sessionService->set(self::PENDING_CREATE_BY_EMAIL, false);
 
-        return $this->sendEmailOnlyOtp($email);
+        return $this->otp->issueEmailOnly($email);
     }
 
     public function verify(AuthService $auth, string $mode, string $otp): array
     {
-        $auth->setPendingLoginTotp($otp);
-        $userId = $auth->getPendingUserId();
+        $this->pendingAuthentication->setTotp($otp);
+        $userId = $this->pendingAuthentication->getUserId();
 
         if ($this->verifySubmittedOtp($auth, $userId, $otp) === false) {
             return ['status' => self::STATUS_INVALID_OTP];
         }
 
         if ($this->shouldRequestAuthenticatorStep($auth) === true) {
-            $auth->setPendingLoginTotp(null);
-            $auth->setLoginAuthenticatorRequired(true);
+            $this->pendingAuthentication->setTotp(null);
+            $this->pendingAuthentication->setAuthenticatorRequired(true);
             return ['status' => self::STATUS_AUTHENTICATOR_CODE_REQUIRED];
         }
 
-        $email = $auth->getPendingLoginEmail();
+        $email = $this->pendingAuthentication->getEmail();
         if ($email === null) {
             return ['status' => self::STATUS_INVALID_OTP];
         }
@@ -126,7 +137,7 @@ class AuthEntryService
                 return ['status' => self::STATUS_INVALID_OTP];
             }
             $userId = (int) $user->getId();
-            $auth->setPendingUserId($userId);
+            $this->pendingAuthentication->setUserId($userId);
         }
 
         $auth->loginUser($userId);
@@ -137,10 +148,10 @@ class AuthEntryService
     private function verifySubmittedOtp(AuthService $auth, ?int $userId, string $otp): bool
     {
         if ($userId === null) {
-            return $this->verifyEmailOnlyOtp($otp);
+            return $this->otp->verifyEmailOnly($otp);
         }
 
-        if ($auth->isLoginAuthenticatorRequired() === true) {
+        if ($this->pendingAuthentication->isAuthenticatorRequired() === true) {
             return $this->authenticatorService->verify(
                 $userId,
                 AuthenticatorTOTPPurpose::LOGIN,
@@ -159,8 +170,8 @@ class AuthEntryService
 
     private function shouldRequestAuthenticatorStep(AuthService $auth): bool
     {
-        return $auth->isLoginTwoStepRequired() === true
-            && $auth->isLoginAuthenticatorRequired() === false;
+        return $this->pendingAuthentication->isTwoStepRequired() === true
+            && $this->pendingAuthentication->isAuthenticatorRequired() === false;
     }
 
     public function verifyRecoveryCode(
@@ -168,9 +179,9 @@ class AuthEntryService
         string $submittedCode,
         AuthenticationRateLimitContext $rateLimitContext
     ): array {
-        $userId = $auth->getPendingUserId();
+        $userId = $this->pendingAuthentication->getUserId();
         if ($userId === null
-            || $auth->isLoginAuthenticatorRequired() === false
+            || $this->pendingAuthentication->isAuthenticatorRequired() === false
             || $this->recoveryCodeService === null
         ) {
             return ['status' => self::STATUS_INVALID_RECOVERY_CODE];
@@ -192,7 +203,7 @@ class AuthEntryService
             return ['status' => self::STATUS_INVALID_RECOVERY_CODE];
         }
 
-        $email = $auth->getPendingLoginEmail();
+        $email = $this->pendingAuthentication->getEmail();
         if ($email === null) {
             return ['status' => self::STATUS_INVALID_RECOVERY_CODE];
         }
@@ -227,52 +238,6 @@ class AuthEntryService
         }
 
         return null;
-    }
-
-    private function sendPersistedEmailOtp(int $userId, string $email): array
-    {
-        $issued = $this->emailTotpService->issue(
-            $userId,
-            EmailTOTPPurpose::LOGIN,
-            $this->rateLimitContext($userId)
-        );
-        if ($this->emailService->sendEmailTOTP($email, $issued->code) === true) {
-            return ['status' => self::STATUS_EMAIL_OTP_SENT];
-        }
-        $this->emailTotpService->cancelIssued($issued);
-        return ['status' => self::STATUS_SEND_ERROR];
-    }
-
-    private function sendEmailOnlyOtp(string $email): array
-    {
-        $secret = $this->totpService->generateSecret(TOTP_DIGITS, TOTP_PERIOD);
-        $this->sessionService->set(self::PENDING_EMAIL_ONLY_SECRET, $secret);
-        $otp = $this->totpService->generateTOTP($secret, TOTP_DIGITS, TOTP_PERIOD);
-        return $this->sendOtpEmail($email, $otp);
-    }
-
-    private function sendOtpEmail(string $email, string $otp): array
-    {
-        if ($this->emailService->sendEmailTOTP($email, $otp) === true) {
-            return ['status' => self::STATUS_EMAIL_OTP_SENT];
-        }
-
-        return ['status' => self::STATUS_SEND_ERROR];
-    }
-
-    private function verifyEmailOnlyOtp(string $otp): bool
-    {
-        $secret = $this->sessionService->get(self::PENDING_EMAIL_ONLY_SECRET);
-        if (is_string($secret) === false || $secret === '') {
-            return false;
-        }
-
-        $isValid = $this->totpService->verifyTOTP($secret, $otp, TOTP_DIGITS, TOTP_PERIOD);
-        if ($isValid === true) {
-            $this->sessionService->remove(self::PENDING_EMAIL_ONLY_SECRET);
-        }
-
-        return $isValid;
     }
 
     private function rateLimitContext(int $userId): AuthenticationRateLimitContext

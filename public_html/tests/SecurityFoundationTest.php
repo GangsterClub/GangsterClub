@@ -16,7 +16,12 @@ use src\Business\SecurityAuditService;
 use src\Data\Connection;
 use src\Data\Repository\AuthenticationChallengeRepository;
 use src\Data\Repository\AuthenticationRateLimitRepository;
-use src\Data\Repository\RecoveryCodeRepository;
+use src\Data\Repository\RecoveryCodeHashRepository;
+use src\Data\Repository\RecoveryCodeSetRepository;
+use src\Data\Repository\UserAuthenticatorTOTPRepository;
+use src\Data\Repository\UserRecoveryCodeStateRepository;
+use src\Data\Repository\UserLockRepository;
+use src\Data\Repository\UserRepository;
 use src\Data\Repository\SecurityAuditEventRepository;
 
 require_once __DIR__ . '/../vendor/autoload.php';
@@ -329,10 +334,20 @@ assertSecuritySame(
 );
 assertSecuritySame(null, $codec->normalize('00000-00000-00000-0000U'), 'Characters outside the alphabet must be rejected.');
 
-$recoveryRepository = new RecoveryCodeRepository($connection);
+$recoverySets = new RecoveryCodeSetRepository($connection);
+$recoveryCodes = new RecoveryCodeHashRepository($connection);
+$recoveryState = new UserRecoveryCodeStateRepository($connection);
+$recoveryUsers = new UserRepository($connection);
+$recoveryUserLocks = new UserLockRepository($connection);
+$recoveryAuthenticators = new UserAuthenticatorTOTPRepository($connection);
 $recoveryService = new RecoveryCodeService(
     $connection,
-    $recoveryRepository,
+    $recoverySets,
+    $recoveryCodes,
+    $recoveryState,
+    $recoveryUsers,
+    $recoveryUserLocks,
+    $recoveryAuthenticators,
     $codec,
     $rateService,
     $auditService,

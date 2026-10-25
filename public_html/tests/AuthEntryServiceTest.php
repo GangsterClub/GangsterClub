@@ -23,6 +23,8 @@ require_once __DIR__ . '/../app/Container/Application.php';
 require_once __DIR__ . '/../app/Service/SessionService.php';
 require_once __DIR__ . '/../app/Service/CsrfService.php';
 require_once __DIR__ . '/../app/Service/AuthSessionKeys.php';
+require_once __DIR__ . '/../app/Service/PendingAuthenticationSession.php';
+require_once __DIR__ . '/../app/Service/SecurityFlowSession.php';
 require_once __DIR__ . '/../app/Service/AuthService.php';
 require_once __DIR__ . '/../app/Service/JWTService.php';
 require_once __DIR__ . '/../src/Entity/User.php';
@@ -38,6 +40,7 @@ require_once __DIR__ . '/../src/Business/IssuedEmailTOTP.php';
 require_once __DIR__ . '/../src/Business/EmailTOTPService.php';
 require_once __DIR__ . '/../src/Business/AuthenticatorTOTPService.php';
 require_once __DIR__ . '/../src/Business/EmailService.php';
+require_once __DIR__ . '/../src/Business/AuthEntryOtpService.php';
 require_once __DIR__ . '/../src/Business/AuthEntryService.php';
 
 final class AuthEntryServiceTestSession extends app\Service\SessionService
