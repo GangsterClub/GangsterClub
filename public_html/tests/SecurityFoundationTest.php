@@ -14,6 +14,8 @@ use src\Business\RecoveryCodeConsumptionResult;
 use src\Business\RecoveryCodeService;
 use src\Business\SecurityAuditService;
 use src\Data\Connection;
+use src\Data\RecoveryAccountPersistence;
+use src\Data\RecoveryCodePersistence;
 use src\Data\Repository\AuthenticationChallengeRepository;
 use src\Data\Repository\AuthenticationRateLimitRepository;
 use src\Data\Repository\RecoveryCodeHashRepository;
@@ -340,16 +342,23 @@ $recoveryState = new UserRecoveryCodeStateRepository($connection);
 $recoveryUsers = new UserRepository($connection);
 $recoveryUserLocks = new UserLockRepository($connection);
 $recoveryAuthenticators = new UserAuthenticatorTOTPRepository($connection);
-$recoveryService = new RecoveryCodeService(
-    $connection,
+$recoveryData = new RecoveryCodePersistence(
     $recoverySets,
     $recoveryCodes,
-    $recoveryState,
+    $recoveryState
+);
+$recoveryAccounts = new RecoveryAccountPersistence(
     $recoveryUsers,
     $recoveryUserLocks,
-    $recoveryAuthenticators,
+    $recoveryAuthenticators
+);
+$recoveryService = new RecoveryCodeService(
+    $connection,
+    $recoveryData,
+    $recoveryAccounts,
     $codec,
-    $rateService,
+    new \src\Business\RecoveryCodeGenerator($codec),
+    new \src\Business\RecoveryCodeRateLimiter($rateService),
     $auditService,
     $clock
 );

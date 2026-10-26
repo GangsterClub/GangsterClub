@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if (payload.success && Array.isArray(payload.codes)) {
-                    displayRecoveryCodes(payload.codes, payload.csrfToken || csrfToken);
+                    displayRecoveryCodesAsHtml(payload.codes, payload.csrfToken || csrfToken);
                 } else if (payload.success && payload.redirect) {
                     const configuredBase = new URL(
                         document.querySelector('base').href,
@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const displayRecoveryCodes = (codes, csrfToken) => {
+    const displayRecoveryCodesAsHtml = (codes, csrfToken) => {
         const panel = document.querySelector('#recovery-flow-modal .modal-panel');
         const template = document.getElementById('recovery-codes-presented-template');
         if (!panel || !(template instanceof HTMLTemplateElement)) {

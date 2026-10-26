@@ -32,6 +32,8 @@ use src\Business\SecurityAuditService;
 use src\Business\TOTPService;
 use src\Business\UserService;
 use src\Data\Connection;
+use src\Data\RecoveryAccountPersistence;
+use src\Data\RecoveryCodePersistence;
 use src\Data\Repository\AuthenticationChallengeRepository;
 use src\Data\Repository\AuthenticationRateLimitRepository;
 use src\Data\Repository\EmailTOTPRepository;
@@ -101,6 +103,16 @@ final class DomainServiceProvider implements ServiceProvider
         $container->set(\src\Data\Repository\UserLockRepository::class, fn(): UserLockRepository => new UserLockRepository(
             $container->get(\src\Data\Connection::class)
         ));
+        $container->set(\src\Data\RecoveryCodePersistence::class, fn(): RecoveryCodePersistence => new RecoveryCodePersistence(
+            $container->get(\src\Data\Repository\RecoveryCodeSetRepository::class),
+            $container->get(\src\Data\Repository\RecoveryCodeHashRepository::class),
+            $container->get(\src\Data\Repository\UserRecoveryCodeStateRepository::class)
+        ));
+        $container->set(\src\Data\RecoveryAccountPersistence::class, fn(): RecoveryAccountPersistence => new RecoveryAccountPersistence(
+            $container->get(\src\Data\Repository\UserRepository::class),
+            $container->get(\src\Data\Repository\UserLockRepository::class),
+            $container->get(\src\Data\Repository\UserAuthenticatorTOTPRepository::class)
+        ));
     }
 
     private function registerSecurityServices(Container $container, SecuritySecretDecoder $secrets): void
@@ -136,29 +148,19 @@ final class DomainServiceProvider implements ServiceProvider
         ));
         $container->set(\src\Business\RecoveryCodeService::class, fn(): RecoveryCodeService => new RecoveryCodeService(
             $container->get(\src\Data\Connection::class),
-            $container->get(\src\Data\Repository\RecoveryCodeSetRepository::class),
-            $container->get(\src\Data\Repository\RecoveryCodeHashRepository::class),
-            $container->get(\src\Data\Repository\UserRecoveryCodeStateRepository::class),
-            $container->get(\src\Data\Repository\UserRepository::class),
-            $container->get(\src\Data\Repository\UserLockRepository::class),
-            $container->get(\src\Data\Repository\UserAuthenticatorTOTPRepository::class),
+            $container->get(\src\Data\RecoveryCodePersistence::class),
+            $container->get(\src\Data\RecoveryAccountPersistence::class),
             $container->get(\src\Business\RecoveryCodeCodec::class),
-            $container->get(\src\Business\AuthenticationRateLimitService::class),
-            $container->get(\src\Business\SecurityAuditService::class),
-            null,
             $container->get(\src\Business\RecoveryCodeGenerator::class),
-            $container->get(\src\Business\RecoveryCodeRateLimiter::class)
+            $container->get(\src\Business\RecoveryCodeRateLimiter::class),
+            $container->get(\src\Business\SecurityAuditService::class)
         ));
         $container->set(\src\Business\RecoveryFeatureService::class, fn(): RecoveryFeatureService => new RecoveryFeatureService(
             $container->get(\src\Data\Connection::class),
             $container->get(\src\Business\AuthenticationChallengeService::class),
             $container->get(\src\Business\RecoveryCodeService::class),
-            $container->get(\src\Data\Repository\RecoveryCodeSetRepository::class),
-            $container->get(\src\Data\Repository\RecoveryCodeHashRepository::class),
-            $container->get(\src\Data\Repository\UserRecoveryCodeStateRepository::class),
-            $container->get(\src\Data\Repository\UserAuthenticatorTOTPRepository::class),
-            $container->get(\src\Data\Repository\UserRepository::class),
-            $container->get(\src\Data\Repository\UserLockRepository::class),
+            $container->get(\src\Data\RecoveryCodePersistence::class),
+            $container->get(\src\Data\RecoveryAccountPersistence::class),
             $container->get(\src\Business\SecurityAuditService::class)
         ));
     }

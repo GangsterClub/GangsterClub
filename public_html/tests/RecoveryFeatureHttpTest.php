@@ -27,6 +27,8 @@ use src\Business\UserService;
 use src\Controller\AccountRecoveryCodesController;
 use src\Controller\LostAuthenticatorRecoveryController;
 use src\Data\Connection;
+use src\Data\RecoveryAccountPersistence;
+use src\Data\RecoveryCodePersistence;
 use src\Data\Repository\AuthenticationChallengeRepository;
 use src\Data\Repository\AuthenticationRateLimitRepository;
 use src\Data\Repository\RecoveryCodeHashRepository;
@@ -352,16 +354,24 @@ $rateService = new AuthenticationRateLimitService(
     str_repeat('rate-limit-pepper-', 3)
 );
 $auditService = new SecurityAuditService($auditRepository);
-$recoveryService = new RecoveryCodeService(
-    $connection,
+$recoveryData = new RecoveryCodePersistence(
     $recoverySets,
     $recoveryCodes,
-    $recoveryState,
+    $recoveryState
+);
+$recoveryAccounts = new RecoveryAccountPersistence(
     $userRepository,
     $userLocks,
-    $authenticatorRepository,
-    new RecoveryCodeCodec(str_repeat('recovery-pepper-', 3)),
-    $rateService,
+    $authenticatorRepository
+);
+$recoveryCodec = new RecoveryCodeCodec(str_repeat('recovery-pepper-', 3));
+$recoveryService = new RecoveryCodeService(
+    $connection,
+    $recoveryData,
+    $recoveryAccounts,
+    $recoveryCodec,
+    new \src\Business\RecoveryCodeGenerator($recoveryCodec),
+    new \src\Business\RecoveryCodeRateLimiter($rateService),
     $auditService
 );
 $authenticatorService = new RecoveryHttpAuthenticator($authenticatorRepository);
@@ -370,12 +380,8 @@ $featureService = new RecoveryFeatureService(
     $connection,
     $challengeService,
     $recoveryService,
-    $recoverySets,
-    $recoveryCodes,
-    $recoveryState,
-    $authenticatorRepository,
-    $userRepository,
-    $userLocks,
+    $recoveryData,
+    $recoveryAccounts,
     $auditService
 );
 $emailTotp = new RecoveryHttpEmailTotp();
@@ -807,6 +813,7 @@ recoveryAssertTrue(
     && str_contains($enhancementScript, 'status.focus()') === true
     && str_contains($enhancementScript, "Accept: 'application/json'") === true
     && str_contains($enhancementScript, '[data-security-modal-form]') === true
+    && str_contains($enhancementScript, 'displayRecoveryCodesAsHtml') === true
     && str_contains($enhancementScript, 'template.content.cloneNode(true)') === true
     && str_contains($enhancementScript, 'codeElement.textContent = String(code)') === true
     && str_contains($enhancementScript, 'forms.forEach(bindForm)') === true
