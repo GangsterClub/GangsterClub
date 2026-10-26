@@ -5,12 +5,8 @@ declare(strict_types=1);
 namespace src\Business;
 
 use src\Data\Connection;
-use src\Data\Repository\RecoveryCodeHashRepository;
-use src\Data\Repository\RecoveryCodeSetRepository;
-use src\Data\Repository\UserAuthenticatorTOTPRepository;
-use src\Data\Repository\UserRecoveryCodeStateRepository;
-use src\Data\Repository\UserRepository;
-use src\Data\Repository\UserLockRepository;
+use src\Data\RecoveryAccountPersistence;
+use src\Data\RecoveryCodePersistence;
 
 class RecoveryCodeService
 {
@@ -19,27 +15,15 @@ class RecoveryCodeService
 
     public function __construct(
         private readonly Connection $connection,
-        private readonly RecoveryCodeSetRepository $sets,
-        private readonly RecoveryCodeHashRepository $codes,
-        private readonly UserRecoveryCodeStateRepository $states,
-        private readonly UserRepository $users,
-        private readonly UserLockRepository $userLocks,
-        private readonly UserAuthenticatorTOTPRepository $authenticators,
-        RecoveryCodeCodec $codec,
-        AuthenticationRateLimitService $rateLimitService,
+        private readonly RecoveryCodePersistence $recoveryData,
+        private readonly RecoveryAccountPersistence $accountData,
+        private readonly RecoveryCodeCodec $codec,
+        private readonly RecoveryCodeGenerator $generator,
+        private readonly RecoveryCodeRateLimiter $limiter,
         private readonly SecurityAuditService $auditService,
-        private readonly ?\Closure $clock = null,
-        ?RecoveryCodeGenerator $generator = null,
-        ?RecoveryCodeRateLimiter $limiter = null
+        private readonly ?\Closure $clock = null
     ) {
-        $this->codec = $codec;
-        $this->generator = $generator ?? new RecoveryCodeGenerator($codec);
-        $this->limiter = $limiter ?? new RecoveryCodeRateLimiter($rateLimitService);
     }
-
-    private readonly RecoveryCodeGenerator $generator;
-    private readonly RecoveryCodeRateLimiter $limiter;
-    private readonly RecoveryCodeCodec $codec;
 
     public function generatePendingSet(
         int $userId,
@@ -75,12 +59,12 @@ class RecoveryCodeService
             $now,
             $expiresAt
         ): int {
-            if ($this->userLocks->lock($userId) === false) {
+            if ($this->accountData->userLocks()->lock($userId) === false) {
                 throw new \DomainException('Recovery-code owner does not exist.');
             }
 
             $formattedNow = $this->format($now);
-            $setId = $this->sets->createPending(
+            $setId = $this->recoveryData->sets()->createPending(
                 $userId,
                 $purpose->value,
                 $authenticatorGeneration,
@@ -89,7 +73,7 @@ class RecoveryCodeService
                 $formattedNow,
                 $this->format($expiresAt)
             );
-            $this->codes->insertAll($setId, $hashes, $formattedNow);
+            $this->recoveryData->codes()->insertAll($setId, $hashes, $formattedNow);
             $this->auditService->record('recovery_codes.generated', $userId, [
                 'recovery_code_set_id' => $setId,
                 'replaces_recovery_code_set_id' => $replacesSetId,
@@ -106,11 +90,11 @@ class RecoveryCodeService
     public function activatePendingSet(int $userId, int $setId, ?int $expectedActiveSetId = null): bool
     {
         return $this->connection->transaction(function () use ($userId, $setId, $expectedActiveSetId): bool {
-            if ($this->userLocks->lock($userId) === false) {
+            if ($this->accountData->userLocks()->lock($userId) === false) {
                 return false;
             }
 
-            $pendingSet = $this->sets->findForUpdate($setId);
+            $pendingSet = $this->recoveryData->sets()->findForUpdate($setId);
             if ($this->isActivatablePendingSet($pendingSet, $userId, $expectedActiveSetId) === false) {
                 return false;
             }
@@ -128,11 +112,11 @@ class RecoveryCodeService
                 return false;
             }
 
-            if ($this->sets->activate($setId, $now) === false) {
+            if ($this->recoveryData->sets()->activate($setId, $now) === false) {
                 throw new \RuntimeException('Unable to activate the pending recovery-code set.');
             }
 
-            $this->states->setActiveSet($userId, $setId, $now);
+            $this->recoveryData->states()->setActiveSet($userId, $setId, $now);
             $event = $expectedActiveSetId === null
                 ? 'recovery_codes.activated'
                 : 'recovery_codes.replaced';
@@ -165,34 +149,34 @@ class RecoveryCodeService
 
     private function matchesAuthenticatorGeneration(object $pendingSet, int $userId): bool
     {
-        $authenticator = $this->authenticators->findByUserIdForUpdate($userId);
+        $authenticator = $this->accountData->authenticators()->findByUserIdForUpdate($userId);
         return $authenticator !== false
             && (int) $authenticator->generation === (int) $pendingSet->authenticator_generation;
     }
 
     private function getLockedActiveSetId(int $userId): ?int
     {
-        return $this->states->getActiveSetId($userId, true);
+        return $this->recoveryData->states()->getActiveSetId($userId, true);
     }
 
     private function invalidateReplacedSet(?int $setId, string $now): bool
     {
-        return $setId === null || $this->sets->invalidate($setId, $now) === true;
+        return $setId === null || $this->recoveryData->sets()->invalidate($setId, $now) === true;
     }
 
     public function invalidatePendingSet(int $userId, int $setId, string $reason): bool
     {
         return $this->connection->transaction(function () use ($userId, $setId, $reason): bool {
-            if ($this->userLocks->lock($userId) === false) {
+            if ($this->accountData->userLocks()->lock($userId) === false) {
                 return false;
             }
 
-            $set = $this->sets->findForUpdate($setId);
+            $set = $this->recoveryData->sets()->findForUpdate($setId);
             if ($set === false || (int) $set->user_id !== $userId || $set->status !== 'pending') {
                 return false;
             }
 
-            $invalidated = $this->sets->invalidate($setId, $this->format($this->now()));
+            $invalidated = $this->recoveryData->sets()->invalidate($setId, $this->format($this->now()));
             if ($invalidated === true) {
                 $this->auditService->record('recovery_codes.pending_invalidated', $userId, [
                     'recovery_code_set_id' => $setId,
@@ -234,7 +218,7 @@ class RecoveryCodeService
 
         $hash = $this->codec->hash($normalized);
         $result = $this->connection->transaction(function () use ($userId, $hash, $purpose): RecoveryCodeConsumptionResult {
-            if ($this->userLocks->lock($userId) === false) {
+            if ($this->accountData->userLocks()->lock($userId) === false) {
                 return new RecoveryCodeConsumptionResult(RecoveryCodeConsumptionResult::STATUS_INVALID);
             }
 
@@ -244,11 +228,11 @@ class RecoveryCodeService
             }
 
             $now = $this->format($this->now());
-            if ($this->codes->consume((int) $activeSet->id, $hash, $now) === false) {
+            if ($this->recoveryData->codes()->consume((int) $activeSet->id, $hash, $now) === false) {
                 return new RecoveryCodeConsumptionResult(RecoveryCodeConsumptionResult::STATUS_INVALID);
             }
 
-            $remainingCount = $this->codes->countUnused((int) $activeSet->id);
+            $remainingCount = $this->recoveryData->codes()->countUnused((int) $activeSet->id);
             $this->auditService->record('recovery_code.used', $userId, [
                 'recovery_code_set_id' => (int) $activeSet->id,
                 'remaining_count' => $remainingCount,
@@ -271,12 +255,12 @@ class RecoveryCodeService
 
     private function findActiveSetForUpdate(int $userId): object|false
     {
-        $setId = $this->states->getActiveSetId($userId, true);
+        $setId = $this->recoveryData->states()->getActiveSetId($userId, true);
         if ($setId === null) {
             return false;
         }
-        $set = $this->sets->findActive($setId, $userId, true);
-        $authenticator = $this->authenticators->findByUserIdForUpdate($userId);
+        $set = $this->recoveryData->sets()->findActive($setId, $userId, true);
+        $authenticator = $this->accountData->authenticators()->findByUserIdForUpdate($userId);
         if ($set === false || $authenticator === false) {
             return false;
         }

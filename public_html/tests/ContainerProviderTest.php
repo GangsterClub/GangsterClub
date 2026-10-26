@@ -182,6 +182,8 @@ $expectedIds = [
     \src\Data\Repository\RecoveryCodeHashRepository::class,
     \src\Data\Repository\UserRecoveryCodeStateRepository::class,
     \src\Data\Repository\UserLockRepository::class,
+    \src\Data\RecoveryCodePersistence::class,
+    \src\Data\RecoveryAccountPersistence::class,
     \src\Business\AuthenticationChallengeService::class,
     \src\Business\AuthenticationRateLimitService::class,
     \src\Business\SecurityAuditService::class,
