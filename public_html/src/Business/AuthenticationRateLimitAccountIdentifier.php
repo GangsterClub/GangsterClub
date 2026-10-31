@@ -26,12 +26,16 @@ final class AuthenticationRateLimitAccountIdentifier
 
     public static function forEmail(string $email): self
     {
-        $normalized = strtolower(trim($email));
-        if ($normalized === '' || filter_var($normalized, FILTER_VALIDATE_EMAIL) === false) {
+        return new self(self::TYPE_EMAIL, self::normalizeEmail($email));
+    }
+
+    public static function normalizeEmail(string $email): string
+    {
+        $email = strtolower(trim($email));
+        if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
             throw new \InvalidArgumentException('A valid email address is required for account rate limiting.');
         }
-
-        return new self(self::TYPE_EMAIL, $normalized);
+        return $email;
     }
 
     public function domainSeparatedValue(): string

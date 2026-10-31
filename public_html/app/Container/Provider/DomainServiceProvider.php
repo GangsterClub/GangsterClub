@@ -13,6 +13,7 @@ use app\Service\JWTService;
 use app\Service\SessionService;
 use src\Business\AccountService;
 use src\Business\AuthenticationChallengeService;
+use src\Business\AuthenticationRateLimitContextProvider;
 use src\Business\AuthenticationRateLimitService;
 use src\Business\AuthenticationRateLimitKeyFactory;
 use src\Business\DatabaseRetryClassifier;
@@ -167,6 +168,9 @@ final class DomainServiceProvider implements ServiceProvider
 
     private function registerAuthenticationServices(Container $container): void
     {
+        $container->set(\src\Business\AuthenticationRateLimitContextProvider::class, fn(): AuthenticationRateLimitContextProvider => new AuthenticationRateLimitContextProvider(
+            $container->get(\app\Service\SessionService::class)
+        ));
         $container->set(\src\Business\AuthenticatorVerificationThrottle::class, fn(): AuthenticatorVerificationThrottle => new AuthenticatorVerificationThrottle(
             $container->get(\src\Business\AuthenticationRateLimitService::class)
         ));
@@ -189,7 +193,9 @@ final class DomainServiceProvider implements ServiceProvider
             $container->get(\src\Business\EmailTOTPService::class),
             $container->get(\src\Business\TOTPService::class),
             $container->get(\src\Business\EmailService::class),
-            $container->get(\app\Service\SessionService::class)
+            $container->get(\app\Service\SessionService::class),
+            $container->get(\src\Business\AuthenticationRateLimitService::class),
+            $container->get(\src\Business\AuthenticationRateLimitContextProvider::class)
         ));
         $container->set(\app\Service\JWT::class, fn(): JWT => new JWT());
         $container->set(\app\Service\JWTService::class, fn(): JWTService => new JWTService(
@@ -201,12 +207,12 @@ final class DomainServiceProvider implements ServiceProvider
             $container->get(\src\Business\UserService::class),
             $container->get(\src\Business\AuthenticatorTOTPService::class),
             $container->get(\src\Business\EmailTOTPService::class),
-            $container->get(\src\Business\TOTPService::class),
             $container->get(\src\Business\EmailService::class),
             $container->get(\app\Service\SessionService::class),
             $container->get(\src\Business\RecoveryCodeService::class),
             $container->get(\app\Service\PendingAuthenticationSession::class),
-            $container->get(\src\Business\AuthEntryOtpService::class)
+            $container->get(\src\Business\AuthEntryOtpService::class),
+            $container->get(\src\Business\AuthenticationRateLimitContextProvider::class)
         ));
     }
 }
