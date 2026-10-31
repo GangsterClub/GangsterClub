@@ -92,6 +92,7 @@ require_once __DIR__ . '/../src/Business/AuthEntryService.php';
 require_once __DIR__ . '/../src/Business/AuthenticationRateLimitBucketDimension.php';
 require_once __DIR__ . '/../src/Business/AuthenticationRateLimitAccountIdentifier.php';
 require_once __DIR__ . '/../src/Business/AuthenticationRateLimitContext.php';
+require_once __DIR__ . '/../src/Business/RateLimitExceededException.php';
 require_once __DIR__ . '/../src/Business/RecoveryCodeConsumptionResult.php';
 require_once __DIR__ . '/../src/Business/RecoveryFeatureService.php';
 
@@ -201,13 +202,21 @@ final class FakeAuthEntryService extends AuthEntryService
     public array $calls = [];
     public array $queue = [];
     public function __construct() {}
-    public function beginLogin(AuthService $auth, string $email): array { $this->calls[] = ['beginLogin', $email]; return array_shift($this->queue); }
-    public function beginRegistration(AuthService $auth, string $username, string $email): array { $this->calls[] = ['beginRegistration', $username, $email]; return array_shift($this->queue); }
-    public function verify(AuthService $auth, string $mode, string $otp): array { $this->calls[] = ['verify', $mode, $otp]; return array_shift($this->queue); }
+    public function beginLogin(AuthService $auth, string $email): array { $this->calls[] = ['beginLogin', $email]; return $this->nextResult(); }
+    public function beginRegistration(AuthService $auth, string $username, string $email): array { $this->calls[] = ['beginRegistration', $username, $email]; return $this->nextResult(); }
+    public function verify(AuthService $auth, string $mode, string $otp): array { $this->calls[] = ['verify', $mode, $otp]; return $this->nextResult(); }
     public function verifyRecoveryCode(AuthService $auth, string $submittedCode, AuthenticationRateLimitContext $rateLimitContext): array
     {
         $this->calls[] = ['verifyRecoveryCode', $submittedCode];
-        return array_shift($this->queue);
+        return $this->nextResult();
+    }
+    private function nextResult(): array
+    {
+        $result = array_shift($this->queue);
+        if ($result instanceof Throwable) {
+            throw $result;
+        }
+        return $result;
     }
 }
 
@@ -252,7 +261,7 @@ function assertResponseNotContains(Response $response, string $needle, string $m
     }
 }
 
-function runController(string $mode, array $post, array $result): array
+function runController(string $mode, array $post, array|Throwable $result): array
 {
     $app = new AuthEntryTestApplication();
     $service = new FakeAuthEntryService();
@@ -284,6 +293,15 @@ assertContainsValue('otp-email-sent', $flashes['login']['success'] ?? [], 'Exist
 [$response, $flashes, $calls] = runController('login', ['submit_login' => '1', 'email' => 'new@example.test'], ['status' => AuthEntryService::STATUS_EMAIL_OTP_SENT]);
 assertSameValue([['beginLogin', 'new@example.test']], $calls, 'Unknown-email login should delegate deferred user creation to the service.');
 assertContainsValue('otp-email-sent', $flashes['login']['success'] ?? [], 'Unknown-email login should still send email OTP before account creation.');
+
+[$limitedLoginResponse, $limitedLoginFlashes] = runController(
+    'login',
+    ['submit_login' => '1', 'email' => 'limited@example.test'],
+    new \src\Business\RateLimitExceededException('email_totp_issue', 60)
+);
+assertSameValue($response->getStatusCode(), $limitedLoginResponse->getStatusCode(), 'Rate-limited login changed the HTTP status.');
+assertSameValue($response->getHeaders(), $limitedLoginResponse->getHeaders(), 'Rate-limited login changed redirect behavior.');
+assertSameValue($flashes['login'] ?? [], $limitedLoginFlashes['login'] ?? [], 'Rate-limited login exposed a different response message.');
 
 [$response, $flashes, $calls] = runController('register', ['submit_register' => '1', 'username' => 'alice', 'email' => 'dupe@example.test'], ['status' => AuthEntryService::STATUS_VALIDATION_ERROR, 'error' => 'duplicate-email']);
 assertSameValue([['beginRegistration', 'alice', 'dupe@example.test']], $calls, 'Register should delegate duplicate checks to the service.');
@@ -326,6 +344,15 @@ assertResponseNotContains($response, 'value="alice" autofocus', 'Remembered regi
 
 [$response, $flashes, $calls] = runController('register', ['submit_register' => '1', 'username' => 'alice', 'email' => 'new@example.test'], ['status' => AuthEntryService::STATUS_EMAIL_OTP_SENT]);
 assertContainsValue('login.otp-email-sent', $flashes['register']['success'] ?? [], 'Registration should use email OTP before creating the user.');
+
+[$limitedRegistrationResponse, $limitedRegistrationFlashes] = runController(
+    'register',
+    ['submit_register' => '1', 'username' => 'limited', 'email' => 'limited@example.test'],
+    new \src\Business\RateLimitExceededException('email_totp_issue', 60)
+);
+assertSameValue($response->getStatusCode(), $limitedRegistrationResponse->getStatusCode(), 'Rate-limited registration changed the HTTP status.');
+assertSameValue($response->getHeaders(), $limitedRegistrationResponse->getHeaders(), 'Rate-limited registration changed redirect behavior.');
+assertSameValue($flashes['register'] ?? [], $limitedRegistrationFlashes['register'] ?? [], 'Rate-limited registration exposed a different response message.');
 
 
 $app = new AuthEntryTestApplication();

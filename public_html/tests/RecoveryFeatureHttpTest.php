@@ -546,14 +546,25 @@ recoveryAssertTrue($initialSetId !== null, 'Initial acknowledgement must establi
 // 2. Recovery-code fallback substitutes for the authenticator during normal login.
 $loginSession = new RecoveryHttpSession();
 $loginAuth = new AuthService($loginSession, new CsrfService($loginSession), $userRepository);
+$loginTotp = new TOTPService();
+$loginOtp = new \src\Business\AuthEntryOtpService(
+    $emailTotp,
+    $loginTotp,
+    $email,
+    $loginSession,
+    $rateService,
+    new \src\Business\AuthenticationRateLimitContextProvider($loginSession)
+);
 $loginService = new AuthEntryService(
     $users,
     $authenticatorService,
     $emailTotp,
-    new TOTPService(),
     $email,
     $loginSession,
-    $recoveryService
+    $recoveryService,
+    new \app\Service\PendingAuthenticationSession($loginSession),
+    $loginOtp,
+    new \src\Business\AuthenticationRateLimitContextProvider($loginSession)
 );
 $beginLogin = $loginService->beginLogin($loginAuth, 'existing@example.test');
 recoveryAssertSame(AuthEntryService::STATUS_AUTHENTICATOR_CODE_REQUIRED, $beginLogin['status'], 'Authenticator login must continue to request its existing factor.');
@@ -566,14 +577,25 @@ recoveryAssertSame(AuthEntryService::STATUS_AUTHENTICATED, $fallback['status'], 
 recoveryAssertSame(9, $fallback['remainingCount'], 'Fallback must report the remaining active-code count.');
 $invalidLoginSession = new RecoveryHttpSession();
 $invalidLoginAuth = new AuthService($invalidLoginSession, new CsrfService($invalidLoginSession), $userRepository);
+$invalidLoginTotp = new TOTPService();
+$invalidLoginOtp = new \src\Business\AuthEntryOtpService(
+    $emailTotp,
+    $invalidLoginTotp,
+    $email,
+    $invalidLoginSession,
+    $rateService,
+    new \src\Business\AuthenticationRateLimitContextProvider($invalidLoginSession)
+);
 $invalidLoginService = new AuthEntryService(
     $users,
     $authenticatorService,
     $emailTotp,
-    new TOTPService(),
     $email,
     $invalidLoginSession,
-    $recoveryService
+    $recoveryService,
+    new \app\Service\PendingAuthenticationSession($invalidLoginSession),
+    $invalidLoginOtp,
+    new \src\Business\AuthenticationRateLimitContextProvider($invalidLoginSession)
 );
 $invalidLoginService->beginLogin($invalidLoginAuth, 'existing@example.test');
 $invalidFallback = $invalidLoginService->verifyRecoveryCode(

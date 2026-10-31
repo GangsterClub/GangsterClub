@@ -85,7 +85,11 @@ final class AuthEntryRequestHandler
         }
         $username = (string) $request->post('username');
         $email = (string) $request->post('email');
-        $result = $this->entries->beginRegistration($this->auth, $username, $email);
+        try {
+            $result = $this->entries->beginRegistration($this->auth, $username, $email);
+        } catch (\src\Business\RateLimitExceededException) {
+            $result = ['status' => AuthEntryService::STATUS_EMAIL_OTP_SENT];
+        }
         if (in_array($result['status'] ?? null, [
             AuthEntryService::STATUS_VALIDATION_ERROR,
             AuthEntryService::STATUS_SEND_ERROR,

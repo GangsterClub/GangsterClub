@@ -39,16 +39,50 @@ class AuthenticationRateLimitService
         AuthenticationRateLimitPurpose $purpose,
         array $policies
     ): RateLimitDecision {
-        $buckets = $this->keyFactory->buckets($context, $action, $purpose);
-        $persistencePurpose = $this->keyFactory->persistencePurpose($action, $purpose);
+        return $this->consumeAttempts($context, [[
+            'action' => $action,
+            'purpose' => $purpose,
+            'policies' => $policies,
+        ]]);
+    }
 
+    /**
+     * The attempts are charged in order in one transaction. If a later policy
+     * denies the request, earlier attempts remain charged so blocked traffic
+     * cannot avoid the broader quota. Persistence errors roll back the group.
+     *
+     * @param array<int, array{
+     *     action: AuthenticationRateLimitAction,
+     *     purpose: AuthenticationRateLimitPurpose,
+     *     policies: array<string, RateLimitPolicy>
+     * }> $attempts
+     */
+    public function consumeAttempts(
+        AuthenticationRateLimitContext $context,
+        array $attempts
+    ): RateLimitDecision {
+        if ($attempts === []) {
+            throw new \InvalidArgumentException('At least one rate-limit attempt is required.');
+        }
         for ($attempt = 1; $attempt <= self::MAX_TRANSACTION_ATTEMPTS; ++$attempt) {
             try {
-                return $this->consumeBuckets(
-                    $buckets,
-                    $persistencePurpose,
-                    $policies
-                );
+                return $this->connection->transaction(function () use ($context, $attempts): RateLimitDecision {
+                    $remainingAttempts = PHP_INT_MAX;
+                    foreach ($attempts as $rateLimitAttempt) {
+                        $action = $rateLimitAttempt['action'];
+                        $purpose = $rateLimitAttempt['purpose'];
+                        $decision = $this->consumeBuckets(
+                            $this->keyFactory->buckets($context, $action, $purpose),
+                            $this->keyFactory->persistencePurpose($action, $purpose),
+                            $rateLimitAttempt['policies']
+                        );
+                        if ($decision->allowed === false) {
+                            return $decision;
+                        }
+                        $remainingAttempts = min($remainingAttempts, $decision->remainingAttempts);
+                    }
+                    return new RateLimitDecision(true, $remainingAttempts, null);
+                });
             } catch (\PDOException $exception) {
                 $retryable = $this->retryClassifier->isUniqueConstraintViolation($exception)
                     || $this->retryClassifier->isRetryableTransactionFailure($exception);

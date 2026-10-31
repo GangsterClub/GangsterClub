@@ -33,7 +33,13 @@ require_once __DIR__ . '/../src/Business/TOTPService.php';
 require_once __DIR__ . '/../src/Business/AuthenticationRateLimitAccountIdentifier.php';
 require_once __DIR__ . '/../src/Business/AuthenticationRateLimitBucketDimension.php';
 require_once __DIR__ . '/../src/Business/AuthenticationRateLimitContext.php';
+require_once __DIR__ . '/../src/Business/AuthenticationRateLimitContextProvider.php';
 require_once __DIR__ . '/../src/Business/AuthenticationRateLimitPurpose.php';
+require_once __DIR__ . '/../src/Business/AuthenticationRateLimitAction.php';
+require_once __DIR__ . '/../src/Business/RateLimitPolicy.php';
+require_once __DIR__ . '/../src/Business/AuthenticationRateLimitPolicies.php';
+require_once __DIR__ . '/../src/Business/RateLimitDecision.php';
+require_once __DIR__ . '/../src/Business/AuthenticationRateLimitService.php';
 require_once __DIR__ . '/../src/Business/AuthenticatorTOTPPurpose.php';
 require_once __DIR__ . '/../src/Business/EmailTOTPPurpose.php';
 require_once __DIR__ . '/../src/Business/IssuedEmailTOTP.php';
@@ -75,6 +81,29 @@ final class FakeEmailTOTPService extends EmailTOTPService {
 }
 final class FakeTotpService extends TOTPService { public function generateSecret(int $digits = TOTP_DIGITS, int $period = TOTP_PERIOD): string { return 'secret'; } public function generateTOTP(?string $secret = null, ?int $digits = AUTHENTICATOR_TOTP_DIGITS, ?int $period = AUTHENTICATOR_TOTP_PERIOD): string { return '222222'; } public function verifyTOTP(string $secret, string $totp, int $digits = TOTP_DIGITS, int $period = TOTP_PERIOD): bool { return $secret === 'secret' && $totp === '222222'; } }
 final class FakeEmailService extends EmailService { public array $sent=[]; public bool $succeeds=true; public function __construct() {} public function sendEmailTOTP(string $toEmail, string $totp): bool { $this->sent[] = [$toEmail, $totp]; return $this->succeeds; } }
+final class FakeAuthenticationRateLimitService extends \src\Business\AuthenticationRateLimitService
+{
+    public function __construct() {}
+    public function consumeAttempt(
+        \src\Business\AuthenticationRateLimitContext $context,
+        \src\Business\AuthenticationRateLimitAction $action,
+        \src\Business\AuthenticationRateLimitPurpose $purpose,
+        array $policies
+    ): \src\Business\RateLimitDecision {
+        return new \src\Business\RateLimitDecision(true, 10, null);
+    }
+    public function consumeAttempts(
+        \src\Business\AuthenticationRateLimitContext $context,
+        array $attempts
+    ): \src\Business\RateLimitDecision {
+        return new \src\Business\RateLimitDecision(true, 10, null);
+    }
+    public function resetAfterSuccessfulVerification(
+        \src\Business\AuthenticationRateLimitContext $context,
+        \src\Business\AuthenticationRateLimitAction $action,
+        \src\Business\AuthenticationRateLimitPurpose $purpose
+    ): void {}
+}
 function makeService(
     AuthEntryServiceTestSession $session,
     FakeUserService $users,
@@ -83,13 +112,28 @@ function makeService(
     ?FakeTotpService $totp = null,
     ?FakeEmailService $email = null,
 ): AuthEntryService {
+    $authenticator ??= new FakeAuthenticatorService();
+    $emailTotp ??= new FakeEmailTOTPService();
+    $totp ??= new FakeTotpService();
+    $email ??= new FakeEmailService();
+    $otp = new \src\Business\AuthEntryOtpService(
+        $emailTotp,
+        $totp,
+        $email,
+        $session,
+        new FakeAuthenticationRateLimitService(),
+        new \src\Business\AuthenticationRateLimitContextProvider($session)
+    );
     return new AuthEntryService(
         $users,
-        $authenticator ?? new FakeAuthenticatorService(),
-        $emailTotp ?? new FakeEmailTOTPService(),
-        $totp ?? new FakeTotpService(),
-        $email ?? new FakeEmailService(),
-        $session
+        $authenticator,
+        $emailTotp,
+        $email,
+        $session,
+        null,
+        new \app\Service\PendingAuthenticationSession($session),
+        $otp,
+        new \src\Business\AuthenticationRateLimitContextProvider($session)
     );
 }
 function makeUser(int $id, string $username, string $email, bool $twoStepRequired = false): User { return new User($id, $username, $email, '127.0.0.1', new DateTime(), new DateTime(), new DateTime('0000-00-00 00:00:00'), $twoStepRequired); }
@@ -99,6 +143,8 @@ $session = new AuthEntryServiceTestSession();
 $users = new FakeUserService();
 $svc = makeService($session, $users);
 $auth = new AuthService($session, new CsrfService($session));
+$invalid = $svc->beginLogin($auth, 'not-an-email');
+assertSameValue(AuthEntryService::STATUS_VALIDATION_ERROR, $invalid['status'], 'Invalid login emails should fail validation before rate limiting.');
 $result = $svc->beginLogin($auth, 'new@example.test');
 assertSameValue(AuthEntryService::STATUS_EMAIL_OTP_SENT, $result['status'], 'Unknown login should send an email-only OTP.');
 assertSameValue(0, $users->createByEmailCalls, 'Unknown login must not create the user before TOTP verification.');
