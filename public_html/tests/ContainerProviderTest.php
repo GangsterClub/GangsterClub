@@ -186,6 +186,7 @@ $expectedIds = [
     \src\Data\RecoveryAccountPersistence::class,
     \src\Business\AuthenticationChallengeService::class,
     \src\Business\AuthenticationRateLimitService::class,
+    \src\Business\AuthenticationRateLimitContextProvider::class,
     \src\Business\SecurityAuditService::class,
     \src\Business\RecoveryCodeCodec::class,
     \src\Business\RecoveryCodeGenerator::class,
@@ -238,6 +239,10 @@ $domainServices->set(
 );
 $domainServices->set(\src\Business\TOTPService::class, containerProviderInstanceWithoutConstructor(TOTPService::class));
 $domainServices->set(\src\Business\EmailService::class, containerProviderInstanceWithoutConstructor(EmailService::class));
+$domainServices->set(
+    \src\Business\AuthEntryOtpService::class,
+    containerProviderInstanceWithoutConstructor(\src\Business\AuthEntryOtpService::class)
+);
 $domainServices->set(
     \src\Business\RecoveryCodeService::class,
     containerProviderInstanceWithoutConstructor(RecoveryCodeService::class)

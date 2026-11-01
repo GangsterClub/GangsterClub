@@ -29,28 +29,21 @@ class AuthEntryService
         private readonly UserService $userService,
         private readonly AuthenticatorTOTPService $authenticatorService,
         private readonly EmailTOTPService $emailTotpService,
-        private readonly TOTPService $totpService,
         private readonly EmailService $emailService,
         private readonly SessionService $sessionService,
-        private readonly ?RecoveryCodeService $recoveryCodeService = null,
-        ?PendingAuthenticationSession $pendingAuthentication = null,
-        ?AuthEntryOtpService $otp = null
+        private readonly ?RecoveryCodeService $recoveryCodeService,
+        private readonly PendingAuthenticationSession $pendingAuthentication,
+        private readonly AuthEntryOtpService $otp,
+        private readonly AuthenticationRateLimitContextProvider $rateLimitContexts
     ) {
-        $this->pendingAuthentication = $pendingAuthentication ?? new PendingAuthenticationSession($sessionService);
-        $this->otp = $otp ?? new AuthEntryOtpService(
-            $emailTotpService,
-            $totpService,
-            $emailService,
-            $sessionService
-        );
     }
-
-    private readonly PendingAuthenticationSession $pendingAuthentication;
-    private readonly AuthEntryOtpService $otp;
 
     public function beginLogin(AuthService $auth, string $email): array
     {
         $email = trim($email);
+        if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            return ['status' => self::STATUS_VALIDATION_ERROR, 'error' => 'provide-valid-email'];
+        }
         $user = $this->userService->getUserByEmail($email);
 
         $this->pendingAuthentication->setEmail($email);
@@ -66,18 +59,29 @@ class AuthEntryService
             if ($this->authenticatorService->hasEnabledAuthenticator($userId) === true) {
                 if ($user->isTwoStepVerificationRequired() === true) {
                     $this->pendingAuthentication->setTwoStepRequired(true);
-                    return $this->otp->issuePersisted($userId, $email, $this->rateLimitContext($userId));
+                    return $this->otp->issuePersisted(
+                        $userId,
+                        $email,
+                        $this->rateLimitContexts->forUser($userId)
+                    );
                 }
                 $this->pendingAuthentication->setAuthenticatorRequired(true);
                 return ['status' => self::STATUS_AUTHENTICATOR_CODE_REQUIRED];
             }
 
-            return $this->otp->issuePersisted($userId, $email, $this->rateLimitContext($userId));
+            return $this->otp->issuePersisted(
+                $userId,
+                $email,
+                $this->rateLimitContexts->forUser($userId)
+            );
         }
 
         $this->pendingAuthentication->setUserId(null);
         $this->sessionService->set(self::PENDING_CREATE_BY_EMAIL, true);
-        return $this->otp->issueEmailOnly($email);
+        return $this->otp->issueEmailOnly(
+            $email,
+            AuthenticationRateLimitPurpose::EMAIL_TOTP_LOGIN
+        );
     }
 
     public function beginRegistration(AuthService $auth, string $username, string $email): array
@@ -108,7 +112,10 @@ class AuthEntryService
         $this->sessionService->set(self::PENDING_REGISTRATION_USERNAME, $username);
         $this->sessionService->set(self::PENDING_CREATE_BY_EMAIL, false);
 
-        return $this->otp->issueEmailOnly($email);
+        return $this->otp->issueEmailOnly(
+            $email,
+            AuthenticationRateLimitPurpose::EMAIL_TOTP_REGISTRATION
+        );
     }
 
     public function verify(AuthService $auth, string $mode, string $otp): array
@@ -116,7 +123,7 @@ class AuthEntryService
         $this->pendingAuthentication->setTotp($otp);
         $userId = $this->pendingAuthentication->getUserId();
 
-        if ($this->verifySubmittedOtp($auth, $userId, $otp) === false) {
+        if ($this->verifySubmittedOtp($userId, $mode, $otp) === false) {
             return ['status' => self::STATUS_INVALID_OTP];
         }
 
@@ -145,10 +152,18 @@ class AuthEntryService
         return ['status' => self::STATUS_AUTHENTICATED, 'userId' => $userId];
     }
 
-    private function verifySubmittedOtp(AuthService $auth, ?int $userId, string $otp): bool
+    private function verifySubmittedOtp(?int $userId, string $mode, string $otp): bool
     {
         if ($userId === null) {
-            return $this->otp->verifyEmailOnly($otp);
+            $purpose = $mode === self::MODE_REGISTER
+                ? AuthenticationRateLimitPurpose::EMAIL_TOTP_REGISTRATION
+                : AuthenticationRateLimitPurpose::EMAIL_TOTP_LOGIN;
+            $verifiedEmail = $this->otp->verifyEmailOnly($otp, $purpose);
+            if ($verifiedEmail === null) {
+                return false;
+            }
+            $this->pendingAuthentication->setEmail($verifiedEmail);
+            return true;
         }
 
         if ($this->pendingAuthentication->isAuthenticatorRequired() === true) {
@@ -156,7 +171,7 @@ class AuthEntryService
                 $userId,
                 AuthenticatorTOTPPurpose::LOGIN,
                 $otp,
-                $this->rateLimitContext($userId)
+                $this->rateLimitContexts->forUser($userId)
             );
         }
 
@@ -164,7 +179,7 @@ class AuthEntryService
             $userId,
             EmailTOTPPurpose::LOGIN,
             $otp,
-            $this->rateLimitContext($userId)
+            $this->rateLimitContexts->forUser($userId)
         );
     }
 
@@ -240,14 +255,4 @@ class AuthEntryService
         return null;
     }
 
-    private function rateLimitContext(int $userId): AuthenticationRateLimitContext
-    {
-        $ipAddress = (string) $this->sessionService->get('_IPaddress', '0.0.0.0');
-        $sessionIdentifier = (string) $this->sessionService->get('_security_rate_limit_id', '');
-        if ($sessionIdentifier === '') {
-            $sessionIdentifier = bin2hex(random_bytes(16));
-            $this->sessionService->set('_security_rate_limit_id', $sessionIdentifier);
-        }
-        return AuthenticationRateLimitContext::forUser($userId, $ipAddress, $sessionIdentifier);
-    }
 }

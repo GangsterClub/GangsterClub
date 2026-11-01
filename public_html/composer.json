@@ -43,6 +43,7 @@
             "@php tests/AuthenticatorTOTPServiceTest.php",
             "@php tests/AuthenticatorSecurityControllerTest.php",
             "@php tests/AuthEntryControllerTest.php",
+            "@php tests/AuthEntryRateLimitSecurityTest.php",
             "@php tests/AuthEntryServiceTest.php",
             "@php tests/BearerAuthJWTTest.php",
             "@php tests/CsrfMiddlewareTest.php",
