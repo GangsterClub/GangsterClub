@@ -81,7 +81,7 @@ class Superglobal
         }
 
         foreach (explode(',', $trustedProxies) as $proxy) {
-            if ($this->matchesProxy($ipBinary, trim($proxy))) {
+            if ($this->matchesProxy($ipBinary, trim($proxy)) === true) {
                 return true;
             }
         }
