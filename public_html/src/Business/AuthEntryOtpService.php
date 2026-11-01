@@ -63,7 +63,7 @@ final class AuthEntryOtpService
     ): ?string {
         $secret = $this->sessionService->get(self::PENDING_EMAIL_ONLY_SECRET);
         $purposeValue = $this->sessionService->get(self::PENDING_EMAIL_ONLY_PURPOSE);
-        $purpose = is_string($purposeValue) ? AuthenticationRateLimitPurpose::tryFrom($purposeValue) : null;
+        $purpose = is_string($purposeValue) === true ? AuthenticationRateLimitPurpose::tryFrom($purposeValue) : null;
         $email = $this->sessionService->get(self::PENDING_EMAIL_ONLY_EMAIL);
         if (is_string($secret) === false
             || $secret === ''

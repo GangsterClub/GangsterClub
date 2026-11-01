@@ -717,7 +717,7 @@ if (function_exists('pcntl_fork') === true) {
         pcntl_waitpid($child, $status);
         securityAssert(pcntl_wexitstatus($status) === 0, 'A concurrent verification client crashed.');
     }
-    $verificationSuccesses = is_file($verificationLogPath)
+    $verificationSuccesses = is_file($verificationLogPath) === true
         ? file($verificationLogPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES)
         : [];
     securityAssert(
@@ -726,10 +726,10 @@ if (function_exists('pcntl_fork') === true) {
         'Concurrent requests verified the same session OTP more than once.'
     );
     $sessionFile = $verificationSessionDirectory . '/sess_' . $verificationSessionId;
-    if (is_file($sessionFile)) {
+    if (is_file($sessionFile) === true) {
         unlink($sessionFile);
     }
-    if (is_file($verificationLogPath)) {
+    if (is_file($verificationLogPath) === true) {
         unlink($verificationLogPath);
     }
     unlink($verificationGatePath);
