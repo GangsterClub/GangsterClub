@@ -81,35 +81,41 @@ class Superglobal
         }
 
         foreach (explode(',', $trustedProxies) as $proxy) {
-            [$subnet, $prefix] = array_pad(explode('/', trim($proxy), 2), 2, null);
-            $subnetBinary = @inet_pton($subnet);
-
-            if ($subnetBinary === false || strlen($ipBinary) !== strlen($subnetBinary)) {
-                continue;
-            }
-
-            $bits = $prefix === null ? strlen($ipBinary) * 8 : filter_var($prefix, FILTER_VALIDATE_INT);
-
-            if ($bits === false || $bits < 0 || $bits > strlen($ipBinary) * 8) {
-                continue;
-            }
-
-            $bytes = intdiv($bits, 8);
-            $remainder = $bits % 8;
-
-            if (substr($ipBinary, 0, $bytes) !== substr($subnetBinary, 0, $bytes)) {
-                continue;
-            }
-
-            if ($remainder === 0 || (
-                (ord($ipBinary[$bytes]) >> (8 - $remainder)) ===
-                (ord($subnetBinary[$bytes]) >> (8 - $remainder))
-            )) {
+            if ($this->matchesProxy($ipBinary, trim($proxy))) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    private function matchesProxy(string $ipBinary, string $proxy): bool
+    {
+        [$subnet, $prefix] = array_pad(explode('/', $proxy, 2), 2, null);
+        $subnetBinary = @inet_pton($subnet);
+
+        if ($subnetBinary === false || strlen($ipBinary) !== strlen($subnetBinary)) {
+            return false;
+        }
+
+        $maxBits = strlen($ipBinary) * 8;
+        $bits = $prefix === null ? $maxBits : filter_var($prefix, FILTER_VALIDATE_INT);
+
+        if ($bits === false || $bits < 0 || $bits > $maxBits) {
+            return false;
+        }
+
+        $bytes = intdiv($bits, 8);
+        $remainder = $bits % 8;
+
+        if (substr($ipBinary, 0, $bytes) !== substr($subnetBinary, 0, $bytes)) {
+            return false;
+        }
+
+        return $remainder === 0 || (
+            (ord($ipBinary[$bytes]) >> (8 - $remainder)) ===
+            (ord($subnetBinary[$bytes]) >> (8 - $remainder))
+        );
     }
 
     protected function parseRequestMethod(string $method): array
