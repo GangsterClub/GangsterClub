@@ -30,17 +30,7 @@ class Superglobal
         $server = $_SERVER;
 
         $server['REMOTE_ADDR_ORIGINAL'] = $server['REMOTE_ADDR'] ?? null;
-
-        $clientIpHeader = getenv('CLIENT_IP_HEADER') ?? null;
-
-        if ($clientIpHeader !== null) {
-            $headerName = 'HTTP_' . strtoupper(str_replace('-', '_', $clientIpHeader));
-            $clientIp = trim($server[$headerName] ?? '');
-
-            if (filter_var($clientIp, FILTER_VALIDATE_IP) !== false) {
-                $server['REMOTE_ADDR'] = $clientIp;
-            }
-        }
+        $server = $this->applyTrustedClientIp($server);
 
         // 515 = FILTER_SANITIZE_SPECIAL_CHARS
         //$this->globals = filter_var_array($GLOBALS, 515); // testing purposes
@@ -56,6 +46,70 @@ class Superglobal
         $this->files = filter_var_array($_FILES, 515);
         $this->request = filter_var_array($_REQUEST, 515);
         $this->env = filter_var_array($_ENV, 515);
+    }
+
+    private function applyTrustedClientIp(array $server): array
+    {
+        $clientIpHeader = getenv('CLIENT_IP_HEADER');
+        $trustedProxies = getenv('CLIENT_IP_TRUSTED_PROXIES');
+        $remoteAddress = $server['REMOTE_ADDR'] ?? null;
+
+        if (is_string($clientIpHeader) === false || $clientIpHeader === '') {
+            return $server;
+        }
+        if (is_string($trustedProxies) === false || is_string($remoteAddress) === false) {
+            return $server;
+        }
+        if ($this->isTrustedProxy($remoteAddress, $trustedProxies) === false) {
+            return $server;
+        }
+
+        $headerName = 'HTTP_' . strtoupper(str_replace('-', '_', $clientIpHeader));
+        $clientIp = trim((string) ($server[$headerName] ?? ''));
+        if (filter_var($clientIp, FILTER_VALIDATE_IP) !== false) {
+            $server['REMOTE_ADDR'] = $clientIp;
+        }
+
+        return $server;
+    }
+
+    private function isTrustedProxy(string $ip, string $trustedProxies): bool
+    {
+        $ipBinary = @inet_pton($ip);
+        if ($ipBinary === false) {
+            return false;
+        }
+
+        foreach (explode(',', $trustedProxies) as $proxy) {
+            [$subnet, $prefix] = array_pad(explode('/', trim($proxy), 2), 2, null);
+            $subnetBinary = @inet_pton($subnet);
+
+            if ($subnetBinary === false || strlen($ipBinary) !== strlen($subnetBinary)) {
+                continue;
+            }
+
+            $bits = $prefix === null ? strlen($ipBinary) * 8 : filter_var($prefix, FILTER_VALIDATE_INT);
+
+            if ($bits === false || $bits < 0 || $bits > strlen($ipBinary) * 8) {
+                continue;
+            }
+
+            $bytes = intdiv($bits, 8);
+            $remainder = $bits % 8;
+
+            if (substr($ipBinary, 0, $bytes) !== substr($subnetBinary, 0, $bytes)) {
+                continue;
+            }
+
+            if ($remainder === 0 || (
+                (ord($ipBinary[$bytes]) >> (8 - $remainder)) ===
+                (ord($subnetBinary[$bytes]) >> (8 - $remainder))
+            )) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected function parseRequestMethod(string $method): array

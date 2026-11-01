@@ -56,6 +56,7 @@
             "@php tests/RecoveryFeatureHttpTest.php",
             "@php tests/SecurityFoundationTest.php",
             "@php tests/SecurityMigrationTest.php",
+            "@php tests/SuperglobalTrustedProxyTest.php",
             "@php tests/SessionServiceConstructorProductionTest.php",
             "@php tests/SessionServiceConstructorNonProductionTest.php",
             "@php tests/SessionServiceConstructorDevelopmentTest.php"
