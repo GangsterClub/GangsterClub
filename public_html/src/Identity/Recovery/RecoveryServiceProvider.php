@@ -20,8 +20,8 @@ use src\Business\RecoveryCodeService;
 use src\Business\RecoveryFeatureService;
 use src\Business\RecoveryFlowService;
 use src\Business\UserService;
-use src\Controller\RecoveryFlowController;
-use src\Controller\RecoveryStartController;
+use src\Controller\RecoveryFlow;
+use src\Controller\RecoveryStart;
 use src\Identity\Recovery\Application\AbandonRecoveryFlow;
 use src\Identity\Recovery\Application\IssueRecoveryEmailVerification;
 use src\Identity\Recovery\Application\RecoveryCodeLifecycle;
@@ -154,12 +154,12 @@ final class RecoveryServiceProvider implements ServiceProvider
             $container->get(TranslationService::class),
             $container->get(RecoveryPageRenderer::class)
         ));
-        $container->set(RecoveryStartController::class, fn(): RecoveryStartController => new RecoveryStartController(
+        $container->set(RecoveryStart::class, fn(): RecoveryStart => new RecoveryStart(
             $container->get(StartAccountRecovery::class),
             $container->get(StartLostAuthenticatorRecovery::class),
             $container->get(RecoveryResponseMapper::class)
         ));
-        $container->set(RecoveryFlowController::class, fn(): RecoveryFlowController => new RecoveryFlowController(
+        $container->set(RecoveryFlow::class, fn(): RecoveryFlow => new RecoveryFlow(
             $container->get(RecoveryFlowCoordinator::class),
             $container->get(RecoveryResponseMapper::class)
         ));

@@ -2,20 +2,22 @@
 
 declare(strict_types=1);
 
-namespace src\Controller\AuthEntry;
+namespace src\Identity\Authentication\Http;
 
 use app\Service\AuthService;
 use app\Service\PendingAuthenticationSession;
 use src\Business\AuthEntryService;
 use src\Business\RecoveryFeatureService;
+use src\Identity\Authentication\Infrastructure\SessionRegistrationFormState;
 
 final class AuthEntryViewModelFactory
 {
     public function __construct(
         private readonly PendingAuthenticationSession $pending,
         private readonly RecoveryFeatureService $recoveryFeature,
-        private readonly RegistrationFormState $registrationForm
-    ) {}
+        private readonly SessionRegistrationFormState $registrationForm
+    ) {
+    }
 
     public function build(AuthService $auth, string $mode): array
     {
@@ -25,6 +27,7 @@ final class AuthEntryViewModelFactory
             : [];
         $userId = $this->pending->getUserId();
         $totp = $this->pending->getTotp();
+
         return [
             'email' => $email ?? ($registerValues['email'] ?? null),
             'registerUsername' => $registerValues['username'] ?? '',

@@ -52,8 +52,8 @@ foreach ($applicationFiles as $file) {
 }
 
 $controllerFiles = [
-    $source . '/Controller/RecoveryStartController.php',
-    $source . '/Controller/RecoveryFlowController.php',
+    $source . '/Controller/RecoveryStart.php',
+    $source . '/Controller/RecoveryFlow.php',
 ];
 foreach ($controllerFiles as $file) {
     $contents = (string) file_get_contents($file);
@@ -65,12 +65,12 @@ foreach ($controllerFiles as $file) {
 
 $routes = (string) file_get_contents($source . '/resources/routes.yaml');
 $expectedRoutes = [
-    'RecoveryFlowController::account',
-    'RecoveryStartController::enroll',
-    'RecoveryStartController::initial',
-    'RecoveryStartController::replace',
-    'RecoveryStartController::lost',
-    'RecoveryFlowController::lost',
+    'RecoveryFlow::account',
+    'RecoveryStart::enroll',
+    'RecoveryStart::initial',
+    'RecoveryStart::replace',
+    'RecoveryStart::lost',
+    'RecoveryFlow::lost',
 ];
 foreach ($expectedRoutes as $controller) {
     assertRecoveryArchitecture(
@@ -79,7 +79,7 @@ foreach ($expectedRoutes as $controller) {
     );
 }
 
-$startController = new ReflectionClass(src\Controller\RecoveryStartController::class);
+$startController = new ReflectionClass(src\Controller\RecoveryStart::class);
 $ceremonyActions = [
     src\Identity\Recovery\Application\RecoveryCeremony::ENROLLMENT->value => 'enroll',
     src\Identity\Recovery\Application\RecoveryCeremony::INITIAL_CODES->value => 'initial',

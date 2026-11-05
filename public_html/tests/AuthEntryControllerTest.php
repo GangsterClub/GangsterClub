@@ -45,11 +45,17 @@ use app\Http\Router;
 use app\Service\AuthService;
 use app\Service\CsrfService;
 use app\Service\FlashBag;
+use app\Service\TranslationService;
 use app\Service\YamlCacheService;
 use src\Business\AuthenticationRateLimitContext;
 use src\Business\AuthEntryService;
 use src\Business\RecoveryFeatureService;
-use src\Controller\AuthEntryController;
+use src\Identity\Authentication\Http\AuthEntryEndpoint;
+use src\Identity\Authentication\Http\AuthEntryPageRenderer;
+use src\Identity\Authentication\Http\AuthEntryRequestHandler;
+use src\Identity\Authentication\Http\AuthEntryResponseMapper;
+use src\Identity\Authentication\Http\AuthEntryViewModelFactory;
+use src\Identity\Authentication\Infrastructure\SessionRegistrationFormState;
 
 const AUTHENTICATOR_TOTP_DIGITS = 6;
 const AUTHENTICATOR_TOTP_PERIOD = 30;
@@ -82,12 +88,13 @@ require_once __DIR__ . '/../app/Service/AuthSessionKeys.php';
 require_once __DIR__ . '/../app/Service/PendingAuthenticationSession.php';
 require_once __DIR__ . '/../app/Service/SecurityFlowSession.php';
 require_once __DIR__ . '/../app/Service/AuthService.php';
-require_once __DIR__ . '/../src/Controller/Controller.php';
-require_once __DIR__ . '/../src/Controller/AuthEntry/RegistrationFormState.php';
-require_once __DIR__ . '/../src/Controller/AuthEntry/AuthEntryResultResponder.php';
-require_once __DIR__ . '/../src/Controller/AuthEntry/AuthEntryRequestHandler.php';
-require_once __DIR__ . '/../src/Controller/AuthEntry/AuthEntryViewModelFactory.php';
-require_once __DIR__ . '/../src/Controller/AuthEntryController.php';
+require_once __DIR__ . '/../app/Service/TranslationService.php';
+require_once __DIR__ . '/../src/Identity/Authentication/Infrastructure/SessionRegistrationFormState.php';
+require_once __DIR__ . '/../src/Identity/Authentication/Http/AuthEntryRequestHandler.php';
+require_once __DIR__ . '/../src/Identity/Authentication/Http/AuthEntryResponseMapper.php';
+require_once __DIR__ . '/../src/Identity/Authentication/Http/AuthEntryViewModelFactory.php';
+require_once __DIR__ . '/../src/Identity/Authentication/Http/AuthEntryPageRenderer.php';
+require_once __DIR__ . '/../src/Identity/Authentication/Http/AuthEntryEndpoint.php';
 require_once __DIR__ . '/../src/Business/AuthEntryService.php';
 require_once __DIR__ . '/../src/Business/AuthenticationRateLimitBucketDimension.php';
 require_once __DIR__ . '/../src/Business/AuthenticationRateLimitAccountIdentifier.php';
@@ -155,7 +162,18 @@ final class AuthEntryTestSession extends \app\Service\SessionService
     }
 }
 
-final class AuthEntryTestTranslation { public function setFile(string $file): void {} }
+final class AuthEntryTestTranslation extends TranslationService
+{
+    public function __construct() {}
+    public function setFile(string $filenameWithoutExtension): void {}
+    public function get(string $key, array $replacements = [], bool $useFallback = true): string
+    {
+        foreach ($replacements as $name => $value) {
+            $key .= ' ' . $name . '=' . $value;
+        }
+        return $key;
+    }
+}
 final class AuthEntryTestRecoveryFeature extends RecoveryFeatureService
 {
     public ?int $activeSetId = 99;
@@ -220,10 +238,49 @@ final class FakeAuthEntryService extends AuthEntryService
     }
 }
 
-final class TestAuthEntryController extends AuthEntryController
+final class TestAuthEntryComposition
 {
-    public function __construct(Application $application, private FakeAuthEntryService $service) { parent::__construct($application); }
-    protected function authEntryService(): AuthEntryService { return $this->service; }
+    public function __construct(
+        private readonly AuthEntryTestApplication $application,
+        private readonly FakeAuthEntryService $service
+    ) {
+    }
+
+    public function handle(Request $request, string $mode): Response
+    {
+        $session = $this->application->session;
+        $pending = new \app\Service\PendingAuthenticationSession($session);
+        $securityFlow = new \app\Service\SecurityFlowSession($session);
+        $registrationForm = new SessionRegistrationFormState($session);
+        $flash = new FlashBag($session);
+        $translation = new AuthEntryTestTranslation();
+        $requests = new AuthEntryRequestHandler(
+            $this->service,
+            $this->application->auth,
+            $pending,
+            $securityFlow,
+            $session,
+            $this->application->recoveryFeature,
+            $registrationForm
+        );
+        $endpoint = new AuthEntryEndpoint(
+            $translation,
+            $this->application->auth,
+            $flash,
+            $requests,
+            new AuthEntryResponseMapper($flash, $translation),
+            new AuthEntryViewModelFactory(
+                $pending,
+                $this->application->recoveryFeature,
+                $registrationForm
+            ),
+            new AuthEntryPageRenderer(new \Twig\Environment())
+        );
+
+        return $mode === AuthEntryService::MODE_LOGIN
+            ? $endpoint->login($request)
+            : $endpoint->register($request);
+    }
 }
 
 final class AuthEntryTestRequest extends Request
@@ -266,7 +323,7 @@ function runController(string $mode, array $post, array|Throwable $result): arra
     $app = new AuthEntryTestApplication();
     $service = new FakeAuthEntryService();
     $service->queue[] = $result;
-    $response = (new TestAuthEntryController($app, $service))->handle(new AuthEntryTestRequest($post), $mode);
+    $response = (new TestAuthEntryComposition($app, $service))->handle(new AuthEntryTestRequest($post), $mode);
     return [$response, $app->session->flashes, $service->calls];
 }
 
@@ -310,26 +367,26 @@ assertContainsValue('email-address-already-in-use', $flashes['register']['errors
 $app = new AuthEntryTestApplication();
 $service = new FakeAuthEntryService();
 $service->queue[] = ['status' => AuthEntryService::STATUS_VALIDATION_ERROR, 'error' => 'duplicate-email'];
-$response = (new TestAuthEntryController($app, $service))->handle(new AuthEntryTestRequest(['submit_register' => '1', 'username' => 'alice', 'email' => 'dupe@example.test']), 'register');
+$response = (new TestAuthEntryComposition($app, $service))->handle(new AuthEntryTestRequest(['submit_register' => '1', 'username' => 'alice', 'email' => 'dupe@example.test']), 'register');
 assertSameValue(['username' => 'alice', 'email' => 'dupe@example.test'], $app->session->values['register.form_values'] ?? null, 'Failed registration should temporarily remember submitted values.');
-$response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'login');
+$response = (new TestAuthEntryComposition($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'login');
 assertSameValue(['username' => 'alice', 'email' => 'dupe@example.test'], $app->session->values['register.form_values'] ?? null, 'Visiting login should not consume remembered registration values.');
-$response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'register');
+$response = (new TestAuthEntryComposition($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'register');
 assertSameValue('alice', \Twig\Environment::$lastVars['registerUsername'] ?? null, 'Register form should expose remembered username once.');
 assertSameValue('dupe@example.test', \Twig\Environment::$lastVars['email'] ?? null, 'Register form should expose remembered email once.');
 assertResponseContains($response, 'name="username" value="alice"', 'Register form should pre-fill remembered username.');
 assertResponseContains($response, 'name="email" value="dupe@example.test"', 'Register form should pre-fill remembered email.');
 assertSameValue(false, array_key_exists('register.form_values', $app->session->values), 'Remembered registration values should be discarded after reading.');
-$response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'register');
+$response = (new TestAuthEntryComposition($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'register');
 assertSameValue('', \Twig\Environment::$lastVars['registerUsername'] ?? null, 'Register form should not expose remembered username twice.');
 assertSameValue(null, \Twig\Environment::$lastVars['email'] ?? null, 'Register form should not expose remembered email twice.');
 
 $app = new AuthEntryTestApplication();
 $service = new FakeAuthEntryService();
 $service->queue[] = ['status' => AuthEntryService::STATUS_SEND_ERROR];
-(new TestAuthEntryController($app, $service))->handle(new AuthEntryTestRequest(['submit_register' => '1', 'username' => 'send-failed', 'email' => 'failed@example.test']), 'register');
+(new TestAuthEntryComposition($app, $service))->handle(new AuthEntryTestRequest(['submit_register' => '1', 'username' => 'send-failed', 'email' => 'failed@example.test']), 'register');
 assertSameValue(['username' => 'send-failed', 'email' => 'failed@example.test'], $app->session->values['register.form_values'] ?? null, 'Registration send errors should temporarily remember submitted values.');
-$response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'register');
+$response = (new TestAuthEntryComposition($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'register');
 assertResponseContains($response, 'name="username" value="send-failed"', 'Register form should pre-fill the username after a send error.');
 assertResponseContains($response, 'name="email" value="failed@example.test"', 'Register form should pre-fill the email after a send error.');
 assertSameValue(false, array_key_exists('register.form_values', $app->session->values), 'Send-error registration values should be discarded after reading.');
@@ -337,8 +394,8 @@ assertSameValue(false, array_key_exists('register.form_values', $app->session->v
 $app = new AuthEntryTestApplication();
 $service = new FakeAuthEntryService();
 $service->queue[] = ['status' => AuthEntryService::STATUS_VALIDATION_ERROR, 'error' => 'invalid-username'];
-(new TestAuthEntryController($app, $service))->handle(new AuthEntryTestRequest(['submit_register' => '1', 'username' => 'alice" autofocus onfocus="alert(1)', 'email' => 'safe@example.test']), 'register');
-$response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'register');
+(new TestAuthEntryComposition($app, $service))->handle(new AuthEntryTestRequest(['submit_register' => '1', 'username' => 'alice" autofocus onfocus="alert(1)', 'email' => 'safe@example.test']), 'register');
+$response = (new TestAuthEntryComposition($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'register');
 assertResponseContains($response, 'value="alice&quot; autofocus onfocus=&quot;alert(1)"', 'Remembered registration values should be escaped in HTML attributes.');
 assertResponseNotContains($response, 'value="alice" autofocus', 'Remembered registration values should not break out of the value attribute.');
 
@@ -359,7 +416,7 @@ $app = new AuthEntryTestApplication();
 $pending = new \app\Service\PendingAuthenticationSession($app->session);
 $pending->setEmail('pending@example.test');
 $pending->setUserId(null);
-$response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'register');
+$response = (new TestAuthEntryComposition($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'register');
 assertSameValue(200, $response->getStatusCode(), 'Pending registration OTP page should render successfully.');
 assertSameValue(true, \Twig\Environment::$lastVars['awaitingOtp'] ?? null, 'Pending email-only registration should expose awaitingOtp even without a pending user id.');
 assertSameValue(null, \Twig\Environment::$lastVars['uUID'] ?? null, 'Pending email-only registration should not require a pending user id.');
@@ -369,7 +426,7 @@ assertResponseContains($response, 'pending@example.test', 'Pending email-only re
 assertResponseContains($response, 'Logout', 'Pending email-only registration should show the logout control.');
 
 $app = new AuthEntryTestApplication();
-$response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'login');
+$response = (new TestAuthEntryComposition($app, new FakeAuthEntryService()))->handle(new AuthEntryTestRequest([]), 'login');
 assertSameValue(200, $response->getStatusCode(), 'Anonymous login page should render successfully.');
 assertResponseNotContains($response, 'Logout', 'Anonymous auth entry pages should not show the logout control.');
 
@@ -392,7 +449,7 @@ $service->queue[] = [
     'status' => AuthEntryService::STATUS_AUTHENTICATED,
     'remainingCount' => 1,
 ];
-$response = (new TestAuthEntryController($app, $service))->handle(
+$response = (new TestAuthEntryComposition($app, $service))->handle(
     new AuthEntryTestRequest([
         'submit_recovery_code' => '1',
         'recovery_code' => 'ABCDE-FGHJK-MNPQR-STUVW',
@@ -418,7 +475,7 @@ $pending->setUserId(42);
 $pending->setAuthenticatorRequired(true);
 $service = new FakeAuthEntryService();
 $service->queue[] = ['status' => AuthEntryService::STATUS_INVALID_RECOVERY_CODE];
-$response = (new TestAuthEntryController($app, $service))->handle(
+$response = (new TestAuthEntryComposition($app, $service))->handle(
     new AuthEntryTestRequest([
         'submit_recovery_code' => '1',
         'recovery_code' => 'ABCDE-FGHJK-MNPQR-STUVW',
@@ -436,7 +493,7 @@ assertSameValue(
     $app->session->flashes['login']['errors'] ?? [],
     'Invalid recovery codes must not be presented as generic authenticator OTP failures.'
 );
-$response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->handle(
+$response = (new TestAuthEntryComposition($app, new FakeAuthEntryService()))->handle(
     new AuthEntryTestRequest([]),
     'login'
 );
@@ -450,7 +507,7 @@ assertSameValue(
     isset($app->session->flashes['login.recovery']),
     'Recovery feedback must be consumed after the redirected login GET.'
 );
-$response = (new TestAuthEntryController($app, new FakeAuthEntryService()))->handle(
+$response = (new TestAuthEntryComposition($app, new FakeAuthEntryService()))->handle(
     new AuthEntryTestRequest([]),
     'login'
 );
@@ -467,13 +524,13 @@ $pending->setUserId(42);
 $pending->setAuthenticatorRequired(true);
 $app->recoveryFeature->activeSetId = null;
 $service = new FakeAuthEntryService();
-$response = (new TestAuthEntryController($app, $service))->handle(new AuthEntryTestRequest([]), 'login');
+$response = (new TestAuthEntryComposition($app, $service))->handle(new AuthEntryTestRequest([]), 'login');
 assertSameValue(
     false,
     \Twig\Environment::$lastVars['loginRecoveryAvailable'] ?? null,
     'Recovery-code fallback must not be offered when the account has no active recovery-code set.'
 );
-$response = (new TestAuthEntryController($app, $service))->handle(
+$response = (new TestAuthEntryComposition($app, $service))->handle(
     new AuthEntryTestRequest([
         'submit_recovery_code' => '1',
         'recovery_code' => 'ABCDE-FGHJK-MNPQR-STUVW',
@@ -487,6 +544,6 @@ assertContainsValue(
     'A stale recovery-code submission without an active set should explain that the fallback is unavailable.'
 );
 
-fwrite(STDOUT, "AuthEntryController tests passed.\n");
+fwrite(STDOUT, "Authentication entry composition tests passed.\n");
 
 }

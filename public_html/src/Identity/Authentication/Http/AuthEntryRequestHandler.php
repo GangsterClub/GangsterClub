@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace src\Controller\AuthEntry;
+namespace src\Identity\Authentication\Http;
 
 use app\Http\Request;
 use app\Service\AuthService;
@@ -11,7 +11,9 @@ use app\Service\SecurityFlowSession;
 use app\Service\SessionService;
 use src\Business\AuthenticationRateLimitContext;
 use src\Business\AuthEntryService;
+use src\Business\RateLimitExceededException;
 use src\Business\RecoveryFeatureService;
+use src\Identity\Authentication\Infrastructure\SessionRegistrationFormState;
 
 final class AuthEntryRequestHandler
 {
@@ -22,8 +24,9 @@ final class AuthEntryRequestHandler
         private readonly SecurityFlowSession $securityFlow,
         private readonly SessionService $session,
         private readonly RecoveryFeatureService $recoveryFeature,
-        private readonly RegistrationFormState $registrationForm
-    ) {}
+        private readonly SessionRegistrationFormState $registrationForm
+    ) {
+    }
 
     public function firstStep(Request $request, string $mode): ?array
     {
@@ -35,22 +38,7 @@ final class AuthEntryRequestHandler
     public function verification(Request $request, string $mode): ?array
     {
         if ($mode === AuthEntryService::MODE_LOGIN && $request->post('submit_recovery_code') !== null) {
-            $userId = $this->pending->getUserId();
-            if ($userId === null) {
-                return ['status' => AuthEntryService::STATUS_INVALID_RECOVERY_CODE];
-            }
-            if ($this->recoveryFeature->getActiveRecoverySetId($userId) === null) {
-                return ['status' => AuthEntryService::STATUS_RECOVERY_CODE_UNAVAILABLE];
-            }
-            return $this->entries->verifyRecoveryCode(
-                $this->auth,
-                (string) $request->post('recovery_code', ''),
-                AuthenticationRateLimitContext::forUser(
-                    $userId,
-                    (string) $this->session->get('_IPaddress', '127.0.0.1'),
-                    $this->securityFlow->getChallengeBinding()
-                )
-            );
+            return $this->recoveryCode($request);
         }
 
         $submit = $request->post('submit_totp');
@@ -58,12 +46,34 @@ final class AuthEntryRequestHandler
         if ((bool) $submit !== true || (bool) $otp !== true) {
             return null;
         }
+
         $otp = is_array($otp) === true ? implode('', $otp) : (string) $otp;
         try {
             return $this->entries->verify($this->auth, $mode, $otp);
-        } catch (\src\Business\RateLimitExceededException) {
+        } catch (RateLimitExceededException) {
             return ['status' => AuthEntryService::STATUS_INVALID_OTP];
         }
+    }
+
+    private function recoveryCode(Request $request): array
+    {
+        $userId = $this->pending->getUserId();
+        if ($userId === null) {
+            return ['status' => AuthEntryService::STATUS_INVALID_RECOVERY_CODE];
+        }
+        if ($this->recoveryFeature->getActiveRecoverySetId($userId) === null) {
+            return ['status' => AuthEntryService::STATUS_RECOVERY_CODE_UNAVAILABLE];
+        }
+
+        return $this->entries->verifyRecoveryCode(
+            $this->auth,
+            (string) $request->post('recovery_code', ''),
+            AuthenticationRateLimitContext::forUser(
+                $userId,
+                (string) $this->session->get('_IPaddress', '127.0.0.1'),
+                $this->securityFlow->getChallengeBinding()
+            )
+        );
     }
 
     private function loginFirstStep(Request $request): ?array
@@ -71,9 +81,10 @@ final class AuthEntryRequestHandler
         if ((bool) $request->post('submit_login') !== true || (bool) $request->post('email') !== true) {
             return null;
         }
+
         try {
             return $this->entries->beginLogin($this->auth, (string) $request->post('email'));
-        } catch (\src\Business\RateLimitExceededException) {
+        } catch (RateLimitExceededException) {
             return ['status' => AuthEntryService::STATUS_EMAIL_OTP_SENT];
         }
     }
@@ -83,13 +94,15 @@ final class AuthEntryRequestHandler
         if ((bool) $request->post('submit_register') !== true) {
             return null;
         }
+
         $username = (string) $request->post('username');
         $email = (string) $request->post('email');
         try {
             $result = $this->entries->beginRegistration($this->auth, $username, $email);
-        } catch (\src\Business\RateLimitExceededException) {
+        } catch (RateLimitExceededException) {
             $result = ['status' => AuthEntryService::STATUS_EMAIL_OTP_SENT];
         }
+
         if (in_array($result['status'] ?? null, [
             AuthEntryService::STATUS_VALIDATION_ERROR,
             AuthEntryService::STATUS_SEND_ERROR,
@@ -98,6 +111,7 @@ final class AuthEntryRequestHandler
         } else {
             $this->registrationForm->forget();
         }
+
         return $result;
     }
 }

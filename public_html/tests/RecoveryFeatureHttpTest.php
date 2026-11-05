@@ -40,8 +40,8 @@ use src\Data\Repository\SecurityAuditEventRepository;
 use src\Data\Repository\UserAuthenticatorTOTPRepository;
 use src\Data\Repository\UserLockRepository;
 use src\Data\Repository\UserRepository;
-use src\Controller\RecoveryFlowController;
-use src\Controller\RecoveryStartController;
+use src\Controller\RecoveryFlow;
+use src\Controller\RecoveryStart;
 use src\Identity\Recovery\RecoveryServiceProvider;
 
 require_once __DIR__ . '/../vendor/autoload.php';
@@ -118,8 +118,8 @@ final class RecoveryHttpRequest extends Request
 final class RecoveryHttpControllerHarness
 {
     public function __construct(
-        private readonly RecoveryStartController $starts,
-        private readonly RecoveryFlowController $flow
+        private readonly RecoveryStart $starts,
+        private readonly RecoveryFlow $flow
     ) {}
 
     public function __call(string $method, array $arguments): Response
@@ -434,8 +434,8 @@ $makeController = static function (RecoveryHttpSession $session) use (
         $container->set($serviceId, $service);
     }
     return [new RecoveryHttpControllerHarness(
-        $container->make(RecoveryStartController::class),
-        $container->make(RecoveryFlowController::class)
+        $container->make(RecoveryStart::class),
+        $container->make(RecoveryFlow::class)
     ), $auth];
 };
 
@@ -884,7 +884,7 @@ $router = new Router();
 $router->load(__DIR__ . '/../src/resources/routes.yaml');
 $initialRoute = $router->match('/account/recovery-codes/initial', 'POST');
 recoveryAssertSame(
-    'RecoveryStartController::initial',
+    'RecoveryStart::initial',
     $initialRoute?->route->getController(),
     'The initial recovery-code route must use the conventional endpoint-controller shorthand.'
 );
@@ -893,7 +893,7 @@ recoveryAssertTrue(
     is_string($routes)
     && str_contains($routes, '/account/recovery-codes')
     && str_contains($routes, '/login/recovery')
-    && str_contains($routes, 'controller: RecoveryStartController::initial'),
+    && str_contains($routes, 'controller: RecoveryStart::initial'),
     'Both authenticated and lost-authenticator HTTP routes must remain registered.'
 );
 $flowTemplate = file_get_contents(__DIR__ . '/../src/View/recovery-flow.twig');

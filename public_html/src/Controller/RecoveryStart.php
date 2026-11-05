@@ -11,7 +11,7 @@ use src\Identity\Recovery\Application\StartAccountRecovery;
 use src\Identity\Recovery\Application\StartLostAuthenticatorRecovery;
 use src\Identity\Recovery\Http\RecoveryResponseMapper;
 
-final class RecoveryStartController
+final class RecoveryStart
 {
     public function __construct(
         private readonly StartAccountRecovery $accountRecovery,

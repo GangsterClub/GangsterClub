@@ -13,6 +13,7 @@ use app\Service\JWTService;
 use app\Service\SessionService;
 use app\Service\TranslationService;
 use src\Business\AuthEntryService;
+use src\Business\AuthEntryOtpService;
 use src\Business\AuthenticatorTOTPService;
 use src\Business\EmailService;
 use src\Business\EmailTOTPService;
@@ -29,10 +30,19 @@ use src\Identity\Recovery\Application\RecoveryRateLimitContextFactory;
 use src\Identity\Recovery\Application\RecoveryVerification;
 use src\Identity\Recovery\Application\StartAccountRecovery;
 use src\Identity\Recovery\Application\StartLostAuthenticatorRecovery;
-use src\Controller\RecoveryFlowController;
+use src\Controller\RecoveryFlow;
 use src\Identity\Recovery\Http\RecoveryPageRenderer;
 use src\Identity\Recovery\Http\RecoveryResponseMapper;
-use src\Controller\RecoveryStartController;
+use src\Controller\RecoveryStart;
+use src\Controller\Login;
+use src\Controller\Register;
+use src\Identity\Authentication\AuthenticationServiceProvider;
+use src\Identity\Authentication\Http\AuthEntryEndpoint;
+use src\Identity\Authentication\Http\AuthEntryPageRenderer;
+use src\Identity\Authentication\Http\AuthEntryRequestHandler;
+use src\Identity\Authentication\Http\AuthEntryResponseMapper;
+use src\Identity\Authentication\Http\AuthEntryViewModelFactory;
+use src\Identity\Authentication\Infrastructure\SessionRegistrationFormState;
 use src\Identity\Recovery\RecoveryServiceProvider;
 
 spl_autoload_register(static function (string $class): void {
@@ -199,8 +209,8 @@ foreach ([
     RecoveryFlowCoordinator::class,
     RecoveryPageRenderer::class,
     RecoveryResponseMapper::class,
-    RecoveryStartController::class,
-    RecoveryFlowController::class,
+    RecoveryStart::class,
+    RecoveryFlow::class,
 ] as $serviceId) {
     assertContainerTrue($recoveryServices->has($serviceId), $serviceId . ' should be registered by its feature.');
 }
@@ -224,8 +234,8 @@ foreach ([
     $recoveryServices->set($serviceId, containerProviderInstanceWithoutConstructor($serviceId));
 }
 assertContainerTrue(
-    $recoveryServices->make(RecoveryStartController::class) instanceof RecoveryStartController
-        && $recoveryServices->make(RecoveryFlowController::class) instanceof RecoveryFlowController,
+    $recoveryServices->make(RecoveryStart::class) instanceof RecoveryStart
+        && $recoveryServices->make(RecoveryFlow::class) instanceof RecoveryFlow,
     'Feature controllers should resolve lazily after request-scoped services are available.'
 );
 
@@ -260,12 +270,10 @@ $expectedIds = [
     \src\Business\RecoveryCodeService::class,
     \src\Business\RecoveryFeatureService::class,
     \src\Business\RecoveryFlowService::class,
-    \src\Business\AuthEntryOtpService::class,
     \src\Business\AuthenticatorTOTPService::class,
     \src\Business\EmailTOTPService::class,
     \app\Service\JWT::class,
     \app\Service\JWTService::class,
-    \src\Business\AuthEntryService::class,
 ];
 
 foreach ($expectedIds as $serviceId) {
@@ -313,9 +321,47 @@ $domainServices->set(
     \src\Business\RecoveryCodeService::class,
     containerProviderInstanceWithoutConstructor(RecoveryCodeService::class)
 );
+
+$authenticationServices = new Container();
+$authenticationServices->register(new AuthenticationServiceProvider());
+foreach ([
+    AuthEntryService::class,
+    AuthEntryOtpService::class,
+    SessionRegistrationFormState::class,
+    AuthEntryRequestHandler::class,
+    AuthEntryResponseMapper::class,
+    AuthEntryViewModelFactory::class,
+    AuthEntryPageRenderer::class,
+    AuthEntryEndpoint::class,
+    Login::class,
+    Register::class,
+] as $serviceId) {
+    assertContainerTrue($authenticationServices->has($serviceId), $serviceId . ' should be registered by its feature.');
+}
+foreach ([
+    \app\Service\AuthService::class,
+    \app\Service\FlashBag::class,
+    \app\Service\PendingAuthenticationSession::class,
+    \app\Service\SecurityFlowSession::class,
+    \app\Service\SessionService::class,
+    \app\Service\TranslationService::class,
+    \Twig\Environment::class,
+    \src\Business\AuthenticationRateLimitContextProvider::class,
+    \src\Business\AuthenticationRateLimitService::class,
+    \src\Business\AuthenticatorTOTPService::class,
+    \src\Business\EmailService::class,
+    \src\Business\EmailTOTPService::class,
+    \src\Business\RecoveryCodeService::class,
+    \src\Business\RecoveryFeatureService::class,
+    \src\Business\TOTPService::class,
+    \src\Business\UserService::class,
+] as $serviceId) {
+    $authenticationServices->set($serviceId, containerProviderInstanceWithoutConstructor($serviceId));
+}
 assertContainerTrue(
-    $domainServices->get(\src\Business\AuthEntryService::class) instanceof AuthEntryService,
-    'Authentication entry service should resolve after its request-scoped dependencies are registered.'
+    $authenticationServices->make(Login::class) instanceof Login
+        && $authenticationServices->make(Register::class) instanceof Register,
+    'Authentication controllers should resolve lazily after request-scoped services are available.'
 );
 
 $decoder = new SecuritySecretDecoder();
