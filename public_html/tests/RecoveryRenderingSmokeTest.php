@@ -21,8 +21,8 @@ use src\Business\RecoveryCodeService;
 use src\Business\RecoveryFeatureService;
 use src\Business\RecoveryFlowService;
 use src\Business\UserService;
-use src\Controller\RecoveryFlowController;
-use src\Controller\RecoveryStartController;
+use src\Controller\RecoveryFlow;
+use src\Controller\RecoveryStart;
 use src\Entity\User;
 use src\Identity\Recovery\Application\RecoveryMode;
 use src\Identity\Recovery\Application\RecoveryOutcome;
@@ -127,12 +127,12 @@ $response = (new TwigMiddleware($app))->handle(
     $request,
     static function (Request $request) use ($app): Response {
         assertRecoveryRendering(
-            $app->make(RecoveryStartController::class) instanceof RecoveryStartController,
-            'The real application bootstrap must resolve RecoveryStartController.'
+            $app->make(RecoveryStart::class) instanceof RecoveryStart,
+            'The real application bootstrap must resolve RecoveryStart.'
         );
         assertRecoveryRendering(
-            $app->make(RecoveryFlowController::class) instanceof RecoveryFlowController,
-            'The real application bootstrap must resolve RecoveryFlowController.'
+            $app->make(RecoveryFlow::class) instanceof RecoveryFlow,
+            'The real application bootstrap must resolve RecoveryFlow.'
         );
 
         $now = new DateTimeImmutable();

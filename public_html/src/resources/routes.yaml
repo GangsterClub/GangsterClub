@@ -11,12 +11,12 @@ setLocale:
 
 login:
     path: /login
-    controller: LoginController::login
+    controller: Login::login
     methods: ['GET', 'HEAD', 'POST']
 
 register:
     path: /register
-    controller: RegistrationController::register
+    controller: Register::register
     methods: ['GET', 'HEAD', 'POST']
 
 account:
@@ -26,32 +26,32 @@ account:
 
 accountRecoveryCodes:
     path: /account/recovery-codes
-    controller: RecoveryFlowController::account
+    controller: RecoveryFlow::account
     methods: ['GET', 'HEAD', 'POST']
 
 accountAuthenticatorEnroll:
     path: /account/authenticator/enroll
-    controller: RecoveryStartController::enroll
+    controller: RecoveryStart::enroll
     methods: ['POST']
 
 accountRecoveryCodesInitial:
     path: /account/recovery-codes/initial
-    controller: RecoveryStartController::initial
+    controller: RecoveryStart::initial
     methods: ['POST']
 
 accountRecoveryCodesReplace:
     path: /account/recovery-codes/replace
-    controller: RecoveryStartController::replace
+    controller: RecoveryStart::replace
     methods: ['POST']
 
 loginRecoveryStart:
     path: /login/recovery/start
-    controller: RecoveryStartController::lost
+    controller: RecoveryStart::lost
     methods: ['POST']
 
 loginRecovery:
     path: /login/recovery
-    controller: RecoveryFlowController::lost
+    controller: RecoveryFlow::lost
     methods: ['GET', 'HEAD', 'POST']
 
 accountAuthenticatorDisableStart:

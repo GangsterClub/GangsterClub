@@ -12,7 +12,7 @@ use src\Identity\Recovery\Application\RecoveryFlowCoordinator;
 use src\Identity\Recovery\Application\RecoveryMode;
 use src\Identity\Recovery\Http\RecoveryResponseMapper;
 
-final class RecoveryFlowController
+final class RecoveryFlow
 {
     public function __construct(
         private readonly RecoveryFlowCoordinator $recovery,

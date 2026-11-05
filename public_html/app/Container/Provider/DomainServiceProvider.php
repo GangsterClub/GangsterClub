@@ -17,8 +17,6 @@ use src\Business\AuthenticationRateLimitContextProvider;
 use src\Business\AuthenticationRateLimitService;
 use src\Business\AuthenticationRateLimitKeyFactory;
 use src\Business\DatabaseRetryClassifier;
-use src\Business\AuthEntryService;
-use src\Business\AuthEntryOtpService;
 use src\Business\EmailService;
 use src\Business\AuthenticatorTOTPService;
 use src\Business\AuthenticatorVerificationThrottle;
@@ -189,30 +187,11 @@ final class DomainServiceProvider implements ServiceProvider
             $container->get(\src\Data\Repository\EmailTOTPRepository::class),
             $container->get(\src\Business\AuthenticationRateLimitService::class)
         ));
-        $container->set(\src\Business\AuthEntryOtpService::class, fn(): AuthEntryOtpService => new AuthEntryOtpService(
-            $container->get(\src\Business\EmailTOTPService::class),
-            $container->get(\src\Business\TOTPService::class),
-            $container->get(\src\Business\EmailService::class),
-            $container->get(\app\Service\SessionService::class),
-            $container->get(\src\Business\AuthenticationRateLimitService::class),
-            $container->get(\src\Business\AuthenticationRateLimitContextProvider::class)
-        ));
         $container->set(\app\Service\JWT::class, fn(): JWT => new JWT());
         $container->set(\app\Service\JWTService::class, fn(): JWTService => new JWTService(
             $container->get(\app\Service\JWT::class),
             $container->get(\app\Service\AuthService::class),
             $container->get(\src\Business\UserService::class)
-        ));
-        $container->set(\src\Business\AuthEntryService::class, fn(): AuthEntryService => new AuthEntryService(
-            $container->get(\src\Business\UserService::class),
-            $container->get(\src\Business\AuthenticatorTOTPService::class),
-            $container->get(\src\Business\EmailTOTPService::class),
-            $container->get(\src\Business\EmailService::class),
-            $container->get(\app\Service\SessionService::class),
-            $container->get(\src\Business\RecoveryCodeService::class),
-            $container->get(\app\Service\PendingAuthenticationSession::class),
-            $container->get(\src\Business\AuthEntryOtpService::class),
-            $container->get(\src\Business\AuthenticationRateLimitContextProvider::class)
         ));
     }
 }

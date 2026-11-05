@@ -2,15 +2,17 @@
 
 declare(strict_types=1);
 
-namespace src\Controller\AuthEntry;
+namespace src\Identity\Authentication\Infrastructure;
 
 use app\Service\SessionService;
 
-final class RegistrationFormState
+final class SessionRegistrationFormState
 {
     private const SESSION_KEY = 'register.form_values';
 
-    public function __construct(private readonly SessionService $session) {}
+    public function __construct(private readonly SessionService $session)
+    {
+    }
 
     public function remember(string $username, string $email): void
     {
@@ -24,6 +26,7 @@ final class RegistrationFormState
         if (is_array($stored) === false) {
             return [];
         }
+
         return [
             'username' => is_string($stored['username'] ?? null) === true ? $stored['username'] : '',
             'email' => is_string($stored['email'] ?? null) === true ? $stored['email'] : null,
