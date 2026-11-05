@@ -1,14 +1,16 @@
-<?PHP
+<?php
 
 declare(strict_types=1);
 
-namespace src\Business;
+namespace src\Identity\Profile\Application;
 
+use src\Business\AuthEntryService;
+use src\Business\EmailService;
 use src\Data\Repository\UserEmailChangeRepository;
 use src\Data\Repository\UserRepository;
 use src\Entity\User;
 
-class AccountService
+final class ProfileManagement
 {
     private const EMAIL_CHANGE_TTL = 3600;
 
@@ -26,20 +28,11 @@ class AccountService
     public const EMAIL_CHANGE_CONFLICT = 'conflict';
     public const EMAIL_CHANGE_ERROR = 'error';
 
-    private UserRepository $userRepository;
-
-    private UserEmailChangeRepository $emailChangeRepository;
-
-    private EmailService $emailService;
-
     public function __construct(
-        UserRepository $userRepository,
-        UserEmailChangeRepository $emailChangeRepository,
-        EmailService $emailService
+        private readonly UserRepository $userRepository,
+        private readonly UserEmailChangeRepository $emailChangeRepository,
+        private readonly EmailService $emailService
     ) {
-        $this->userRepository = $userRepository;
-        $this->emailChangeRepository = $emailChangeRepository;
-        $this->emailService = $emailService;
     }
 
     public function changeUsername(User $user, string $username): string
@@ -64,11 +57,6 @@ class AccountService
         return self::USERNAME_CHANGE_UPDATED;
     }
 
-    public function changeEmail(int $userId, string $email): bool
-    {
-        return $this->userRepository->updateEmail($userId, $email);
-    }
-
     public function requestEmailChange(User $user, string $newEmail): string
     {
         $newEmail = trim($newEmail);
@@ -86,51 +74,27 @@ class AccountService
 
         try {
             $rawToken = bin2hex(random_bytes(32));
-        } catch (\Throwable $exception) {
+        } catch (\Throwable) {
             return self::EMAIL_CHANGE_ERROR;
         }
 
         $tokenHash = hash('sha256', $rawToken);
-        $expiresAt = date('Y-m-d H:i:s', (time() + self::EMAIL_CHANGE_TTL));
-        $created = $this->createEmailChangeRequest($user->getId(), $newEmail, $tokenHash, $expiresAt);
-        if ($created === false) {
+        $expiresAt = date('Y-m-d H:i:s', time() + self::EMAIL_CHANGE_TTL);
+        if ($this->createEmailChangeRequest($user->getId(), $newEmail, $tokenHash, $expiresAt) === false) {
             return self::EMAIL_CHANGE_ERROR;
         }
 
         $verificationUrl = WEB_ROOT . 'account/email/verify/' . $rawToken;
-        $emailSent = $this->emailService->sendEmailChangeVerification($user->getEmail(), $newEmail, $verificationUrl);
-        if ($emailSent === false) {
-            $this->deletePendingEmailChanges($user->getId());
+        if ($this->emailService->sendEmailChangeVerification(
+            $user->getEmail(),
+            $newEmail,
+            $verificationUrl
+        ) === false) {
+            $this->emailChangeRepository->deleteByUserId($user->getId());
             return self::EMAIL_CHANGE_ERROR;
         }
 
         return self::EMAIL_CHANGE_REQUESTED;
-    }
-
-    public function isUsernameTaken(string $username, int $excludeUserId = 0): bool
-    {
-        $existing = $this->userRepository->findByUsername($username);
-        if ($existing === false) {
-            return false;
-        }
-
-        return (int) $existing->id !== $excludeUserId;
-    }
-
-    public function isEmailInUse(string $email, int $excludeUserId = 0): bool
-    {
-        $existing = $this->userRepository->findByEmail($email);
-        if ($existing === false) {
-            return false;
-        }
-
-        return (int) $existing->id !== $excludeUserId;
-    }
-
-    public function createEmailChangeRequest(int $userId, string $newEmail, string $tokenHash, string $expiresAt): bool
-    {
-        $this->emailChangeRepository->deleteByUserId($userId);
-        return $this->emailChangeRepository->create($userId, $newEmail, $tokenHash, $expiresAt);
     }
 
     public function getPendingEmailChange(int $userId): ?object
@@ -148,20 +112,13 @@ class AccountService
         return $pending;
     }
 
-    public function deletePendingEmailChanges(int $userId): void
-    {
-        $this->emailChangeRepository->deleteByUserId($userId);
-    }
-
     public function confirmEmailChange(string $token): string
     {
         if (trim($token) === '') {
             return self::EMAIL_CHANGE_INVALID;
         }
 
-        $tokenHash = hash('sha256', $token);
-
-        $record = $this->emailChangeRepository->findByToken($tokenHash);
+        $record = $this->emailChangeRepository->findByToken(hash('sha256', $token));
         if ($record === false) {
             return self::EMAIL_CHANGE_INVALID;
         }
@@ -177,8 +134,7 @@ class AccountService
             return self::EMAIL_CHANGE_CONFLICT;
         }
 
-        $updated = $this->userRepository->updateEmail($userId, $record->new_email);
-        if ($updated === false) {
+        if ($this->userRepository->updateEmail($userId, $record->new_email) === false) {
             return self::EMAIL_CHANGE_INVALID;
         }
 
@@ -186,5 +142,27 @@ class AccountService
         $this->emailChangeRepository->deleteByUserId($userId);
 
         return self::EMAIL_CHANGE_CONFIRMED;
+    }
+
+    private function isUsernameTaken(string $username, int $excludeUserId): bool
+    {
+        $existing = $this->userRepository->findByUsername($username);
+        return $existing !== false && (int) $existing->id !== $excludeUserId;
+    }
+
+    private function isEmailInUse(string $email, int $excludeUserId): bool
+    {
+        $existing = $this->userRepository->findByEmail($email);
+        return $existing !== false && (int) $existing->id !== $excludeUserId;
+    }
+
+    private function createEmailChangeRequest(
+        int $userId,
+        string $newEmail,
+        string $tokenHash,
+        string $expiresAt
+    ): bool {
+        $this->emailChangeRepository->deleteByUserId($userId);
+        return $this->emailChangeRepository->create($userId, $newEmail, $tokenHash, $expiresAt);
     }
 }

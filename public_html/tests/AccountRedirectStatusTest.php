@@ -6,6 +6,8 @@ use app\Container\Application;
 use app\Http\Request;
 use app\Http\Response;
 use app\Http\Router;
+use app\Service\AuthService;
+use app\Service\TranslationService;
 use src\Controller\Account;
 
 defined('DOC_ROOT') || define('DOC_ROOT', dirname(__DIR__));
@@ -50,11 +52,38 @@ final class AccountRedirectTestApplication extends Application
 
     public function get(string $name): object
     {
+        if ($name === TranslationService::class) {
+            return new AccountRedirectTestTranslation();
+        }
+
+        if ($name === AuthService::class) {
+            return new AccountRedirectTestAuth();
+        }
+
         if ($name === \app\Service\SessionService::class) {
             return new AccountRedirectTestSession();
         }
 
         throw new RuntimeException($name . ' is missing.');
+    }
+}
+
+final class AccountRedirectTestTranslation extends TranslationService
+{
+    public function __construct()
+    {
+    }
+}
+
+final class AccountRedirectTestAuth extends AuthService
+{
+    public function __construct()
+    {
+    }
+
+    public function getAuthenticatedUserId(): ?int
+    {
+        return null;
     }
 }
 
@@ -96,6 +125,14 @@ assertHeaderContains($getResponse, 'Location: /game/login', 'GET account redirec
 $postResponse = $redirectToLogin->invoke($account, new AccountRedirectTestRequest('POST'));
 assertSameValue(303, $postResponse->getStatusCode(), 'Unauthenticated POST actions to account should use 303 for Post/Redirect/Get.');
 assertHeaderContains($postResponse, 'Location: /game/login', 'POST account redirects should point to login.');
+
+$unauthenticatedGet = $account(new AccountRedirectTestRequest('GET'));
+assertSameValue(302, $unauthenticatedGet->getStatusCode(), 'Profile GET requests must remain authenticated.');
+assertHeaderContains($unauthenticatedGet, 'Location: /game/login', 'Unauthenticated profile GET requests must redirect before profile handling.');
+
+$unauthenticatedPost = $account(new AccountRedirectTestRequest('POST'));
+assertSameValue(303, $unauthenticatedPost->getStatusCode(), 'Profile POST requests must retain PRG authentication redirects.');
+assertHeaderContains($unauthenticatedPost, 'Location: /game/login', 'Unauthenticated profile POST requests must redirect before profile handling.');
 
 $redirectScanRoots = [DOC_ROOT . '/src', DOC_ROOT . '/app'];
 foreach ($redirectScanRoots as $root) {

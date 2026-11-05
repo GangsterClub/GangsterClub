@@ -11,7 +11,6 @@ use app\Service\AuthService;
 use app\Service\JWT;
 use app\Service\JWTService;
 use app\Service\SessionService;
-use src\Business\AccountService;
 use src\Business\AuthenticationChallengeService;
 use src\Business\AuthenticationRateLimitContextProvider;
 use src\Business\AuthenticationRateLimitService;
@@ -40,7 +39,6 @@ use src\Data\Repository\RecoveryCodeHashRepository;
 use src\Data\Repository\RecoveryCodeSetRepository;
 use src\Data\Repository\UserRecoveryCodeStateRepository;
 use src\Data\Repository\SecurityAuditEventRepository;
-use src\Data\Repository\UserEmailChangeRepository;
 use src\Data\Repository\UserLockRepository;
 use src\Data\Repository\UserRepository;
 use src\Data\Repository\UserAuthenticatorTOTPRepository;
@@ -55,15 +53,7 @@ final class DomainServiceProvider implements ServiceProvider
         $container->set(\src\Data\Repository\UserRepository::class, fn(): UserRepository => new UserRepository(
             $container->get(\src\Data\Connection::class)
         ));
-        $container->set(\src\Data\Repository\UserEmailChangeRepository::class, fn(): UserEmailChangeRepository => new UserEmailChangeRepository(
-            $container->get(\src\Data\Connection::class)
-        ));
         $container->set(\src\Business\EmailService::class, fn(): EmailService => new EmailService());
-        $container->set(\src\Business\AccountService::class, fn(): AccountService => new AccountService(
-            $container->get(\src\Data\Repository\UserRepository::class),
-            $container->get(\src\Data\Repository\UserEmailChangeRepository::class),
-            $container->get(\src\Business\EmailService::class)
-        ));
         $container->set(\src\Business\UserService::class, fn(): UserService => new UserService(
             $container->get(\src\Data\Repository\UserRepository::class)
         ));

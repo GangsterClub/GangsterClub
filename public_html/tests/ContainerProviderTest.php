@@ -44,6 +44,10 @@ use src\Identity\Authentication\Http\AuthEntryResponseMapper;
 use src\Identity\Authentication\Http\AuthEntryViewModelFactory;
 use src\Identity\Authentication\Infrastructure\SessionRegistrationFormState;
 use src\Identity\Recovery\RecoveryServiceProvider;
+use src\Identity\Profile\Application\ProfileManagement;
+use src\Identity\Profile\Http\EmailChangeVerification;
+use src\Identity\Profile\Http\ProfileFormHandler;
+use src\Identity\Profile\ProfileServiceProvider;
 
 spl_autoload_register(static function (string $class): void {
     $prefixes = ['app\\' => __DIR__ . '/../app/', 'src\\' => __DIR__ . '/../src/'];
@@ -244,9 +248,7 @@ $domainServices->register(new DomainServiceProvider());
 $expectedIds = [
     \src\Data\Connection::class,
     \src\Data\Repository\UserRepository::class,
-    \src\Data\Repository\UserEmailChangeRepository::class,
     \src\Business\EmailService::class,
-    \src\Business\AccountService::class,
     \src\Business\UserService::class,
     \src\Business\TOTPService::class,
     \src\Data\Repository\UserAuthenticatorTOTPRepository::class,
@@ -278,6 +280,17 @@ $expectedIds = [
 
 foreach ($expectedIds as $serviceId) {
     assertContainerTrue($domainServices->has($serviceId), $serviceId . ' should be registered.');
+}
+
+$profileServices = new Container();
+$profileServices->register(new ProfileServiceProvider());
+foreach ([
+    \src\Data\Repository\UserEmailChangeRepository::class,
+    ProfileManagement::class,
+    ProfileFormHandler::class,
+    EmailChangeVerification::class,
+] as $serviceId) {
+    assertContainerTrue($profileServices->has($serviceId), $serviceId . ' should be registered by Profile.');
 }
 
 // Session middleware registers these request-scoped dependencies before dispatching controllers.
