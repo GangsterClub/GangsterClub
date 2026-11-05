@@ -56,7 +56,8 @@ foreach ([$source . '/Controller/Login.php', $source . '/Controller/Register.php
     );
 }
 
-$controllerFiles = glob($source . '/Controller/*Controller.php') ?: [];
+$controllerFiles = glob($source . '/Controller/*Controller.php');
+$controllerFiles = $controllerFiles === false ? [] : $controllerFiles;
 assertAuthenticationArchitecture(
     array_map('basename', $controllerFiles) === ['Controller.php'],
     'Only the shared parent may use the redundant Controller.php suffix.'
