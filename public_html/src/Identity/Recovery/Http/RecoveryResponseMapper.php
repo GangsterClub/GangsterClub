@@ -89,7 +89,7 @@ final class RecoveryResponseMapper
         if ($result->challenge !== null || in_array($result->outcome, [
             RecoveryOutcome::FLOW_EXPIRED,
             RecoveryOutcome::PENDING_SECRET_MISSING,
-        ], true)) {
+        ], true) === true) {
             $this->flash->consume('recovery');
         }
         $this->addLowCodeNotice($result);

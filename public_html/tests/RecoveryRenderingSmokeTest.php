@@ -157,9 +157,9 @@ $response = (new TwigMiddleware($app))->handle(
 
 $assetVersion = max(
     1,
-    is_file($documentRoot . '/web/cache/tailwind.css')
+    is_file($documentRoot . '/web/cache/tailwind.css') === true
         ? (int) filemtime($documentRoot . '/web/cache/tailwind.css') : 1,
-    is_file($documentRoot . '/web/css/style.css')
+    is_file($documentRoot . '/web/css/style.css') === true
         ? (int) filemtime($documentRoot . '/web/css/style.css') : 1
 );
 $html = $response->getContent();

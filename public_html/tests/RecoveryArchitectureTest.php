@@ -96,7 +96,7 @@ foreach (src\Identity\Recovery\Application\RecoveryOutcome::cases() as $outcome)
     if (in_array($outcome, [
         src\Identity\Recovery\Application\RecoveryOutcome::UNAUTHENTICATED,
         src\Identity\Recovery\Application\RecoveryOutcome::SHOW_FLOW,
-    ], true)) {
+    ], true) === true) {
         continue;
     }
     assertRecoveryArchitecture(
