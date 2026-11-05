@@ -10,15 +10,18 @@ use app\Http\Response;
 use app\Http\Router;
 use app\Service\AuthService;
 use src\Business\AuthEntryService;
-use src\Business\AccountService;
 use src\Business\AuthenticatorTOTPService;
 use src\Business\RecoveryFeatureService;
 use src\Business\UserService;
 use src\Entity\User;
+use src\Identity\Profile\Http\EmailChangeVerification;
+use src\Identity\Profile\Http\ProfileFormHandler;
 
 class Account extends Controller
 {
-    private AccountService $accountService;
+    private ProfileFormHandler $profileFormHandler;
+
+    private EmailChangeVerification $emailChangeVerification;
 
     private UserService $userService;
 
@@ -34,7 +37,8 @@ class Account extends Controller
     public function __construct(Application $application)
     {
         parent::__construct($application);
-        $this->accountService = $application->get(AccountService::class);
+        $this->profileFormHandler = $application->get(ProfileFormHandler::class);
+        $this->emailChangeVerification = $application->get(EmailChangeVerification::class);
         $this->userService = $application->get(UserService::class);
         $this->authenticatorService = $application->get(AuthenticatorTOTPService::class);
         $this->recoveryFeatureService = $application->get(RecoveryFeatureService::class);
@@ -62,8 +66,16 @@ class Account extends Controller
 
         $this->accountMessages = $this->consumeFlash('account');
 
-        $user = $this->handleUsernameChange($request, $user);
-        $this->handleEmailChange($request, $user);
+        $profileResult = $this->profileFormHandler->handle($request, $user);
+        $user = $profileResult['user'];
+        $this->accountMessages['errors'] = array_merge(
+            $this->accountMessages['errors'],
+            $profileResult['errors']
+        );
+        $this->accountMessages['success'] = array_merge(
+            $this->accountMessages['success'],
+            $profileResult['success']
+        );
         $this->handleAuthenticator($request, $user, $auth);
         $this->handleTwoStepPreference($request, $user);
 
@@ -79,7 +91,7 @@ class Account extends Controller
             return $this->redirectSelf();
         }
 
-        $pendingEmailChange = $this->formatPendingEmailChange($user->getId());
+        $pendingEmailChange = $this->profileFormHandler->pendingEmailChange($user->getId());
         $authenticatorEnabled = $this->authenticatorService->hasEnabledAuthenticator($user->getId());
 
         return Response::html(
@@ -113,29 +125,7 @@ class Account extends Controller
     public function verifyEmailChange(Request $request): Response
     {
         $this->application->get(\app\Service\TranslationService::class)->setFile('account');
-        $token = (string) $request->getRouteParameter('token', '');
-        $status = AccountService::EMAIL_CHANGE_INVALID;
-        if ($token !== '') {
-            $status = $this->accountService->confirmEmailChange($token);
-        }
-
-        $messageKey = $this->getVerificationMessageKey($status);
-        $isSuccess = $status === AccountService::EMAIL_CHANGE_CONFIRMED;
-
-        return Response::html(
-            $this->twig->render(
-                'account-email-verify.twig',
-                array_merge(
-                    $this->twigVariables,
-                    [
-                        'verification' => [
-                            'success' => $isSuccess,
-                            'message' => __($messageKey),
-                        ],
-                    ]
-                )
-            )
-        );
+        return $this->emailChangeVerification->verify($request);
     }
 
     private function enforceAuthentication(Request $request, AuthService $auth): ?Response
@@ -152,61 +142,6 @@ class Account extends Controller
         $statusCode = strtoupper($request->getMethod()) === 'POST' ? 303 : 302;
 
         return Response::redirect(Router::path('login'), $statusCode);
-    }
-
-    private function handleUsernameChange(Request $request, User $user): User
-    {
-        $submit = $request->post('submit_username');
-        if ($submit === null) {
-            return $user;
-        }
-
-        $username = (string) $request->post('username');
-        $status = $this->accountService->changeUsername($user, $username);
-
-        if ($status === AccountService::USERNAME_CHANGE_UPDATED) {
-            $this->accountMessages['success'][] = __('account.username-updated');
-            $refreshed = $this->userService->getUserById($user->getId());
-            if ($refreshed instanceof User) {
-                return $refreshed;
-            }
-
-            return $user;
-        }
-
-        $messageKeys = [
-            AccountService::USERNAME_CHANGE_INVALID => 'account.username-invalid',
-            AccountService::USERNAME_CHANGE_UNCHANGED => 'account.username-unchanged',
-            AccountService::USERNAME_CHANGE_TAKEN => 'account.username-taken',
-            AccountService::USERNAME_CHANGE_ERROR => 'account.username-error',
-        ];
-        $this->accountMessages['errors'][] = __($messageKeys[$status] ?? 'account.username-error');
-
-        return $user;
-    }
-
-    private function handleEmailChange(Request $request, User $user): void
-    {
-        $submit = $request->post('submit_email');
-        if ($submit === null) {
-            return;
-        }
-
-        $newEmail = (string) $request->post('new_email');
-        $status = $this->accountService->requestEmailChange($user, $newEmail);
-
-        if ($status === AccountService::EMAIL_CHANGE_REQUESTED) {
-            $this->accountMessages['success'][] = __('account.email-change-requested');
-            return;
-        }
-
-        $messageKeys = [
-            AccountService::EMAIL_CHANGE_INVALID => 'account.email-change-invalid',
-            AccountService::EMAIL_CHANGE_SAME => 'account.email-change-same',
-            AccountService::EMAIL_CHANGE_CONFLICT => 'account.email-change-conflict',
-            AccountService::EMAIL_CHANGE_ERROR => 'account.email-change-error',
-        ];
-        $this->accountMessages['errors'][] = __($messageKeys[$status] ?? 'account.email-change-error');
     }
 
     private function handleAuthenticator(Request $request, User $user, AuthService $auth): void
@@ -244,32 +179,4 @@ class Account extends Controller
             : __('account.two-step-disabled');
     }
 
-    private function formatPendingEmailChange(int $userId): ?array
-    {
-        $pending = $this->accountService->getPendingEmailChange($userId);
-        if ($pending === null) {
-            return null;
-        }
-
-        try {
-            $expiresAt = new \DateTimeImmutable($pending->expires_at);
-        } catch (\Exception) {
-            $expiresAt = null;
-        }
-
-        return [
-            'newEmail' => $pending->new_email,
-            'expiresAt' => $expiresAt,
-        ];
-    }
-
-    private function getVerificationMessageKey(string $status): string
-    {
-        return match ($status) {
-            AccountService::EMAIL_CHANGE_CONFIRMED => 'account.email-change-confirmed',
-            AccountService::EMAIL_CHANGE_EXPIRED => 'account.email-change-expired',
-            AccountService::EMAIL_CHANGE_CONFLICT => 'account.email-change-conflict-token',
-            default => 'account.email-change-invalid-token',
-        };
-    }
 }
