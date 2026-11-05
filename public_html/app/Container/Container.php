@@ -70,6 +70,10 @@ class Container
 
     public function make(string $className): object
     {
+        if ($this->has($className) === true) {
+            return $this->get($className);
+        }
+
         if (class_exists($className) === false) {
             throw new \Exception("Class " . htmlspecialchars($className, ENT_QUOTES, 'UTF-8') . " not found.");
         }

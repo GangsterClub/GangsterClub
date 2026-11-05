@@ -19,6 +19,21 @@ use src\Business\EmailTOTPService;
 use src\Business\RecoveryCodeService;
 use src\Business\TOTPService;
 use src\Business\UserService;
+use src\Identity\Recovery\Application\AbandonRecoveryFlow;
+use src\Identity\Recovery\Application\IssueRecoveryEmailVerification;
+use src\Identity\Recovery\Application\RecoveryCodeLifecycle;
+use src\Identity\Recovery\Application\RecoveryFlowCoordinator;
+use src\Identity\Recovery\Application\RecoveryFlowState;
+use src\Identity\Recovery\Application\RecoveryIdentityContext;
+use src\Identity\Recovery\Application\RecoveryRateLimitContextFactory;
+use src\Identity\Recovery\Application\RecoveryVerification;
+use src\Identity\Recovery\Application\StartAccountRecovery;
+use src\Identity\Recovery\Application\StartLostAuthenticatorRecovery;
+use src\Controller\RecoveryFlowController;
+use src\Identity\Recovery\Http\RecoveryPageRenderer;
+use src\Identity\Recovery\Http\RecoveryResponseMapper;
+use src\Controller\RecoveryStartController;
+use src\Identity\Recovery\RecoveryServiceProvider;
 
 spl_autoload_register(static function (string $class): void {
     $prefixes = ['app\\' => __DIR__ . '/../app/', 'src\\' => __DIR__ . '/../src/'];
@@ -31,6 +46,7 @@ spl_autoload_register(static function (string $class): void {
         }
     }
 });
+require_once __DIR__ . '/../vendor/autoload.php';
 
 function assertContainerTrue(bool $condition, string $message): void
 {
@@ -152,6 +168,11 @@ assertContainerSame(
     $container->get(ContainerProviderInvokable::class),
     'Setting an existing service identifier should replace the previous service.'
 );
+assertContainerSame(
+    $replacement,
+    $container->make(ContainerProviderInvokable::class),
+    'make() should resolve explicitly registered classes before using legacy container construction.'
+);
 
 $applicationServices = new Container();
 $applicationServices->register(new ApplicationServiceProvider());
@@ -161,6 +182,51 @@ assertContainerTrue($applicationServices->get(\app\Http\Router::class) instanceo
 assertContainerTrue(
     $applicationServices->get(\app\Service\TranslationService::class) instanceof TranslationService,
     'Translation service class should be unchanged.'
+);
+
+$recoveryServices = new Container();
+$recoveryServices->register(new RecoveryServiceProvider());
+foreach ([
+    RecoveryFlowState::class,
+    RecoveryIdentityContext::class,
+    RecoveryRateLimitContextFactory::class,
+    AbandonRecoveryFlow::class,
+    IssueRecoveryEmailVerification::class,
+    StartAccountRecovery::class,
+    StartLostAuthenticatorRecovery::class,
+    RecoveryCodeLifecycle::class,
+    RecoveryVerification::class,
+    RecoveryFlowCoordinator::class,
+    RecoveryPageRenderer::class,
+    RecoveryResponseMapper::class,
+    RecoveryStartController::class,
+    RecoveryFlowController::class,
+] as $serviceId) {
+    assertContainerTrue($recoveryServices->has($serviceId), $serviceId . ' should be registered by its feature.');
+}
+foreach ([
+    \app\Service\AuthService::class,
+    \app\Service\SessionService::class,
+    \app\Service\FlashBag::class,
+    \app\Service\PendingAuthenticationSession::class,
+    \app\Service\SecurityFlowSession::class,
+    \app\Service\TranslationService::class,
+    \Twig\Environment::class,
+    \src\Business\AuthenticationChallengeService::class,
+    \src\Business\AuthenticatorTOTPService::class,
+    \src\Business\EmailService::class,
+    \src\Business\EmailTOTPService::class,
+    \src\Business\RecoveryCodeService::class,
+    \src\Business\RecoveryFeatureService::class,
+    \src\Business\RecoveryFlowService::class,
+    \src\Business\UserService::class,
+] as $serviceId) {
+    $recoveryServices->set($serviceId, containerProviderInstanceWithoutConstructor($serviceId));
+}
+assertContainerTrue(
+    $recoveryServices->make(RecoveryStartController::class) instanceof RecoveryStartController
+        && $recoveryServices->make(RecoveryFlowController::class) instanceof RecoveryFlowController,
+    'Feature controllers should resolve lazily after request-scoped services are available.'
 );
 
 $domainServices = new Container();

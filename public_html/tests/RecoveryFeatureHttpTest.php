@@ -2,14 +2,18 @@
 
 declare(strict_types=1);
 
-use app\Container\Application;
+use app\Container\Container;
 use app\Http\Request;
 use app\Http\Response;
 use app\Http\Router;
 use app\Service\AuthService;
 use app\Service\AuthSessionKeys;
 use app\Service\CsrfService;
+use app\Service\FlashBag;
+use app\Service\PendingAuthenticationSession;
+use app\Service\SecurityFlowSession;
 use app\Service\SessionService;
+use app\Service\TranslationService;
 use src\Business\AuthenticationChallengeService;
 use src\Business\AuthenticationRateLimitContext;
 use src\Business\AuthenticationRateLimitService;
@@ -24,8 +28,6 @@ use src\Business\RecoveryFlowService;
 use src\Business\SecurityAuditService;
 use src\Business\TOTPService;
 use src\Business\UserService;
-use src\Controller\AccountRecoveryCodesController;
-use src\Controller\LostAuthenticatorRecoveryController;
 use src\Data\Connection;
 use src\Data\RecoveryAccountPersistence;
 use src\Data\RecoveryCodePersistence;
@@ -38,6 +40,9 @@ use src\Data\Repository\SecurityAuditEventRepository;
 use src\Data\Repository\UserAuthenticatorTOTPRepository;
 use src\Data\Repository\UserLockRepository;
 use src\Data\Repository\UserRepository;
+use src\Controller\RecoveryFlowController;
+use src\Controller\RecoveryStartController;
+use src\Identity\Recovery\RecoveryServiceProvider;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -113,22 +118,26 @@ final class RecoveryHttpRequest extends Request
 final class RecoveryHttpControllerHarness
 {
     public function __construct(
-        private readonly AccountRecoveryCodesController $accountController,
-        private readonly LostAuthenticatorRecoveryController $lostController
+        private readonly RecoveryStartController $starts,
+        private readonly RecoveryFlowController $flow
     ) {}
 
     public function __call(string $method, array $arguments): Response
     {
         return match ($method) {
-            'startLostAuthenticator' => $this->lostController->start(...$arguments),
-            'lostAuthenticator' => $this->lostController->recovery(...$arguments),
-            default => $this->accountController->{$method}(...$arguments),
+            'startEnrollment' => $this->starts->enroll(...$arguments),
+            'startInitial' => $this->starts->initial(...$arguments),
+            'startReplacement' => $this->starts->replace(...$arguments),
+            'startLostAuthenticator' => $this->starts->lost(...$arguments),
+            'lostAuthenticator' => $this->flow->lost(...$arguments),
+            default => $this->flow->account(...$arguments),
         };
     }
 }
 
-final class RecoveryHttpTranslation
+final class RecoveryHttpTranslation extends TranslationService
 {
+    public function __construct() {}
     public function setFile(string $file): void {}
 }
 
@@ -194,12 +203,6 @@ final class RecoveryHttpAuthenticator extends AuthenticatorTOTPService
     ): string {
         return 'data:image/png;base64,test';
     }
-}
-
-final class RecoveryHttpApplication extends Application
-{
-    public function __construct(public array $services) {}
-    public function get(string $name): object { return $this->services[$name] ?? throw new RuntimeException($name . ' is missing.'); }
 }
 
 function recoveryAssertSame(mixed $expected, mixed $actual, string $message): void
@@ -392,9 +395,7 @@ $twig = new Twig\Environment(new Twig\Loader\ArrayLoader([
 ]));
 
 $makeController = static function (RecoveryHttpSession $session) use (
-    $connection,
     $challengeService,
-    $rateService,
     $recoveryService,
     $featureService,
     $flowService,
@@ -406,27 +407,35 @@ $makeController = static function (RecoveryHttpSession $session) use (
     $userRepository
 ): array {
     $csrf = new CsrfService($session);
-    $auth = new AuthService($session, $csrf, $userRepository);
-    $application = new RecoveryHttpApplication([
-        \src\Data\Connection::class => $connection,
-        \app\Service\SessionService::class => $session,
-        \app\Service\CsrfService::class => $csrf,
-        \app\Service\AuthService::class => $auth,
-        \app\Service\TranslationService::class => new RecoveryHttpTranslation(),
+    $pending = new PendingAuthenticationSession($session);
+    $securityFlow = new SecurityFlowSession($session);
+    $auth = new AuthService($session, $csrf, $userRepository, $pending, $securityFlow);
+    $container = new Container();
+    $container->register(new RecoveryServiceProvider());
+    $services = [
+        SessionService::class => $session,
+        CsrfService::class => $csrf,
+        AuthService::class => $auth,
+        PendingAuthenticationSession::class => $pending,
+        SecurityFlowSession::class => $securityFlow,
+        FlashBag::class => new FlashBag($session),
+        TranslationService::class => new RecoveryHttpTranslation(),
         \Twig\Environment::class => $twig,
-        \src\Business\AuthenticationChallengeService::class => $challengeService,
-        \src\Business\AuthenticationRateLimitService::class => $rateService,
-        \src\Business\RecoveryCodeService::class => $recoveryService,
-        \src\Business\RecoveryFeatureService::class => $featureService,
-        \src\Business\RecoveryFlowService::class => $flowService,
-        \src\Business\AuthenticatorTOTPService::class => $authenticatorService,
-        \src\Business\EmailTOTPService::class => $emailTotp,
-        \src\Business\EmailService::class => $email,
-        \src\Business\UserService::class => $users,
-    ]);
+        AuthenticationChallengeService::class => $challengeService,
+        RecoveryCodeService::class => $recoveryService,
+        RecoveryFeatureService::class => $featureService,
+        RecoveryFlowService::class => $flowService,
+        AuthenticatorTOTPService::class => $authenticatorService,
+        EmailTOTPService::class => $emailTotp,
+        EmailService::class => $email,
+        UserService::class => $users,
+    ];
+    foreach ($services as $serviceId => $service) {
+        $container->set($serviceId, $service);
+    }
     return [new RecoveryHttpControllerHarness(
-        new AccountRecoveryCodesController($application),
-        new LostAuthenticatorRecoveryController($application)
+        $container->make(RecoveryStartController::class),
+        $container->make(RecoveryFlowController::class)
     ), $auth];
 };
 
@@ -496,16 +505,90 @@ recoveryAssertSame(
     'Terminal authenticated recovery messages must be delivered to the account destination.'
 );
 
+// Initial recovery-code setup preserves unauthenticated and unavailable HTTP behavior.
+$unauthenticatedSession = new RecoveryHttpSession();
+[$unauthenticatedController] = $makeController($unauthenticatedSession);
+$unauthenticatedSession->flash('recovery', 'errors', 'stale-recovery-message');
+$unauthenticatedResponse = $unauthenticatedController->startInitial(recoveryPost([]));
+recoveryAssertSame(303, $unauthenticatedResponse->getStatusCode(), 'Unauthenticated initial setup must redirect.');
+recoveryAssertTrue(
+    in_array('Location: ' . Router::path('login'), $unauthenticatedResponse->getHeaders(), true),
+    'Unauthenticated initial setup must return to login even for enhanced requests.'
+);
+recoveryAssertSame(
+    false,
+    isset($unauthenticatedSession->flashes['recovery']),
+    'Initial setup must discard stale recovery presentation messages before authentication.'
+);
+
+$unavailableSession = new RecoveryHttpSession();
+[$unavailableController, $unavailableAuth] = $makeController($unavailableSession);
+$unavailableAuth->loginUser(1);
+[$unavailableJsonResponse, $unavailablePayload] = recoveryJsonResponse(
+    fn () => $unavailableController->startInitial(recoveryPost([]))
+);
+recoveryAssertSame(422, $unavailableJsonResponse->getStatusCode(), 'Unavailable initial setup must use a validation status.');
+recoveryAssertSame('unavailable', $unavailablePayload['state'], 'Initial setup requires an active authenticator.');
+recoveryAssertSame(
+    Router::path('account'),
+    $unavailablePayload['redirect'],
+    'Unavailable initial setup must return enhanced clients to account.'
+);
+recoveryAssertTrue(
+    in_array('Cache-Control: no-store, private', $unavailableJsonResponse->getHeaders(), true),
+    'Unavailable initial setup responses must not be cached.'
+);
+$unavailableHtmlResponse = $unavailableController->startInitial(new RecoveryHttpRequest('POST'));
+recoveryAssertSame(303, $unavailableHtmlResponse->getStatusCode(), 'Unavailable HTML setup must retain PRG.');
+recoveryAssertSame(
+    ['recovery.action-unavailable'],
+    $unavailableSession->flashes['account']['errors'] ?? [],
+    'Unavailable HTML setup must report through the account flash bag.'
+);
+
 // 1. Existing authenticator user creates and acknowledges the initial set.
 $existingSession = new RecoveryHttpSession();
 [$controller, $existingAuth] = $makeController($existingSession);
 $existingAuth->loginUser(2);
-[, $payload] = recoveryJsonResponse(fn () => $controller->startInitial(recoveryPost([])));
+$initialHtmlResponse = $controller->startInitial(new RecoveryHttpRequest('POST'));
+recoveryAssertSame(303, $initialHtmlResponse->getStatusCode(), 'Initial HTML setup must retain PRG.');
+recoveryAssertTrue(
+    in_array('Location: ' . Router::path('accountRecoveryCodes'), $initialHtmlResponse->getHeaders(), true),
+    'Initial HTML setup must redirect to the recovery-code flow.'
+);
+recoveryAssertSame(
+    ['recovery.reauthentication-required'],
+    $existingSession->flashes['recovery.initial_recovery_codes']['success'] ?? [],
+    'Initial HTML setup must scope its success message to the challenge purpose.'
+);
+$abandonedChallengeId = (int) $pdo->query(
+    "SELECT id FROM authentication_challenge WHERE user_id = 2 AND purpose = 'initial_recovery_codes' ORDER BY id DESC LIMIT 1"
+)->fetchColumn();
+[$initialJsonResponse, $payload] = recoveryJsonResponse(fn () => $controller->startInitial(recoveryPost([])));
 recoveryAssertSame('fresh_reauthentication_pending', $payload['state'], 'Initial setup must start with fresh authenticator verification.');
 recoveryAssertTrue(
     array_diff(['success', 'state', 'nextStep', 'message', 'errors', 'redirect'], array_keys($payload)) === [],
     'Enhanced modal responses must expose the stable structured response fields.'
 );
+recoveryAssertTrue(
+    in_array('Cache-Control: no-store, private', $initialJsonResponse->getHeaders(), true),
+    'Initial enhanced setup responses must not be cached.'
+);
+$abandonedChallengeCancelledAt = $pdo->query(
+    'SELECT cancelled_at FROM authentication_challenge WHERE id = ' . $abandonedChallengeId
+)->fetchColumn();
+recoveryAssertTrue(
+    $abandonedChallengeCancelledAt !== false && $abandonedChallengeCancelledAt !== null,
+    'Restarting initial setup must cancel its abandoned challenge before creating another.'
+);
+$initialChallenge = $pdo->query(
+    "SELECT baseline_authenticator_generation, baseline_recovery_code_set_id
+       FROM authentication_challenge
+      WHERE user_id = 2 AND purpose = 'initial_recovery_codes'
+      ORDER BY id DESC LIMIT 1"
+)->fetch(PDO::FETCH_ASSOC);
+recoveryAssertSame('1', (string) ($initialChallenge['baseline_authenticator_generation'] ?? ''), 'Initial setup must bind the current authenticator generation.');
+recoveryAssertSame(null, $initialChallenge['baseline_recovery_code_set_id'] ?? null, 'Initial setup must have no baseline recovery set.');
 [$displayJsonResponse, $payload] = recoveryJsonResponse(fn () => $controller->account(recoveryPost([
     'action' => 'verify_authenticator',
     'authenticator_code' => '654321',
@@ -797,11 +880,20 @@ recoveryAssertTrue(
 recoveryAssertSame(true, $featureService->disableAuthenticatorAndRecoveryCodes(1), 'Verified normal removal must complete atomically.');
 recoveryAssertSame(false, $authenticatorService->hasEnabledAuthenticator(1), 'Normal removal must delete the active authenticator.');
 recoveryAssertSame(null, $featureService->getActiveRecoverySetId(1), 'Normal removal must invalidate associated recovery codes.');
+$router = new Router();
+$router->load(__DIR__ . '/../src/resources/routes.yaml');
+$initialRoute = $router->match('/account/recovery-codes/initial', 'POST');
+recoveryAssertSame(
+    'RecoveryStartController::initial',
+    $initialRoute?->route->getController(),
+    'The initial recovery-code route must use the conventional endpoint-controller shorthand.'
+);
 $routes = file_get_contents(__DIR__ . '/../src/resources/routes.yaml');
 recoveryAssertTrue(
     is_string($routes)
     && str_contains($routes, '/account/recovery-codes')
-    && str_contains($routes, '/login/recovery'),
+    && str_contains($routes, '/login/recovery')
+    && str_contains($routes, 'controller: RecoveryStartController::initial'),
     'Both authenticated and lost-authenticator HTTP routes must remain registered.'
 );
 $flowTemplate = file_get_contents(__DIR__ . '/../src/View/recovery-flow.twig');
