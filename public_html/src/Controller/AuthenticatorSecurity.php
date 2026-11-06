@@ -1,214 +1,26 @@
-<?PHP
+<?php
 
 declare(strict_types=1);
 
 namespace src\Controller;
 
-use app\Container\Application;
 use app\Http\Request;
 use app\Http\Response;
-use app\Http\Router;
-use src\Business\AuthenticatorTOTPService;
-use src\Business\AuthenticationRateLimitContext;
-use src\Business\AuthenticatorTOTPPurpose;
-use src\Business\RateLimitExceededException;
-use src\Business\RecoveryFeatureService;
-use app\Service\SecurityFlowSession;
+use src\Identity\AccountSecurity\Http\AuthenticatorDisableEndpoint;
 
-class AuthenticatorSecurity extends Controller
+final class AuthenticatorSecurity
 {
-    private AuthenticatorTOTPService $authenticatorService;
-
-    private RecoveryFeatureService $recoveryFeatureService;
-    private SecurityFlowSession $securityFlow;
-
-    public function __construct(Application $application)
+    public function __construct(private readonly AuthenticatorDisableEndpoint $endpoint)
     {
-        parent::__construct($application);
-
-        $this->authenticatorService = $application->get(AuthenticatorTOTPService::class);
-        $this->recoveryFeatureService = $application->get(RecoveryFeatureService::class);
-        $securityFlow = $application->getOptional(SecurityFlowSession::class);
-        $this->securityFlow = $securityFlow instanceof SecurityFlowSession
-            ? $securityFlow
-            : new SecurityFlowSession($application->get(\app\Service\SessionService::class));
     }
 
     public function startDisable(Request $request): Response
     {
-        $auth = $this->auth();
-
-        if ($auth->getAuthenticatedUserId() === null) {
-            return Response::redirect(Router::path('login'), 303);
-        }
-
-        return Response::redirect(Router::path('accountAuthenticatorDisable'), 303);
+        return $this->endpoint->start($request);
     }
 
     public function disable(Request $request): Response
     {
-        $this->application->get(\app\Service\TranslationService::class)->setFile('account');
-
-        $auth = $this->auth();
-        $userId = $auth->getAuthenticatedUserId();
-
-        if ($userId === null) {
-            return Response::redirect(Router::path('login'), 303);
-        }
-
-        if ($request->getMethod() === 'POST') {
-            $code = preg_replace(
-                '/\s+/',
-                '',
-                (string) $request->post('authenticator_disable_code', '')
-            ) ?? '';
-
-            if (preg_match('/^\d{' . AUTHENTICATOR_TOTP_DIGITS . '}$/', $code) !== 1) {
-                return $this->disableFailure(
-                    $request,
-                    __('account.authenticator-disable-code-required')
-                );
-            }
-
-            if ($this->isDisableCodeValid($userId, $code) === false) {
-                return $this->disableFailure(
-                    $request,
-                    __('account.authenticator-disable-invalid-code')
-                );
-            }
-
-            if ($this->recoveryFeatureService->disableAuthenticatorAndRecoveryCodes($userId) === false) {
-                return $this->disableFailure(
-                    $request,
-                    __('account.authenticator-disable-error')
-                );
-            }
-
-            $this->securityFlow()->setPendingAuthenticatorSecret(null);
-            $auth->rotateCsrfToken();
-
-            if ($this->expectsStructuredResponse($request) === true) {
-                return Response::json(
-                    [
-                        'success' => true,
-                        'state' => 'authenticator_disabled',
-                        'nextStep' => 'account_security',
-                        'message' => __('account.authenticator-disabled'),
-                        'errors' => [],
-                        'redirect' => Router::path('account'),
-                    ],
-                    200,
-                    $this->securityHeaders()
-                );
-            }
-
-            $this->flash(
-                'account',
-                'success',
-                __('account.authenticator-disabled')
-            );
-
-            return Response::redirect(Router::path('account'), 303);
-        }
-
-        $messages = $this->consumeFlash('authenticator.disable');
-
-        return Response::html(
-            $this->twig->render(
-                'authenticator-disable.twig',
-                array_merge($this->twigVariables, [
-                    'account' => $messages,
-                    'cancelDisable' => [
-                        'action' => __('account.authenticator-cancel'),
-                        'backUrl' => Router::path('account'),
-                    ],
-                    'authenticator' => [
-                        'digits' => AUTHENTICATOR_TOTP_DIGITS,
-                    ],
-                ])
-            )
-        );
-    }
-
-    private function rateLimitContext(int $userId): AuthenticationRateLimitContext
-    {
-        $session = $this->application->get(\app\Service\SessionService::class);
-        return AuthenticationRateLimitContext::forUser(
-            $userId,
-            (string) $session->get('_IPaddress', '127.0.0.1'),
-            $this->securityFlow()->getChallengeBinding()
-        );
-    }
-
-    private function securityFlow(): SecurityFlowSession
-    {
-        if (isset($this->securityFlow) === true) {
-            return $this->securityFlow;
-        }
-        return new SecurityFlowSession(
-            $this->application->get(\app\Service\SessionService::class)
-        );
-    }
-
-    private function isDisableCodeValid(int $userId, string $code): bool
-    {
-        try {
-            return $this->authenticatorService->verify(
-                $userId,
-                AuthenticatorTOTPPurpose::AUTHENTICATOR_DISABLE,
-                $code,
-                $this->rateLimitContext($userId)
-            );
-        } catch (RateLimitExceededException) {
-            return false;
-        }
-    }
-
-    private function disableFailure(Request $request, string $message): Response
-    {
-        if ($this->expectsStructuredResponse($request) === true) {
-            return Response::json(
-                [
-                    'success' => false,
-                    'state' => 'authenticator_verification_pending',
-                    'nextStep' => 'verify_authenticator',
-                    'message' => $message,
-                    'errors' => [$message],
-                    'redirect' => Router::path('account'),
-                ],
-                422,
-                $this->securityHeaders()
-            );
-        }
-
-        $this->flash(
-            'authenticator.disable',
-            'errors',
-            $message
-        );
-
-        return Response::redirect(
-            Router::path('accountAuthenticatorDisable'),
-            303
-        );
-    }
-
-    private function expectsStructuredResponse(Request $request): bool
-    {
-        return str_contains(
-            strtolower((string) $request->getHeader('Accept')),
-            'application/json'
-        ) || strtolower(
-            (string) $request->getHeader('X-Requested-With')
-        ) === 'xmlhttprequest';
-    }
-
-    private function securityHeaders(): array
-    {
-        return [
-            'Cache-Control: no-store, private',
-            'Pragma: no-cache',
-            'Referrer-Policy: no-referrer',
-        ];
+        return $this->endpoint->disable($request);
     }
 }

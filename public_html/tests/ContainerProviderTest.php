@@ -43,6 +43,11 @@ use src\Identity\Authentication\Http\AuthEntryRequestHandler;
 use src\Identity\Authentication\Http\AuthEntryResponseMapper;
 use src\Identity\Authentication\Http\AuthEntryViewModelFactory;
 use src\Identity\Authentication\Infrastructure\SessionRegistrationFormState;
+use src\Identity\AccountSecurity\AccountSecurityServiceProvider;
+use src\Identity\AccountSecurity\Application\DisableAuthenticator;
+use src\Identity\AccountSecurity\Application\UpdateTwoStepPreference;
+use src\Identity\AccountSecurity\Http\AccountSecurityFormHandler;
+use src\Identity\AccountSecurity\Http\AuthenticatorDisableEndpoint;
 use src\Identity\Recovery\RecoveryServiceProvider;
 use src\Identity\Profile\Application\ProfileManagement;
 use src\Identity\Profile\Http\EmailChangeVerification;
@@ -197,6 +202,21 @@ assertContainerTrue(
     $applicationServices->get(\app\Service\TranslationService::class) instanceof TranslationService,
     'Translation service class should be unchanged.'
 );
+
+$accountSecurityServices = new Container();
+$accountSecurityServices->register(new AccountSecurityServiceProvider());
+foreach ([
+    DisableAuthenticator::class,
+    UpdateTwoStepPreference::class,
+    AccountSecurityFormHandler::class,
+    AuthenticatorDisableEndpoint::class,
+    \src\Controller\AuthenticatorSecurity::class,
+] as $serviceId) {
+    assertContainerTrue(
+        $accountSecurityServices->has($serviceId),
+        $serviceId . ' should be registered by AccountSecurity.'
+    );
+}
 
 $recoveryServices = new Container();
 $recoveryServices->register(new RecoveryServiceProvider());

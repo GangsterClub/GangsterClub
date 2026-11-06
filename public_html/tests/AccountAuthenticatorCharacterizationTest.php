@@ -2,94 +2,219 @@
 
 declare(strict_types=1);
 
-use app\Container\Application;
 use app\Http\Request;
+use app\Http\Router;
 use app\Service\AuthService;
-use app\Service\SecurityFlowSession;
 use app\Service\AuthSessionKeys;
 use app\Service\CsrfService;
+use app\Service\FlashBag;
 use app\Service\SessionService;
-use src\Business\EmailService;
+use app\Service\TranslationService;
 use src\Business\AuthenticatorTOTPService;
+use src\Business\AuthenticationRateLimitContext;
+use src\Business\EmailService;
+use src\Business\EmailTOTPPurpose;
 use src\Business\EmailTOTPService;
+use src\Business\IssuedEmailTOTP;
 use src\Business\RecoveryFeatureService;
+use src\Business\UserService;
 use src\Controller\Account;
+use src\Data\Repository\UserEmailChangeRepository;
+use src\Data\Repository\UserRepository;
 use src\Entity\User;
+use src\Identity\AccountSecurity\Application\UpdateTwoStepPreference;
+use src\Identity\AccountSecurity\Http\AccountSecurityFormHandler;
+use src\Identity\Profile\Application\ProfileManagement;
+use src\Identity\Profile\Http\EmailChangeVerification;
+use src\Identity\Profile\Http\ProfileFormHandler;
+use Twig\Environment;
+use Twig\Loader\ArrayLoader;
 
-const AUTHENTICATOR_TOTP_DIGITS = 6;
-const AUTHENTICATOR_TOTP_PERIOD = 30;
-const TOTP_DIGITS = 6;
-const TOTP_PERIOD = 300;
+require_once __DIR__ . '/../vendor/autoload.php';
 
-function __(string $key, array $parameters = []): string
+defined('APP_BASE') || define('APP_BASE', '/game');
+defined('WEB_ROOT') || define('WEB_ROOT', APP_BASE . '/');
+defined('APP_MAX_AGE') || define('APP_MAX_AGE', 7200);
+defined('REQUEST_METHOD') || define('REQUEST_METHOD', 'POST');
+defined('REQUEST_URI') || define('REQUEST_URI', '/account');
+defined('AUTHENTICATOR_TOTP_DIGITS') || define('AUTHENTICATOR_TOTP_DIGITS', 6);
+defined('AUTHENTICATOR_TOTP_PERIOD') || define('AUTHENTICATOR_TOTP_PERIOD', 30);
+defined('TOTP_DIGITS') || define('TOTP_DIGITS', 6);
+defined('TOTP_PERIOD') || define('TOTP_PERIOD', 300);
+
+final class AccountSecurityFormTestRequest extends Request
 {
-    return $key;
+    public function __construct(
+        private readonly array $fields,
+        private readonly string $method = 'POST'
+    ) {
+    }
+
+    public function getMethod(): string
+    {
+        return $this->method;
+    }
+
+    public function post(string $key, mixed $default = null): mixed
+    {
+        return $this->fields[$key] ?? $default;
+    }
 }
 
-spl_autoload_register(static function (string $class): void {
-    $prefixes = ['app\\' => __DIR__ . '/../app/', 'src\\' => __DIR__ . '/../src/'];
-    foreach ($prefixes as $prefix => $baseDirectory) {
-        if (str_starts_with($class, $prefix) === true) {
-            $file = $baseDirectory . str_replace('\\', '/', substr($class, strlen($prefix))) . '.php';
-            if (is_file($file) === true) {
-                require $file;
-            }
-        }
+final class AccountSecurityFormTestTranslation extends TranslationService
+{
+    public function __construct()
+    {
     }
-});
 
-final class AccountAuthenticatorTestSession extends SessionService
+    public function get(string $key, array $replacements = [], bool $useFallback = true): string
+    {
+        return $key;
+    }
+}
+
+final class AccountSecurityFormTestAuthenticator extends AuthenticatorTOTPService
+{
+    public array $calls = [];
+
+    public function __construct(public bool $enabled)
+    {
+    }
+
+    public function hasEnabledAuthenticator(int $userId): bool
+    {
+        $this->calls[] = $userId;
+        return $this->enabled;
+    }
+}
+
+final class AccountSecurityFormTestUsers extends UserService
+{
+    public array $updates = [];
+    public bool $succeeds = true;
+    public ?User $user = null;
+
+    public function __construct()
+    {
+    }
+
+    public function setTwoStepVerificationRequired(int $userId, bool $required): bool
+    {
+        $this->updates[] = [$userId, $required];
+        return $this->succeeds;
+    }
+
+    public function getUserById(int $userId): ?User
+    {
+        return $this->user;
+    }
+}
+
+final class AccountSecurityFormTestSession extends SessionService
 {
     public array $values = [];
 
-    public function __construct() {}
-    public function get(string $key, mixed $default = null): mixed { return $this->values[$key] ?? $default; }
-    public function set(string $key, mixed $value): void { $this->values[$key] = $value; }
-    public function remove(string $key): void { unset($this->values[$key]); }
+    public function __construct()
+    {
+    }
+
+    public function get(string $key, mixed $default = null): mixed
+    {
+        return $this->values[$key] ?? $default;
+    }
+
+    public function set(string $key, mixed $value): void
+    {
+        $this->values[$key] = $value;
+    }
+
+    public function remove(string $key): void
+    {
+        unset($this->values[$key]);
+    }
 }
 
-final class AccountAuthenticatorTestCsrf extends CsrfService
+final class AccountSecurityFormTestCsrf extends CsrfService
 {
     public int $rotations = 0;
 
-    public function __construct() {}
-    public function rotateToken(): string { ++$this->rotations; return 'rotated'; }
+    public function __construct()
+    {
+    }
+
+    public function rotateToken(): string
+    {
+        ++$this->rotations;
+        return 'rotated';
+    }
 }
 
-final class AccountAuthenticatorTestService extends AuthenticatorTOTPService
+final class AccountSecurityFormTestEmailTotp extends EmailTOTPService
 {
     public array $calls = [];
 
-    public function __construct(public bool $enabled) {}
-    public function hasEnabledAuthenticator(int $userId): bool { $this->calls[] = ['hasEnabledAuthenticator', $userId]; return $this->enabled; }
-    public function generateSecret(int $digits = AUTHENTICATOR_TOTP_DIGITS, int $period = AUTHENTICATOR_TOTP_PERIOD): string { $this->calls[] = ['generateSecret']; return 'generated-secret'; }
-    public function verifySecret(string $secret, string $code, int $digits = AUTHENTICATOR_TOTP_DIGITS, int $period = AUTHENTICATOR_TOTP_PERIOD): bool { $this->calls[] = ['verifySecret', $secret, $code]; return true; }
-    public function enableAuthenticator(int $userId, string $secret, int $digits = AUTHENTICATOR_TOTP_DIGITS, int $period = AUTHENTICATOR_TOTP_PERIOD): bool { $this->calls[] = ['enableAuthenticator', $userId, $secret]; return true; }
-    public function verifyEnabledSecret(int $userId, string $code): bool { $this->calls[] = ['verifyEnabledSecret', $userId, $code]; return true; }
-    public function disableAuthenticator(int $userId): bool { $this->calls[] = ['disableAuthenticator', $userId]; return true; }
+    public function __construct()
+    {
+    }
+
+    public function issue(
+        int $userId,
+        EmailTOTPPurpose $purpose,
+        AuthenticationRateLimitContext $context
+    ): IssuedEmailTOTP {
+        $this->calls[] = ['issue', $userId, $purpose];
+        return new IssuedEmailTOTP(1, '654321');
+    }
+
+    public function verify(
+        int $userId,
+        EmailTOTPPurpose $purpose,
+        string $submittedCode,
+        AuthenticationRateLimitContext $context
+    ): bool {
+        $this->calls[] = ['verify', $userId, $purpose, $submittedCode];
+        return true;
+    }
 }
 
-final class AccountAuthenticatorTestEmailTOTP extends EmailTOTPService
+final class AccountSecurityFormTestEmail extends EmailService
 {
     public array $calls = [];
 
-    public function __construct() {}
-    public function generateEmailTOTPForSession(int $userId, string $sessionKey): string { $this->calls[] = ['generate', $userId, $sessionKey]; return '654321'; }
-    public function verifyEmailTOTPForSession(int $userId, string $totp, string $sessionKey): bool { $this->calls[] = ['verify', $userId, $totp, $sessionKey]; return true; }
+    public function __construct()
+    {
+    }
+
+    public function sendEmailTOTP(string $toEmail, string $totp): bool
+    {
+        $this->calls[] = ['sendEmailTOTP', $toEmail, $totp];
+        return true;
+    }
+
+    public function sendEmailChangeVerification(
+        string $toEmail,
+        string $newEmail,
+        string $verificationUrl
+    ): bool {
+        $this->calls[] = ['sendEmailChangeVerification', $toEmail, $newEmail, $verificationUrl];
+        return true;
+    }
 }
 
-final class AccountAuthenticatorTestEmail extends EmailService
+final class AccountSecurityFormTestRecovery extends RecoveryFeatureService
 {
     public array $calls = [];
 
-    public function __construct() {}
-    public function sendEmailTOTP(string $toEmail, string $totp): bool { $this->calls[] = [$toEmail, $totp]; return true; }
-}
+    public function __construct()
+    {
+    }
 
-final class AccountAuthenticatorTestRecoveryFeature extends RecoveryFeatureService
-{
-    public array $calls = [];
-    public function __construct() {}
+    public function getActiveRecoverySetId(int $userId): ?int
+    {
+        $this->calls[] = ['getActiveRecoverySetId', $userId];
+        return null;
+    }
+
     public function disableAuthenticatorAndRecoveryCodes(int $userId): bool
     {
         $this->calls[] = ['disableAuthenticatorAndRecoveryCodes', $userId];
@@ -97,103 +222,172 @@ final class AccountAuthenticatorTestRecoveryFeature extends RecoveryFeatureServi
     }
 }
 
-final class AccountAuthenticatorTestApplication extends Application
+final class AccountSecurityFormTestUserRepository extends UserRepository
 {
-    public function __construct(
-        public AccountAuthenticatorTestSession $session,
-        public AccountAuthenticatorTestEmailTOTP $emailTotp,
-        public AccountAuthenticatorTestEmail $email
-    ) {}
-
-    public function get(string $name): object
+    public function __construct()
     {
-        return match ($name) {
-            \app\Service\SessionService::class => $this->session,
-            \src\Business\EmailTOTPService::class => $this->emailTotp,
-            \src\Business\EmailService::class => $this->email,
-            default => throw new RuntimeException($name . ' is missing.'),
-        };
     }
 }
 
-final class AccountAuthenticatorTestRequest extends Request
+final class AccountSecurityFormTestEmailChangeRepository extends UserEmailChangeRepository
 {
-    public function __construct(private array $fields) {}
-    public function post(string $key, $default = null): mixed { return $this->fields[$key] ?? $default; }
+    public function __construct()
+    {
+    }
 }
 
-function assertAuthenticatorSame(mixed $expected, mixed $actual, string $message): void
+final class AccountSecurityFormTestApplication extends \app\Container\Application
+{
+    public array $resolved = [];
+
+    public function __construct()
+    {
+    }
+
+    public function get(string $name): object
+    {
+        $this->resolved[] = $name;
+        return parent::get($name);
+    }
+}
+
+function assertAccountSecurityFormSame(mixed $expected, mixed $actual, string $message): void
 {
     if ($expected !== $actual) {
         throw new RuntimeException($message . ' Expected ' . var_export($expected, true) . ', got ' . var_export($actual, true));
     }
 }
 
-/** @return array{messages: array, pending: ?string, authenticatorCalls: array, emailTotpCalls: array, emailCalls: array, csrfRotations: int} */
-function runAuthenticatorCase(bool $enabled, array $fields): array
+function accountSecurityFormUser(): User
 {
-    $session = new AccountAuthenticatorTestSession();
-    $session->values[AuthSessionKeys::PENDING_AUTHENTICATOR_SECRET] = 'pending-secret';
-    $session->values[AuthSessionKeys::AUTHENTICATOR_SETUP_EMAIL_SECRET] = 'pending-email-secret';
-    $csrf = new AccountAuthenticatorTestCsrf();
-    $auth = new AuthService($session, $csrf);
-    $authenticator = new AccountAuthenticatorTestService($enabled);
-    $emailTotp = new AccountAuthenticatorTestEmailTOTP();
-    $email = new AccountAuthenticatorTestEmail();
-    $application = new AccountAuthenticatorTestApplication($session, $emailTotp, $email);
-    $recoveryFeature = new AccountAuthenticatorTestRecoveryFeature();
-
-    $account = (new ReflectionClass(Account::class))->newInstanceWithoutConstructor();
-    (new ReflectionProperty(Account::class, 'application'))->setValue($account, $application);
-    (new ReflectionProperty(Account::class, 'authenticatorService'))->setValue($account, $authenticator);
-    (new ReflectionProperty(Account::class, 'recoveryFeatureService'))->setValue($account, $recoveryFeature);
-    $user = new User(42, 'alice', 'alice@example.test', '127.0.0.1', new DateTimeImmutable(), new DateTimeImmutable(), new DateTimeImmutable());
-    (new ReflectionMethod(Account::class, 'handleAuthenticator'))->invoke($account, new AccountAuthenticatorTestRequest($fields), $user, $auth);
-
-    return [
-        'messages' => (new ReflectionProperty(Account::class, 'accountMessages'))->getValue($account),
-        'pending' => (new SecurityFlowSession($session))->getPendingAuthenticatorSecret(),
-        'emailPending' => $session->get(AuthSessionKeys::AUTHENTICATOR_SETUP_EMAIL_SECRET),
-        'authenticatorCalls' => $authenticator->calls,
-        'emailTotpCalls' => $emailTotp->calls,
-        'emailCalls' => $email->calls,
-        'csrfRotations' => $csrf->rotations,
-        'recoveryFeatureCalls' => $recoveryFeature->calls,
-    ];
+    $now = new DateTimeImmutable();
+    return new User(42, 'alice', 'alice@example.test', '127.0.0.1', $now, $now, $now);
 }
 
-$legacyActions = [
+$authenticator = new AccountSecurityFormTestAuthenticator(false);
+$users = new AccountSecurityFormTestUsers();
+$handler = new AccountSecurityFormHandler(
+    new UpdateTwoStepPreference($authenticator, $users),
+    new AccountSecurityFormTestTranslation()
+);
+$user = accountSecurityFormUser();
+$users->user = $user;
+
+foreach ([
     ['submit_authenticator_setup' => '1'],
     ['submit_authenticator_cancel' => '1'],
-    ['submit_authenticator_confirm' => '1', 'authenticator_code' => '123456', 'authenticator_email_code' => '654321'],
-];
-foreach ($legacyActions as $legacyFields) {
-    $legacy = runAuthenticatorCase(false, $legacyFields);
-    assertAuthenticatorSame(
+    ['submit_authenticator_confirm' => '1'],
+] as $fields) {
+    assertAccountSecurityFormSame(
         ['errors' => ['account.authenticator-flow-required'], 'success' => []],
-        $legacy['messages'],
-        'Legacy account POST actions must not bypass staged enrollment and recovery-code acknowledgement.'
+        $handler->handle(new AccountSecurityFormTestRequest($fields), $user),
+        'Legacy authenticator actions must remain blocked by the staged security flow.'
     );
-    assertAuthenticatorSame([], $legacy['authenticatorCalls'], 'Legacy actions must not inspect, verify, or persist an authenticator.');
-    assertAuthenticatorSame([], $legacy['emailTotpCalls'], 'Legacy actions must not issue or verify email codes.');
-    assertAuthenticatorSame(0, $legacy['csrfRotations'], 'Blocked legacy actions must not rotate CSRF.');
 }
+assertAccountSecurityFormSame([], $authenticator->calls, 'Legacy actions must not inspect the authenticator.');
+assertAccountSecurityFormSame([], $users->updates, 'Legacy actions must not alter two-step preferences.');
 
-$enabledCases = [
-    'setup' => [['submit_authenticator_setup' => '1'], ['errors' => ['account.authenticator-flow-required'], 'success' => []], [], [], [], 0, 'pending-secret', 'pending-email-secret'],
-    'cancel' => [['submit_authenticator_cancel' => '1'], ['errors' => ['account.authenticator-flow-required'], 'success' => []], [], [], [], 0, 'pending-secret', 'pending-email-secret'],
-    'confirm' => [['submit_authenticator_confirm' => '1', 'authenticator_code' => '123456', 'authenticator_email_code' => '654321'], ['errors' => ['account.authenticator-flow-required'], 'success' => []], [], [], [], 0, 'pending-secret', 'pending-email-secret'],
-];
+assertAccountSecurityFormSame(
+    ['errors' => ['account.two-step-requires-authenticator'], 'success' => []],
+    $handler->handle(new AccountSecurityFormTestRequest([
+        'submit_two_step' => '1',
+        'require_two_step_verification' => '1',
+    ]), $user),
+    'Two-step verification must retain its authenticator prerequisite message.'
+);
 
-foreach ($enabledCases as $name => [$fields, $messages, $authenticatorCalls, $emailTotpCalls, $emailCalls, $rotations, $pending, $emailPending]) {
-    $result = runAuthenticatorCase(true, $fields);
-    assertAuthenticatorSame($messages, $result['messages'], "Enabled plus pending {$name} should report the exact characterized status.");
-    assertAuthenticatorSame($pending, $result['pending'], "Enabled plus pending {$name} should preserve or clear the pending secret as characterized.");
-    assertAuthenticatorSame($emailPending, $result['emailPending'], "Enabled plus pending {$name} should preserve or clear pending email state as characterized.");
-    assertAuthenticatorSame($authenticatorCalls, $result['authenticatorCalls'], "Enabled plus pending {$name} should call only its characterized authenticator collaborators.");
-    assertAuthenticatorSame($emailTotpCalls, $result['emailTotpCalls'], "Enabled plus pending {$name} should call only its characterized email-TOTP collaborators.");
-    assertAuthenticatorSame($emailCalls, $result['emailCalls'], "Enabled plus pending {$name} should not unexpectedly send email.");
-    assertAuthenticatorSame($rotations, $result['csrfRotations'], "Enabled plus pending {$name} should rotate CSRF only when characterized.");
-}
+$authenticator->enabled = true;
+$users->succeeds = false;
+assertAccountSecurityFormSame(
+    ['errors' => ['account.two-step-update-error'], 'success' => []],
+    $handler->handle(new AccountSecurityFormTestRequest([
+        'submit_two_step' => '1',
+        'require_two_step_verification' => '1',
+    ]), $user),
+    'Preference persistence errors must retain their Account message.'
+);
 
-fwrite(STDOUT, "Account authenticator characterization tests passed.\n");
+$users->succeeds = true;
+assertAccountSecurityFormSame(
+    ['errors' => [], 'success' => ['account.two-step-disabled']],
+    $handler->handle(new AccountSecurityFormTestRequest(['submit_two_step' => '1']), $user),
+    'An unchecked preference must retain the disabled success message.'
+);
+
+assertAccountSecurityFormSame(
+    ['errors' => ['account.authenticator-flow-required'], 'success' => ['account.two-step-enabled']],
+    $handler->handle(new AccountSecurityFormTestRequest([
+        'submit_authenticator_setup' => '1',
+        'submit_two_step' => '1',
+        'require_two_step_verification' => '1',
+    ]), $user),
+    'Legacy rejection must precede the independently processed preference result.'
+);
+
+(new Router())->load(__DIR__ . '/../src/resources/routes.yaml');
+$authenticator->calls = [];
+$users->updates = [];
+$session = new AccountSecurityFormTestSession();
+$session->values[AuthSessionKeys::AUTHENTICATED_USER_ID] = $user->getId();
+$session->values[AuthSessionKeys::PENDING_AUTHENTICATOR_SECRET] = 'pending-secret';
+$session->values[AuthSessionKeys::AUTHENTICATOR_SETUP_EMAIL_SECRET] = 'pending-email-secret';
+$csrf = new AccountSecurityFormTestCsrf();
+$auth = new AuthService($session, $csrf);
+$emailTotp = new AccountSecurityFormTestEmailTotp();
+$email = new AccountSecurityFormTestEmail();
+$recovery = new AccountSecurityFormTestRecovery();
+$profile = new ProfileManagement(
+    new AccountSecurityFormTestUserRepository(),
+    new AccountSecurityFormTestEmailChangeRepository(),
+    $email
+);
+$translation = new AccountSecurityFormTestTranslation();
+$twig = new Environment(new ArrayLoader(['account.twig' => 'unused']));
+$application = new AccountSecurityFormTestApplication();
+$application->set(Environment::class, $twig);
+$application->set(TranslationService::class, $translation);
+$application->set(SessionService::class, $session);
+$application->set(FlashBag::class, new FlashBag($session));
+$application->set(AuthService::class, $auth);
+$application->set(UserService::class, $users);
+$application->set(AuthenticatorTOTPService::class, $authenticator);
+$application->set(RecoveryFeatureService::class, $recovery);
+$application->set(EmailTOTPService::class, $emailTotp);
+$application->set(EmailService::class, $email);
+$application->set(ProfileFormHandler::class, new ProfileFormHandler($profile, $users, $translation));
+$application->set(EmailChangeVerification::class, new EmailChangeVerification($profile, $translation, $twig));
+$application->set(AccountSecurityFormHandler::class, $handler);
+
+$response = (new Account($application))(new AccountSecurityFormTestRequest([
+    'submit_authenticator_confirm' => '1',
+    'authenticator_code' => '123456',
+    'authenticator_email_code' => '654321',
+]));
+assertAccountSecurityFormSame(303, $response->getStatusCode(), 'Rejected legacy Account submissions must retain PRG.');
+assertAccountSecurityFormSame(
+    'pending-secret',
+    $session->get(AuthSessionKeys::PENDING_AUTHENTICATOR_SECRET),
+    'Rejected legacy submissions must preserve the pending authenticator secret.'
+);
+assertAccountSecurityFormSame(
+    'pending-email-secret',
+    $session->get(AuthSessionKeys::AUTHENTICATOR_SETUP_EMAIL_SECRET),
+    'Rejected legacy submissions must preserve pending email-verification state.'
+);
+assertAccountSecurityFormSame(0, $csrf->rotations, 'Rejected legacy submissions must not rotate CSRF.');
+assertAccountSecurityFormSame([], $authenticator->calls, 'Rejected legacy submissions must not inspect, verify, or persist an authenticator.');
+assertAccountSecurityFormSame([], $emailTotp->calls, 'Rejected legacy submissions must not issue or verify email codes.');
+assertAccountSecurityFormSame([], $email->calls, 'Rejected legacy submissions must not send email.');
+assertAccountSecurityFormSame([], $recovery->calls, 'Rejected legacy submissions must not inspect or modify recovery-code state.');
+assertAccountSecurityFormSame(
+    false,
+    in_array(EmailTOTPService::class, $application->resolved, true),
+    'Rejected legacy submissions must not resolve the email verification service.'
+);
+assertAccountSecurityFormSame(
+    false,
+    in_array(EmailService::class, $application->resolved, true),
+    'Rejected legacy submissions must not resolve the email delivery service.'
+);
+
+fwrite(STDOUT, "Account security form characterization tests passed.\n");

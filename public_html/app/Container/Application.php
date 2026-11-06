@@ -7,6 +7,7 @@ namespace app\Container;
 use app\Container\Provider\ApplicationServiceProvider;
 use app\Container\Provider\DomainServiceProvider;
 use app\Http\Router;
+use src\Identity\AccountSecurity\AccountSecurityServiceProvider;
 use src\Identity\Authentication\AuthenticationServiceProvider;
 use src\Identity\Profile\ProfileServiceProvider;
 use src\Identity\Recovery\RecoveryServiceProvider;
@@ -31,6 +32,7 @@ class Application extends Container
     {
         $this->register(new DomainServiceProvider());
         $this->register(new ApplicationServiceProvider());
+        $this->register(new AccountSecurityServiceProvider());
         $this->register(new AuthenticationServiceProvider());
         $this->register(new RecoveryServiceProvider());
         $this->register(new ProfileServiceProvider());

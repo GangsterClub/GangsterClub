@@ -2,105 +2,92 @@
 
 declare(strict_types=1);
 
-defined('APP_BASE') || define('APP_BASE', '/game');
-defined('WEB_ROOT') || define('WEB_ROOT', APP_BASE . '/');
-
-use app\Container\Application;
 use app\Http\Request;
+use app\Http\Router;
 use app\Service\AuthService;
+use app\Service\AuthSessionKeys;
+use app\Service\CsrfService;
+use app\Service\FlashBag;
+use app\Service\SecurityFlowSession;
+use app\Service\SessionService;
+use app\Service\TranslationService;
+use src\Business\AuthenticationRateLimitContext;
 use src\Business\AuthenticatorTOTPService;
+use src\Business\AuthenticatorTOTPPurpose;
 use src\Business\RecoveryFeatureService;
 use src\Controller\AuthenticatorSecurity;
-use src\Controller\Controller;
+use src\Identity\AccountSecurity\Application\DisableAuthenticator;
+use src\Identity\AccountSecurity\Http\AuthenticatorDisableEndpoint;
+use Twig\Environment;
+use Twig\Loader\ArrayLoader;
 
-const AUTHENTICATOR_TOTP_DIGITS = 6;
+require_once __DIR__ . '/../vendor/autoload.php';
 
-function __(string $key, array $parameters = []): string
+defined('APP_BASE') || define('APP_BASE', '/game');
+defined('WEB_ROOT') || define('WEB_ROOT', APP_BASE . '/');
+defined('APP_MAX_AGE') || define('APP_MAX_AGE', 7200);
+defined('AUTHENTICATOR_TOTP_DIGITS') || define('AUTHENTICATOR_TOTP_DIGITS', 6);
+
+final class AuthenticatorSecurityTestSession extends SessionService
 {
-    return $key;
-}
-
-spl_autoload_register(static function (string $class): void {
-    $prefixes = [
-        'app\\' => __DIR__ . '/../app/',
-        'src\\' => __DIR__ . '/../src/',
-    ];
-
-    foreach ($prefixes as $prefix => $baseDirectory) {
-        if (str_starts_with($class, $prefix) === false) {
-            continue;
-        }
-
-        $file = $baseDirectory
-            . str_replace('\\', '/', substr($class, strlen($prefix)))
-            . '.php';
-
-        if (is_file($file) === true) {
-            require $file;
-        }
-    }
-});
-
-final class AuthenticatorSecurityTestAuth extends AuthService
-{
-    public ?int $userId = 42;
-    public ?string $pendingSecret = 'pending-secret';
-    public int $csrfRotations = 0;
+    public array $values = [];
 
     public function __construct()
     {
     }
 
-    public function getAuthenticatedUserId(): ?int
+    public function get(string $key, mixed $default = null): mixed
     {
-        return $this->userId;
+        return $this->values[$key] ?? $default;
     }
 
-    public function setPendingAuthenticatorSecret(?string $secret): void
+    public function set(string $key, mixed $value): void
     {
-        $this->pendingSecret = $secret;
+        $this->values[$key] = $value;
     }
 
-    public function rotateCsrfToken(): void
+    public function remove(string $key): void
     {
-        ++$this->csrfRotations;
+        unset($this->values[$key]);
+    }
+}
+
+final class AuthenticatorSecurityTestCsrf extends CsrfService
+{
+    public int $rotations = 0;
+
+    public function __construct()
+    {
     }
 
-    public function getSecurityChallengeBinding(): string
+    public function rotateToken(): string
     {
-        return 'security-binding';
+        ++$this->rotations;
+        return 'rotated';
     }
 }
 
 final class AuthenticatorSecurityTestAuthenticator extends AuthenticatorTOTPService
 {
-    public array $calls = [];
-    public bool $rateLimited = false;
+    public bool $verified = true;
 
     public function __construct()
     {
     }
 
-    public function verify(int $userId, \src\Business\AuthenticatorTOTPPurpose $purpose, string $code, \src\Business\AuthenticationRateLimitContext $context): bool
-    {
-        $this->calls[] = [
-            'verify',
-            $userId,
-            $purpose,
-            $code,
-        ];
-
-        if ($this->rateLimited === true) {
-            throw new \src\Business\RateLimitExceededException('authenticator_totp_verify', 60);
-        }
-
-        return true;
+    public function verify(
+        int $userId,
+        AuthenticatorTOTPPurpose $purpose,
+        string $submittedCode,
+        AuthenticationRateLimitContext $context
+    ): bool {
+        return $this->verified;
     }
 }
 
 final class AuthenticatorSecurityTestRecovery extends RecoveryFeatureService
 {
-    public array $calls = [];
+    public bool $succeeds = true;
 
     public function __construct()
     {
@@ -108,63 +95,34 @@ final class AuthenticatorSecurityTestRecovery extends RecoveryFeatureService
 
     public function disableAuthenticatorAndRecoveryCodes(int $userId): bool
     {
-        $this->calls[] = [
-            'disableAuthenticatorAndRecoveryCodes',
-            $userId,
-        ];
-
-        return true;
+        return $this->succeeds;
     }
 }
 
-final class AuthenticatorSecurityTestTranslation
-{
-    public function setFile(string $file): void
-    {
-    }
-}
-
-final class AuthenticatorSecurityTestSession extends \app\Service\SessionService
+final class AuthenticatorSecurityTestTranslation extends TranslationService
 {
     public function __construct()
     {
     }
 
-    public function get(string $key, mixed $default = null): mixed
+    public function get(string $key, array $replacements = [], bool $useFallback = true): string
     {
-        return $key === '_IPaddress' ? '192.0.2.50' : $default;
-    }
-}
-
-final class AuthenticatorSecurityTestApplication extends Application
-{
-    public function __construct(
-        private readonly AuthenticatorSecurityTestAuth $auth
-    ) {
-    }
-
-    public function get(string $name): object
-    {
-        return match ($name) {
-            \app\Service\AuthService::class => $this->auth,
-            \app\Service\TranslationService::class => new AuthenticatorSecurityTestTranslation(),
-            \app\Service\SessionService::class => new AuthenticatorSecurityTestSession(),
-            default => throw new RuntimeException($name . ' is missing.'),
-        };
+        return $key;
     }
 }
 
 final class AuthenticatorSecurityTestRequest extends Request
 {
     public function __construct(
-        private readonly array $fields,
+        private readonly string $method,
+        private readonly array $fields = [],
         private readonly array $headers = []
     ) {
     }
 
     public function getMethod(): string
     {
-        return 'POST';
+        return $this->method;
     }
 
     public function post(string $key, mixed $default = null): mixed
@@ -178,106 +136,130 @@ final class AuthenticatorSecurityTestRequest extends Request
     }
 }
 
-function assertAuthenticatorSecuritySame(
-    mixed $expected,
-    mixed $actual,
-    string $message
-): void {
+function assertAuthenticatorSecuritySame(mixed $expected, mixed $actual, string $message): void
+{
     if ($expected !== $actual) {
-        throw new RuntimeException(
-            $message
-            . ' Expected '
-            . var_export($expected, true)
-            . ', got '
-            . var_export($actual, true)
-        );
+        throw new RuntimeException($message . ' Expected ' . var_export($expected, true) . ', got ' . var_export($actual, true));
     }
 }
 
-$auth = new AuthenticatorSecurityTestAuth();
+function assertAuthenticatorSecurityHeader(array $headers, string $expected, string $message): void
+{
+    if (in_array($expected, $headers, true) === false) {
+        throw new RuntimeException($message . ' Headers: ' . var_export($headers, true));
+    }
+}
 
+(new Router())->load(__DIR__ . '/../src/resources/routes.yaml');
+$session = new AuthenticatorSecurityTestSession();
+$csrf = new AuthenticatorSecurityTestCsrf();
+$auth = new AuthService($session, $csrf);
+$securityFlow = new SecurityFlowSession($session);
 $authenticator = new AuthenticatorSecurityTestAuthenticator();
 $recovery = new AuthenticatorSecurityTestRecovery();
-$application = new AuthenticatorSecurityTestApplication($auth);
-
-$controller = (new ReflectionClass(AuthenticatorSecurity::class))
-    ->newInstanceWithoutConstructor();
-
-(new ReflectionProperty(Controller::class, 'application'))
-    ->setValue($controller, $application);
-
-(new ReflectionProperty(
-    AuthenticatorSecurity::class,
-    'authenticatorService'
-))->setValue($controller, $authenticator);
-
-(new ReflectionProperty(
-    AuthenticatorSecurity::class,
-    'recoveryFeatureService'
-))->setValue($controller, $recovery);
-
-$request = new AuthenticatorSecurityTestRequest(
-    [
-        'authenticator_disable_code' => '12',
-    ],
-    [
-        'Accept' => 'application/json',
-    ]
+$flash = new FlashBag($session);
+$translation = new AuthenticatorSecurityTestTranslation();
+$twig = new Environment(new ArrayLoader([
+    'authenticator-disable.twig' => '{{ account.errors|join(",") }}|{{ cancelDisable.backUrl }}|{{ authenticator.digits }}',
+]));
+$endpoint = new AuthenticatorDisableEndpoint(
+    $auth,
+    new DisableAuthenticator(
+        $authenticator,
+        $recovery,
+        $session,
+        $securityFlow,
+        $auth
+    ),
+    $flash,
+    $session,
+    $translation,
+    $twig
 );
+$controller = new AuthenticatorSecurity($endpoint);
 
-$response = $controller->disable($request);
-$payload = json_decode($response->getContent(), true);
+$response = $controller->startDisable(new AuthenticatorSecurityTestRequest('POST'));
+assertAuthenticatorSecuritySame(303, $response->getStatusCode(), 'Unauthenticated disable starts must redirect with 303.');
+assertAuthenticatorSecurityHeader($response->getHeaders(), 'Location: /game/login', 'Unauthenticated disable starts must redirect to login.');
 
-assertAuthenticatorSecuritySame(
-    422,
-    $response->getStatusCode(),
-    'Malformed authenticator code should return 422.'
-);
+$session->values[AuthSessionKeys::AUTHENTICATED_USER_ID] = 42;
+$response = $controller->startDisable(new AuthenticatorSecurityTestRequest('POST'));
+assertAuthenticatorSecurityHeader($response->getHeaders(), 'Location: /game/account/authenticator/disable', 'Authenticated disable starts must retain the disable route.');
 
-assertAuthenticatorSecuritySame(
-    false,
-    $payload['success'] ?? null,
-    'Malformed authenticator code should report failure.'
-);
-
-assertAuthenticatorSecuritySame(
-    [],
-    $authenticator->calls,
-    'Malformed code must not be verified.'
-);
-
-assertAuthenticatorSecuritySame(
-    [],
-    $recovery->calls,
-    'Malformed code must not disable anything.'
-);
-
-$authenticator->rateLimited = true;
 $response = $controller->disable(new AuthenticatorSecurityTestRequest(
+    'POST',
+    ['authenticator_disable_code' => '12'],
+    ['Accept' => 'application/json']
+));
+$payload = json_decode($response->getContent(), true);
+assertAuthenticatorSecuritySame(422, $response->getStatusCode(), 'Malformed JSON submissions must return 422.');
+assertAuthenticatorSecuritySame('account.authenticator-disable-code-required', $payload['message'] ?? null, 'Malformed codes must retain their message.');
+assertAuthenticatorSecurityHeader($response->getHeaders(), 'Cache-Control: no-store, private', 'Structured responses must remain private and uncached.');
+
+$authenticator->verified = false;
+$response = $controller->disable(new AuthenticatorSecurityTestRequest(
+    'POST',
+    ['authenticator_disable_code' => '123456'],
+    ['X-Requested-With' => 'XMLHttpRequest']
+));
+$payload = json_decode($response->getContent(), true);
+assertAuthenticatorSecuritySame('account.authenticator-disable-invalid-code', $payload['message'] ?? null, 'XHR invalid codes must retain their message.');
+assertAuthenticatorSecuritySame('authenticator_verification_pending', $payload['state'] ?? null, 'XHR failures must retain their state.');
+
+$authenticator->verified = true;
+$recovery->succeeds = false;
+$response = $controller->disable(new AuthenticatorSecurityTestRequest(
+    'POST',
     ['authenticator_disable_code' => '123456'],
     ['Accept' => 'application/json']
 ));
 $payload = json_decode($response->getContent(), true);
+assertAuthenticatorSecuritySame('account.authenticator-disable-error', $payload['message'] ?? null, 'Persistence errors must retain their message.');
 
+$recovery->succeeds = true;
+$response = $controller->disable(new AuthenticatorSecurityTestRequest(
+    'POST',
+    ['authenticator_disable_code' => '123456'],
+    ['Accept' => 'application/json']
+));
+$payload = json_decode($response->getContent(), true);
+assertAuthenticatorSecuritySame(200, $response->getStatusCode(), 'Successful structured disablement must return 200.');
+assertAuthenticatorSecuritySame([
+    'success' => true,
+    'state' => 'authenticator_disabled',
+    'nextStep' => 'account_security',
+    'message' => 'account.authenticator-disabled',
+    'errors' => [],
+    'redirect' => '/game/account',
+], $payload, 'Successful structured disablement must retain its payload.');
+
+$authenticator->verified = false;
+$response = $controller->disable(new AuthenticatorSecurityTestRequest(
+    'POST',
+    ['authenticator_disable_code' => '123456']
+));
+assertAuthenticatorSecurityHeader($response->getHeaders(), 'Location: /game/account/authenticator/disable', 'HTML failures must retain PRG to the disable page.');
+$response = $controller->disable(new AuthenticatorSecurityTestRequest('GET'));
 assertAuthenticatorSecuritySame(
-    422,
-    $response->getStatusCode(),
-    'Rate-limited authenticator disable should use the existing invalid-code response.'
-);
-assertAuthenticatorSecuritySame(
-    false,
-    $payload['success'] ?? null,
-    'Rate-limited authenticator disable should report failure.'
-);
-assertAuthenticatorSecuritySame(
-    \src\Business\AuthenticatorTOTPPurpose::AUTHENTICATOR_DISABLE,
-    $authenticator->calls[0][2] ?? null,
-    'Authenticator disable must pass the dedicated authenticator purpose.'
-);
-assertAuthenticatorSecuritySame(
-    [],
-    $recovery->calls,
-    'Rate-limited verification must not disable the authenticator.'
+    'account.authenticator-disable-invalid-code|/game/account|6',
+    $response->getContent(),
+    'The disable page must consume its flash and retain its view model.'
 );
 
-fwrite(STDOUT, "AuthenticatorSecurity controller tests passed.\n");
+$authenticator->verified = true;
+$response = $controller->disable(new AuthenticatorSecurityTestRequest(
+    'POST',
+    ['authenticator_disable_code' => '123456']
+));
+assertAuthenticatorSecurityHeader($response->getHeaders(), 'Location: /game/account', 'HTML success must return to Account.');
+assertAuthenticatorSecuritySame(
+    ['errors' => [], 'success' => ['account.authenticator-disabled']],
+    $flash->consume('account'),
+    'HTML success must retain its Account flash message.'
+);
+
+unset($session->values[AuthSessionKeys::AUTHENTICATED_USER_ID]);
+$response = $controller->disable(new AuthenticatorSecurityTestRequest('GET'));
+assertAuthenticatorSecurityHeader($response->getHeaders(), 'Location: /game/login', 'Unauthenticated disable pages must redirect to login.');
+
+fwrite(STDOUT, "Authenticator security controller tests passed.\n");
