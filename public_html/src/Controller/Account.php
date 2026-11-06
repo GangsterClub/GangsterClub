@@ -13,7 +13,7 @@ use src\Business\AuthEntryService;
 use src\Business\AuthenticatorTOTPService;
 use src\Business\RecoveryFeatureService;
 use src\Business\UserService;
-use src\Entity\User;
+use src\Identity\AccountSecurity\Http\AccountSecurityFormHandler;
 use src\Identity\Profile\Http\EmailChangeVerification;
 use src\Identity\Profile\Http\ProfileFormHandler;
 
@@ -22,6 +22,8 @@ class Account extends Controller
     private ProfileFormHandler $profileFormHandler;
 
     private EmailChangeVerification $emailChangeVerification;
+
+    private AccountSecurityFormHandler $accountSecurityFormHandler;
 
     private UserService $userService;
 
@@ -39,6 +41,7 @@ class Account extends Controller
         parent::__construct($application);
         $this->profileFormHandler = $application->get(ProfileFormHandler::class);
         $this->emailChangeVerification = $application->get(EmailChangeVerification::class);
+        $this->accountSecurityFormHandler = $application->get(AccountSecurityFormHandler::class);
         $this->userService = $application->get(UserService::class);
         $this->authenticatorService = $application->get(AuthenticatorTOTPService::class);
         $this->recoveryFeatureService = $application->get(RecoveryFeatureService::class);
@@ -76,8 +79,15 @@ class Account extends Controller
             $this->accountMessages['success'],
             $profileResult['success']
         );
-        $this->handleAuthenticator($request, $user, $auth);
-        $this->handleTwoStepPreference($request, $user);
+        $securityMessages = $this->accountSecurityFormHandler->handle($request, $user);
+        $this->accountMessages['errors'] = array_merge(
+            $this->accountMessages['errors'],
+            $securityMessages['errors']
+        );
+        $this->accountMessages['success'] = array_merge(
+            $this->accountMessages['success'],
+            $securityMessages['success']
+        );
 
         if ($request->getMethod() === 'POST') {
             foreach ($this->accountMessages['errors'] as $message) {
@@ -142,41 +152,6 @@ class Account extends Controller
         $statusCode = strtoupper($request->getMethod()) === 'POST' ? 303 : 302;
 
         return Response::redirect(Router::path('login'), $statusCode);
-    }
-
-    private function handleAuthenticator(Request $request, User $user, AuthService $auth): void
-    {
-        if ($request->post('submit_authenticator_setup') !== null
-            || $request->post('submit_authenticator_cancel') !== null
-            || $request->post('submit_authenticator_confirm') !== null
-        ) {
-            $this->accountMessages['errors'][] = __('account.authenticator-flow-required');
-            return;
-        }
-    }
-
-    private function handleTwoStepPreference(Request $request, User $user): void
-    {
-        if ($request->post('submit_two_step') === null) {
-            return;
-        }
-
-        $required = $request->post('require_two_step_verification') === '1';
-        if ($required === true
-            && $this->authenticatorService->hasEnabledAuthenticator($user->getId()) === false
-        ) {
-            $this->accountMessages['errors'][] = __('account.two-step-requires-authenticator');
-            return;
-        }
-
-        if ($this->userService->setTwoStepVerificationRequired($user->getId(), $required) === false) {
-            $this->accountMessages['errors'][] = __('account.two-step-update-error');
-            return;
-        }
-
-        $this->accountMessages['success'][] = $required === true
-            ? __('account.two-step-enabled')
-            : __('account.two-step-disabled');
     }
 
 }
