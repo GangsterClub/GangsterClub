@@ -21,7 +21,7 @@ use src\Business\RecoveryCodeService;
 use src\Business\TOTPService;
 use src\Business\UserService;
 use src\Identity\Recovery\Application\AbandonRecoveryFlow;
-use src\Identity\Recovery\Application\IssueRecoveryEmailVerification;
+use src\Identity\Recovery\Application\RecoveryEmailVerification;
 use src\Identity\Recovery\Application\RecoveryCodeLifecycle;
 use src\Identity\Recovery\Application\RecoveryFlowCoordinator;
 use src\Identity\Recovery\Application\RecoveryFlowState;
@@ -225,7 +225,7 @@ foreach ([
     RecoveryIdentityContext::class,
     RecoveryRateLimitContextFactory::class,
     AbandonRecoveryFlow::class,
-    IssueRecoveryEmailVerification::class,
+    RecoveryEmailVerification::class,
     StartAccountRecovery::class,
     StartLostAuthenticatorRecovery::class,
     RecoveryCodeLifecycle::class,

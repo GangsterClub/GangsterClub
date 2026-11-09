@@ -23,7 +23,7 @@ use src\Business\UserService;
 use src\Controller\RecoveryFlow;
 use src\Controller\RecoveryStart;
 use src\Identity\Recovery\Application\AbandonRecoveryFlow;
-use src\Identity\Recovery\Application\IssueRecoveryEmailVerification;
+use src\Identity\Recovery\Application\RecoveryEmailVerification;
 use src\Identity\Recovery\Application\RecoveryCodeLifecycle;
 use src\Identity\Recovery\Application\RecoveryFlowCoordinator;
 use src\Identity\Recovery\Application\RecoveryFlowState;
@@ -73,10 +73,11 @@ final class RecoveryServiceProvider implements ServiceProvider
             $container->get(RecoveryFlowState::class)
         ));
         $container->set(
-            IssueRecoveryEmailVerification::class,
-            fn(): IssueRecoveryEmailVerification => new IssueRecoveryEmailVerification(
+            RecoveryEmailVerification::class,
+            fn(): RecoveryEmailVerification => new RecoveryEmailVerification(
                 $container->get(EmailTOTPService::class),
                 $container->get(EmailService::class),
+                $container->get(AuthenticatorTOTPService::class),
                 $container->get(AuthenticationChallengeService::class),
                 $container->get(RecoveryFlowState::class),
                 $container->get(RecoveryRateLimitContextFactory::class)
@@ -90,7 +91,7 @@ final class RecoveryServiceProvider implements ServiceProvider
             $container->get(RecoveryFlowState::class),
             $container->get(RecoveryIdentityContext::class),
             $container->get(AbandonRecoveryFlow::class),
-            $container->get(IssueRecoveryEmailVerification::class)
+            $container->get(RecoveryEmailVerification::class)
         ));
         $container->set(
             StartLostAuthenticatorRecovery::class,
@@ -101,7 +102,7 @@ final class RecoveryServiceProvider implements ServiceProvider
                 $container->get(RecoveryFlowState::class),
                 $container->get(RecoveryIdentityContext::class),
                 $container->get(AbandonRecoveryFlow::class),
-                $container->get(IssueRecoveryEmailVerification::class)
+                $container->get(RecoveryEmailVerification::class)
             )
         );
         $container->set(RecoveryCodeLifecycle::class, fn(): RecoveryCodeLifecycle => new RecoveryCodeLifecycle(
@@ -119,12 +120,10 @@ final class RecoveryServiceProvider implements ServiceProvider
     private function registerFlowApplication(Container $container): void
     {
         $container->set(RecoveryVerification::class, fn(): RecoveryVerification => new RecoveryVerification(
-            $container->get(EmailTOTPService::class),
+            $container->get(RecoveryEmailVerification::class),
             $container->get(AuthenticatorTOTPService::class),
             $container->get(RecoveryFlowService::class),
-            $container->get(RecoveryCodeService::class),
             $container->get(AuthenticationChallengeService::class),
-            $container->get(EmailService::class),
             $container->get(RecoveryFlowState::class),
             $container->get(RecoveryRateLimitContextFactory::class),
             $container->get(RecoveryCodeLifecycle::class)

@@ -58,10 +58,32 @@ $controllerFiles = [
 foreach ($controllerFiles as $file) {
     $contents = (string) file_get_contents($file);
     assertRecoveryArchitecture(
-        preg_match('/app\\\\Container|\$this->application|new\\s+(?:RecoveryFlowCoordinator|RecoveryVerification|RecoveryCodeLifecycle|StartAccountRecovery|StartLostAuthenticatorRecovery)\\b/', $contents) !== 1,
+        preg_match('/app\\\\Container|\$this->application|new\\s+(?:RecoveryFlowCoordinator|RecoveryVerification|RecoveryEmailVerification|RecoveryCodeLifecycle|StartAccountRecovery|StartLostAuthenticatorRecovery)\\b/', $contents) !== 1,
         basename($file) . ' must use injected recovery collaborators.'
     );
 }
+
+$emailVerification = new ReflectionClass(src\Identity\Recovery\Application\RecoveryEmailVerification::class);
+assertRecoveryArchitecture(
+    $emailVerification->hasMethod('issue') && $emailVerification->hasMethod('verify'),
+    'RecoveryEmailVerification must own both email OTP issuance and verification.'
+);
+
+$verificationSource = (string) file_get_contents(
+    $source . '/Identity/Recovery/Application/RecoveryVerification.php'
+);
+foreach (['EmailTOTPService', 'RecoveryCodeService', 'EmailService'] as $removedDependency) {
+    assertRecoveryArchitecture(
+        str_contains($verificationSource, $removedDependency) === false,
+        'RecoveryVerification must not regain the ' . $removedDependency . ' dependency.'
+    );
+}
+
+$codeLifecycle = new ReflectionClass(src\Identity\Recovery\Application\RecoveryCodeLifecycle::class);
+assertRecoveryArchitecture(
+    $codeLifecycle->hasMethod('consume'),
+    'RecoveryCodeLifecycle must own recovery-code consumption.'
+);
 
 $routes = (string) file_get_contents($source . '/resources/routes.yaml');
 $expectedRoutes = [

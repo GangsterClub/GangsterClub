@@ -62,6 +62,7 @@
             "@php tests/ProfileArchitectureTest.php",
             "@php tests/ProfileRenderingSmokeTest.php",
             "@php tests/RecoveryArchitectureTest.php",
+            "@php tests/RecoveryApplicationCharacterizationTest.php",
             "@php tests/RecoveryFeatureHttpTest.php",
             "@php tests/RecoveryRenderingSmokeTest.php",
             "@php tests/SecurityFoundationTest.php",
