@@ -7,12 +7,21 @@ namespace src\Identity\Recovery\Application;
 use src\Business\AuthenticationChallengeService;
 use src\Business\AuthenticationRateLimitPurpose;
 use src\Business\EmailService;
+use src\Business\RecoveryCodeConsumptionResult;
+use src\Business\RecoveryCodeGenerationResult;
 use src\Business\RecoveryCodeService;
 use src\Business\RecoveryFeatureService;
 use src\Entity\User;
 
 final class RecoveryCodeLifecycle
 {
+    private const PRESENTED_STATES_BY_PURPOSE = [
+        RecoveryCeremony::ENROLLMENT->value => 'recovery_codes_presented_unacknowledged',
+        RecoveryCeremony::INITIAL_CODES->value => 'recovery_codes_presented_unacknowledged',
+        RecoveryCeremony::REPLACEMENT_CODES->value => 'replacement_codes_presented_unacknowledged',
+        RecoveryCeremony::LOST_AUTHENTICATOR->value => 'new_recovery_codes_presented_unacknowledged',
+    ];
+
     public function __construct(
         private readonly AuthenticationChallengeService $challenges,
         private readonly RecoveryCodeService $recoveryCodes,
@@ -22,6 +31,94 @@ final class RecoveryCodeLifecycle
         private readonly RecoveryRateLimitContextFactory $rateLimits,
         private readonly EmailService $email
     ) {
+    }
+
+    public function consume(
+        RecoveryActionInput $input,
+        User $user,
+        object $challenge,
+        RecoveryMode $mode
+    ): RecoveryResult {
+        if ((string) $challenge->state !== 'recovery_code_pending') {
+            return new RecoveryResult(
+                RecoveryOutcome::INVALID_ACTION,
+                (string) $challenge->state,
+                $mode,
+                (string) $challenge->purpose,
+                $user,
+                $challenge
+            );
+        }
+
+        $consumption = $this->recoveryCodes->consumeActiveCode(
+            $user->getId(),
+            $input->recoveryCode,
+            $this->rateLimits->forChallenge($user->getId(), (int) $challenge->id),
+            AuthenticationRateLimitPurpose::LOST_AUTHENTICATOR_RECOVERY
+        );
+        if ($consumption->status === RecoveryCodeConsumptionResult::STATUS_RATE_LIMITED) {
+            return new RecoveryResult(
+                RecoveryOutcome::FLOW_RATE_LIMITED,
+                'recovery_code_pending',
+                $mode,
+                (string) $challenge->purpose,
+                $user,
+                $challenge,
+                retryAfterSeconds: $consumption->retryAfterSeconds
+            );
+        }
+        if ($consumption->isConsumed() === false) {
+            return new RecoveryResult(
+                RecoveryOutcome::RECOVERY_CODE_INVALID,
+                'recovery_code_pending',
+                $mode,
+                (string) $challenge->purpose,
+                $user,
+                $challenge
+            );
+        }
+
+        $token = $this->flow->snapshot()->challengeToken ?? '';
+        $binding = $this->flow->getChallengeBinding();
+        $purpose = RecoveryCeremony::LOST_AUTHENTICATOR->value;
+        $consumed = $this->challenges->transition(
+            $token,
+            $binding,
+            $purpose,
+            'recovery_code_pending',
+            'recovery_code_consumed'
+        );
+        $warning = $consumed === null ? null : $this->challenges->transition(
+            $token,
+            $binding,
+            $purpose,
+            'recovery_code_consumed',
+            'replacement_warning_presented'
+        );
+        if ($warning === null) {
+            return new RecoveryResult(
+                RecoveryOutcome::CHALLENGE_EXPIRED,
+                'expired',
+                $mode,
+                (string) $challenge->purpose,
+                $user,
+                $challenge
+            );
+        }
+        $this->email->sendSecurityNotification(
+            $user->getEmail(),
+            'Recovery code used',
+            'A recovery code was used to begin replacing a lost authenticator. If this was not you, secure your account immediately.'
+        );
+        return new RecoveryResult(
+            RecoveryOutcome::LOST_REPLACEMENT_WARNING,
+            'replacement_warning_presented',
+            $mode,
+            (string) $warning->purpose,
+            $user,
+            $warning,
+            remainingCount: $consumption->remainingCount
+        );
     }
 
     public function generate(
@@ -37,23 +134,10 @@ final class RecoveryCodeLifecycle
             return $this->result(RecoveryOutcome::REAUTHENTICATION_EXPIRED, 'expired', $mode, $challenge);
         }
 
-        $generation = (int) ($challenge->baseline_authenticator_generation ?? 1);
-        if ($mode === RecoveryMode::LOST_AUTHENTICATOR) {
-            ++$generation;
-        }
-        $replacesSetId = $challenge->baseline_recovery_code_set_id === null
-            ? null : (int) $challenge->baseline_recovery_code_set_id;
-        $generated = $this->recoveryCodes->generatePendingSet(
-            $user->getId(),
-            AuthenticationRateLimitPurpose::from($purpose),
-            $this->rateLimits->forChallenge($user->getId(), (int) $challenge->id),
-            $generation,
-            (int) $challenge->id,
-            $replacesSetId
-        );
-        $this->flow->setPendingRecoverySetId($generated->setId);
+        $generated = $this->createPendingSet($user, $challenge, $mode);
 
-        $presentedState = $this->presentedState($purpose);
+        $presentedState = self::PRESENTED_STATES_BY_PURPOSE[$purpose]
+            ?? 'recovery_codes_presented_unacknowledged';
         $snapshot = $this->flow->snapshot();
         $presented = $this->challenges->transition(
             $snapshot->challengeToken ?? '',
@@ -133,25 +217,15 @@ final class RecoveryCodeLifecycle
     public function regenerate(User $user, object $challenge, RecoveryMode $mode): RecoveryResult
     {
         $pendingSetId = $this->flow->snapshot()->pendingRecoverySetId;
-        if ($pendingSetId === null || $this->isPresentedState((string) $challenge->state) === false) {
+        if ($pendingSetId === null
+            || in_array((string) $challenge->state, self::PRESENTED_STATES_BY_PURPOSE, true) === false
+        ) {
             return $this->result(RecoveryOutcome::INVALID_ACTION, (string) $challenge->state, $mode, $challenge);
         }
 
         $this->recoveryCodes->invalidatePendingSet($user->getId(), $pendingSetId, 'unacknowledged_display');
         $this->flow->setPendingRecoverySetId(null);
-        $generation = (int) ($challenge->baseline_authenticator_generation ?? 1)
-            + ($mode === RecoveryMode::LOST_AUTHENTICATOR ? 1 : 0);
-        $replacesSetId = $challenge->baseline_recovery_code_set_id === null
-            ? null : (int) $challenge->baseline_recovery_code_set_id;
-        $generated = $this->recoveryCodes->generatePendingSet(
-            $user->getId(),
-            AuthenticationRateLimitPurpose::from((string) $challenge->purpose),
-            $this->rateLimits->forChallenge($user->getId(), (int) $challenge->id),
-            $generation,
-            (int) $challenge->id,
-            $replacesSetId
-        );
-        $this->flow->setPendingRecoverySetId($generated->setId);
+        $generated = $this->createPendingSet($user, $challenge, $mode);
         $this->flow->markRecoveryCodesDelivered($generated->setId);
 
         return new RecoveryResult(
@@ -199,21 +273,26 @@ final class RecoveryCodeLifecycle
         ], true);
     }
 
-    private function presentedState(string $purpose): string
+    private function createPendingSet(
+        User $user,
+        object $challenge,
+        RecoveryMode $mode
+    ): RecoveryCodeGenerationResult
     {
-        return match ($purpose) {
-            RecoveryCeremony::REPLACEMENT_CODES->value => 'replacement_codes_presented_unacknowledged',
-            RecoveryCeremony::LOST_AUTHENTICATOR->value => 'new_recovery_codes_presented_unacknowledged',
-            default => 'recovery_codes_presented_unacknowledged',
-        };
-    }
+        $generation = (int) ($challenge->baseline_authenticator_generation ?? 1)
+            + ($mode === RecoveryMode::LOST_AUTHENTICATOR ? 1 : 0);
+        $replacesSetId = $challenge->baseline_recovery_code_set_id === null
+            ? null : (int) $challenge->baseline_recovery_code_set_id;
+        $generated = $this->recoveryCodes->generatePendingSet(
+            $user->getId(),
+            AuthenticationRateLimitPurpose::from((string) $challenge->purpose),
+            $this->rateLimits->forChallenge($user->getId(), (int) $challenge->id),
+            $generation,
+            (int) $challenge->id,
+            $replacesSetId
+        );
+        $this->flow->setPendingRecoverySetId($generated->setId);
 
-    private function isPresentedState(string $state): bool
-    {
-        return in_array($state, [
-            'recovery_codes_presented_unacknowledged',
-            'replacement_codes_presented_unacknowledged',
-            'new_recovery_codes_presented_unacknowledged',
-        ], true);
+        return $generated;
     }
 }

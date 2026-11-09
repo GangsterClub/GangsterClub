@@ -19,7 +19,7 @@ final class StartAccountRecovery
         private readonly RecoveryFlowState $flow,
         private readonly RecoveryIdentityContext $identity,
         private readonly AbandonRecoveryFlow $abandon,
-        private readonly IssueRecoveryEmailVerification $emailVerification
+        private readonly RecoveryEmailVerification $emailVerification
     ) {
     }
 
